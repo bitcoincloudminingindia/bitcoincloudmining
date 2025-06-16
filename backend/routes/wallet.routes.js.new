@@ -1,0 +1,143 @@
+const express = require('express');
+const router = express.Router();
+const { authenticate } = require('../middleware/auth.middleware');
+const walletController = require('../controllers/wallet.controller');
+const User = require('../models/user.model');
+const Wallet = require('../models/wallet.model');
+const Transaction = require('../models/transaction.model');
+const BigNumber = require('bignumber.js');
+
+// Get wallet balance
+router.get('/balance', authenticate, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).populate('wallet');
+        if (!user || !user.wallet) {
+            return res.status(404).json({
+                success: false,
+                message: 'Wallet not found'
+            });
+        }
+        res.json({
+            success: true,
+            data: {
+                balance: user.wallet.balance,
+                pendingBalance: user.wallet.pendingBalance,
+                currency: user.wallet.currency
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching wallet balance:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching wallet balance',
+            error: error.message
+        });
+    }
+});
+
+// Get wallet info
+router.get('/info', authenticate, async (req, res) => {
+    try {
+        const user = await req.user.populate('wallet');
+        res.json({
+            success: true,
+            data: {
+                wallet: user.wallet
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching wallet info:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching wallet info',
+            error: error.message
+        });
+    }
+});
+
+// Sync wallet balance
+router.post('/sync-balance', authenticate, async (req, res) => {
+    try {
+        const { balance, timestamp } = req.body;
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        const currentBalance = new BigNumber(balance || '0');
+        let wallet;
+
+        try {
+            // Try to find existing wallet by userId
+            wallet = await Wallet.findOne({ userId: user.userId });
+
+            if (!wallet) {
+                // Create new wallet if none exists
+                const walletData = {
+                    userId: user.userId,
+                    user: user._id,
+                    balance: currentBalance.toFixed(18),
+                    pendingBalance: '0.000000000000000000',
+                    currency: 'BTC',
+                    lastUpdated: timestamp || new Date(),
+                    balanceHistory: [{
+                        amount: currentBalance.toFixed(18),
+                        type: 'balance_sync',
+                        timestamp: timestamp || new Date()
+                    }]
+                };
+
+                wallet = new Wallet(walletData);
+                await wallet.save();
+
+                // Link wallet to user
+                user.wallet = wallet._id;
+                await user.save();
+            } else {
+                // Update existing wallet
+                wallet.balance = currentBalance.toFixed(18);
+                wallet.lastUpdated = timestamp || new Date();
+                wallet.balanceHistory.push({
+                    amount: currentBalance.toFixed(18),
+                    type: 'balance_sync',
+                    timestamp: timestamp || new Date()
+                });
+                await wallet.save();
+
+                // Ensure user has correct wallet reference
+                if (!user.wallet || !user.wallet.equals(wallet._id)) {
+                    user.wallet = wallet._id;
+                    await user.save();
+                }
+            }
+        } catch (error) {
+            console.error('Wallet operation failed:', error);
+            throw new Error('Failed to create or update wallet: ' + error.message);
+        }
+
+        // Make sure we have a valid wallet before sending response
+        if (!wallet) {
+            throw new Error('Failed to create or update wallet');
+        }
+
+        res.json({
+            success: true,
+            data: {
+                balance: wallet.balance,
+                pendingBalance: wallet.pendingBalance || '0.000000000000000000',
+                currency: wallet.currency || 'BTC',
+                lastSynced: wallet.lastUpdated || new Date()
+            }
+        });
+    } catch (error) {
+        console.error('Error syncing wallet balance:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error syncing wallet balance',
+            error: error.message
+        });
+    }
+});
