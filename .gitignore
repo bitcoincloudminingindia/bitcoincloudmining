@@ -33,23 +33,127 @@ migrate_working_dir/
 build/
 .pub-cache/
 .pub/
+flutter_01.log
+*.lock
+*.iml
+*.log
 
-# Symbolication related
-app.*.symbols
+# Android related
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
 
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-/android/.gradle
-/android/local.properties
-
-# iOS specific
-ios/Pods/
-ios/.symlinks/
+# iOS related
+ios/Flutter/Flutter.framework
 ios/Flutter/Flutter.podspec
 ios/Flutter/Generated.xcconfig
-ios/Flutter/flutter_export_environment.sh
+ios/Flutter/ephemeral/
+ios/Pods/
+ios/Runner.xcworkspace/
+ios/build/
+
+# macOS related
+macos/Flutter/ephemeral/
+macos/build/
+
+# Linux related
+linux/build/
+
+# Windows related
+windows/build/
+
+# Web related
+web/build/
+
+# VS Code related
+.vscode/
+
+# Node.js/Backend related
+backend/node_modules/
+backend/.env
+backend/.cache/
+backend/logs/
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/yarn-error.log*
+backend/.npm/
+backend/.yarn/
+backend/.pnp*
+backend/.eslintcache
+backend/.nyc_output/
+backend/coverage/
+backend/tmp/
+backend/.next/
+backend/.vercel/
+backend/.firebase/
+backend/.DS_Store
+backend/.idea/
+backend/.vscode/
+backend/.history/
+backend/.sublime*
+backend/.log
+backend/.pid
+backend/.seed
+backend/.swo
+backend/.swp
+backend/.swn
+backend/.bak
+backend/.tmp
+backend/.cache/mongodb-memory-server/
+
+# Sensitive files
+.env
+.env.*
+*.env
+*.key
+*.pem
+*.crt
+*.p12
+*.jks
+*.keystore
+
+# Misc
+*.swp
+*.swo
+*.tmp
+*.bak
+.DS_Store
+.idea/
+
+# Exclude large files and executables
+*.exe
+*.dll
+*.so
+*.dylib
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Prevent secrets and credentials
+**/secrets.*
+**/credentials.*
+**/config.js
+**/config.json
+
+# Exclude test and coverage outputs
+coverage/
+
+# Exclude replay and error logs
+replay_*.log
+error*.log
+
+# Exclude cache and temp files
+.cache/
+
+# Exclude audio, video, and other large assets (if not needed in repo)
+assets/audio/
+assets/sounds/
+assets/background.mp3
+assets/coin_sound.mp3
+assets/collect.mp3
+assets/error_sound.mp3
+assets/reward_sound.mp3
+
+# Add more as needed for your project structure
