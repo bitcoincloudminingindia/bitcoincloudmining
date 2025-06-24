@@ -1,12 +1,11 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
-const User = require('../models/user.model');
-const Wallet = require('../models/wallet.model');
+const mongoose = require('mongoose');
+const { User, Wallet } = require('../models');
 const Referral = require('../models/referral.model');
 const logger = require('../utils/logger');
 const OTP = require('../models/otp.model');
-const mongoose = require('mongoose');
 const emailService = require('../services/email.service');
 const ApiError = require('../utils/ApiError');
 const crypto = require('crypto');
@@ -86,7 +85,7 @@ exports.register = catchAsync(async (req, res, next) => {
 
     // Create wallet for user
     const wallet = new Wallet({
-      user: user._id,
+      user: user._id, // keep _id for MongoDB relation
       userId: user.userId,
       walletId: 'WAL' + crypto.randomBytes(8).toString('hex').toUpperCase(),
       balance: '0.000000000000000000',
@@ -98,6 +97,40 @@ exports.register = catchAsync(async (req, res, next) => {
     await wallet.save();
     console.log('✅ Wallet created successfully');
 
+    // Handle referral code if provided
+    if (referredByCode) {
+      const referrer = await User.findOne({ referralCode: referredByCode });
+      if (referrer && referrer.userId !== user.userId) {
+        await Referral.create({
+          referrerId: referrer.userId,
+          referredId: user.userId,
+          referrerCode: referredByCode,
+          status: 'active',
+          referredUserDetails: {
+            username: user.userName,
+            email: user.userEmail,
+            joinedAt: new Date()
+          }
+        });
+        // Increment referrer's referralCount
+        await User.updateOne(
+          { userId: referrer.userId },
+          { $inc: { referralCount: 1 } }
+        );
+        // Send notification email to referrer
+        try {
+          await emailService.sendPromotionalEmail(referrer.userEmail, {
+            title: '🎉 Someone used your referral code!',
+            content: `${user.userName} just signed up using your referral code. Thank you for spreading the word!`,
+            ctaText: 'View Referrals',
+            ctaUrl: 'https://your-app-url.com/referrals'
+          });
+        } catch (e) {
+          logger.error('Failed to send referral notification email:', e);
+        }
+      }
+    }
+
     // Generate token
     const token = generateToken(user);
 
@@ -105,7 +138,7 @@ exports.register = catchAsync(async (req, res, next) => {
       status: 'success',
       data: {
         user: {
-          id: user._id,
+          id: user.userId, // use userId instead of _id
           userId: user.userId,
           fullName: user.fullName,
           userName: user.userName,

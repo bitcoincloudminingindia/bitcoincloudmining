@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:uni_links/uni_links.dart';
 
 import '../config/api_config.dart';
 import '../services/api_service.dart';
@@ -217,35 +216,13 @@ class _SignUpDialogState extends State<SignUpDialog> {
     });
   }
 
-  Future<void> _checkInitialReferralCode() async {
-    try {
-      // Check if app was launched from a URL
-      final initialUri = await getInitialUri();
-      if (initialUri != null) {
-        _handleReferralCodeFromUri(initialUri);
-      }
-
-      // Listen for incoming links while the app is running
-      uriLinkStream.listen((Uri? uri) {
-        if (uri != null) {
-          _handleReferralCodeFromUri(uri);
-        }
+  void _checkInitialReferralCode() {
+    if (widget.initialReferralCode != null &&
+        widget.initialReferralCode!.isNotEmpty) {
+      setState(() {
+        _referralCodeController.text = widget.initialReferralCode!;
+        _onReferralCodeChanged(widget.initialReferralCode!);
       });
-    } catch (e) {
-      debugPrint('Error checking initial referral code: $e');
-    }
-  }
-
-  void _handleReferralCodeFromUri(Uri uri) {
-    if (uri.host == 'bitcoincloudmining.app' && uri.path == '/download') {
-      final referralCode = uri.queryParameters['ref'];
-      if (referralCode != null && referralCode.isNotEmpty) {
-        setState(() {
-          _referralCodeController.text = referralCode;
-          // Trigger validation
-          _onReferralCodeChanged(referralCode);
-        });
-      }
     }
   }
 
@@ -272,6 +249,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
         userName: _usernameController.text.trim(),
         userEmail: _emailController.text.trim(),
         password: _passwordController.text,
+        referredByCode: referredByCode,
       );
 
       print('📥 Signup response: $response');
@@ -397,8 +375,8 @@ class _SignUpDialogState extends State<SignUpDialog> {
                             fontWeight: FontWeight.w500,
                           ),
                           labelStyle: TextStyle(
-                            color: Colors.grey[300],
-                            fontSize: 13,
+                            color: Colors.grey[400],
+                            fontSize: 14,
                           ),
                           floatingLabelStyle: TextStyle(
                             color: Colors.grey[400],

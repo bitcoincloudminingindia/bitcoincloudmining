@@ -5,11 +5,10 @@ import 'package:intl/intl.dart';
 class TermsConditionScreen extends StatelessWidget {
   final String appName;
   final String supportEmail;
-
   const TermsConditionScreen({
     super.key,
-    this.appName = 'Bitcoin Mining Cloud App',
-    this.supportEmail = 'support@bitcoinminingapp.com',
+    this.appName = 'Bitcoin Cloud Mining',
+    this.supportEmail = 'bitcoincloudminingformobile@gmail.com',
   });
 
   @override
@@ -52,7 +51,7 @@ class TermsConditionScreen extends StatelessWidget {
 **Terms & Conditions**  
 _Last Updated: ${dynamicLastUpdated}_
 
-Welcome to **$appName**, a gamified Bitcoin mining cloud app. By using our app, you agree to the following terms and conditions. Please read them carefully before using the service.
+Welcome to **$appName**. By using our app, you agree to the following terms and conditions. Please read them carefully before using the service.
 
 ## 1. Acceptance of Terms  
 By accessing or using **$appName**, you confirm that you have read, understood, and agreed to these Terms & Conditions. If you do not agree, please do not use the app.
@@ -61,14 +60,18 @@ By accessing or using **$appName**, you confirm that you have read, understood, 
 - You must be at least **18 years old** or the age of majority in your jurisdiction.  
 - By using the app, you confirm that you are legally allowed to participate in virtual Bitcoin mining and transactions.
 
-## 3. App Usage & Virtual Mining  
-- **$appName** offers a simulated Bitcoin mining experience. No actual Bitcoin mining occurs on your device.  
-- BTC earnings in the app are **virtual rewards** and may be subject to conversion, withdrawal limits, or changes at any time.  
-- The app may offer **rewarded ads** and **power-ups** to enhance the user experience.
+## 3. App Usage & Mining  
+- **$appName** provides Bitcoin cloud mining services.
+- Mining earnings are paid in real BTC and can be withdrawn to your external wallet.
+- Mining rates may vary based on network conditions and your mining power.
+- The app may offer **power-ups** and **boosters** to enhance your mining speed.
+- **Rewarded ads** are available to boost your mining earnings.
 
 ## 4. Wallet & Transactions  
-- Your **in-app wallet** stores your real BTC balance. It is a real Bitcoin wallet and can be used outside the app.  
-- Withdrawals are subject to minimum balance requirements and transaction fees.  
+- Your **in-app wallet** stores your real BTC balance.
+- The minimum withdrawal amount is 0.000000000000000001 BTC.
+- Withdrawals are processed within 48 hours.
+- No transaction fees are charged for withdrawals.
 - The app reserves the right to delay or deny withdrawals if fraudulent activity is suspected.
 
 ## 5. Prohibited Activities  

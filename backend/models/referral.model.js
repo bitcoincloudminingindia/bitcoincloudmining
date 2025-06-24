@@ -42,7 +42,15 @@ const referralSchema = new Schema({
   earnings: {
     type: Number,
     default: 0,
-    min: [0, 'Earnings cannot be negative']
+    min: [0, 'Earnings cannot be negative'],
+    get: v => v != null ? v.toFixed(18) : '0.000000000000000000',
+    set: v => parseFloat(Number(v).toFixed(18))
+  },
+  pendingEarnings: {
+    type: Number,
+    default: 0,
+    get: v => v != null ? v.toFixed(18) : '0.000000000000000000',
+    set: v => parseFloat(Number(v).toFixed(18))
   },
   lastClaimDate: {
     type: Date,
@@ -51,7 +59,9 @@ const referralSchema = new Schema({
   earningsHistory: [{
     amount: {
       type: Number,
-      required: true
+      required: true,
+      get: v => v != null ? v.toFixed(18) : '0.000000000000000000',
+      set: v => parseFloat(Number(v).toFixed(18))
     },
     type: {
       type: String,
@@ -66,7 +76,9 @@ const referralSchema = new Schema({
   claimHistory: [{
     amount: {
       type: Number,
-      required: [true, 'Amount is required']
+      required: [true, 'Amount is required'],
+      get: v => v != null ? v.toFixed(18) : '0.000000000000000000',
+      set: v => parseFloat(Number(v).toFixed(18))
     },
     timestamp: {
       type: Date,
@@ -273,7 +285,8 @@ referralSchema.methods.claimReferralRewards = async function () {
 
     // Update referrer's wallet balance
     const User = mongoose.model('User');
-    const referrer = await User.findById(this.referrerId);
+    // Use userId instead of _id for string-based IDs
+    const referrer = await User.findOne({ userId: this.referrerId });
     if (!referrer) {
       throw new Error('Referrer not found');
     }
@@ -282,7 +295,7 @@ referralSchema.methods.claimReferralRewards = async function () {
     referrer.walletBalance = formatBTC(currentBalance + totalClaimAmount);
     await referrer.save();
     console.log('Updated referrer wallet balance:', {
-      userId: referrer._id,
+      userId: referrer.userId,
       newBalance: referrer.walletBalance
     });
 
@@ -365,8 +378,8 @@ referralSchema.pre('save', async function (next) {
   if (this.isNew) {
     try {
       const User = mongoose.model('User');
-      await User.findByIdAndUpdate(
-        this.referrerId,
+      await User.updateOne(
+        { userId: this.referrerId },
         { $inc: { referralCount: 1 } }
       );
     } catch (error) {

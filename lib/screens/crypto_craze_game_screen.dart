@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
-import 'package:bitcoin_cloud_mining/services/custom_ad_service.dart';
+import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -24,7 +24,7 @@ class CryptoCrazeGameScreen extends StatefulWidget {
 
 class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
   final Random _random = Random();
-  final CustomAdService _adService = CustomAdService();
+  final AdService _adService = AdService();
   List<Offset> _cryptoPositions = [];
   int _tapCount = 0;
   int _currentLevel = 1;

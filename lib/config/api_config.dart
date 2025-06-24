@@ -6,7 +6,9 @@ import 'package:http/http.dart' as http;
 
 class ApiConfig {
   // Base URL for API
-  static const String baseUrl = 'http://localhost:5000';
+  static String get baseUrl => kIsWeb
+      ? 'http://localhost:5000'
+      : (Platform.isAndroid ? 'http://10.0.2.2:5000' : 'http://localhost:5000');
 
   // API Version
   static const String apiVersion =

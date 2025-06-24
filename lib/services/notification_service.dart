@@ -5,7 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:rxdart/subjects.dart';
-import 'package:web/web.dart' as web;
+
+// Conditional web import
 
 import '../services/api_service.dart';
 import '../utils/storage_utils.dart';
@@ -146,7 +147,7 @@ class NotificationService {
         'appVersion': '1.0.0',
         'browser': 'BrowserName.chrome',
         'platform': kIsWeb ? 'Web' : Platform.operatingSystem,
-        'userAgent': kIsWeb ? web.window.navigator.userAgent : 'Unknown',
+        'userAgent': 'Unknown', // Simplified for non-web platforms
       };
 
       final data = {

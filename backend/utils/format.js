@@ -33,11 +33,12 @@ const FORMAT_OPTIONS = {
 };
 
 /**
- * Format BTC amount to exactly 18 decimal places
+ * Format BTC amount to exactly 18 decimal places and ensure non-negative values
  * @param {number|string} amount - Amount to format
+ * @param {boolean} [allowNegative=false] - Whether to allow negative values
  * @returns {string} Formatted amount with exactly 18 decimal places
  */
-const formatBTC = (amount) => {
+const formatBTC = (amount, allowNegative = false) => {
   if (amount === undefined || amount === null) {
     return '0.000000000000000000';
   }
@@ -46,42 +47,40 @@ const formatBTC = (amount) => {
     // Convert amount to a processable format
     let processedAmount = amount;
 
-    // If it's an object, try to get its value
-    if (typeof amount === 'object') {
-      // Handle MongoDB Decimal128
+    // If it's an object with a toString method (like mongoose Decimal128)
+    if (typeof amount === 'object' && amount !== null) {
       if (amount instanceof mongoose.Types.Decimal128) {
         processedAmount = amount.toString();
-      }
-      // Handle mongoose document
-      else if (amount._doc) {
-        processedAmount = amount._doc;
-      }
-      // Handle wallet balance object
-      else if (amount.balance !== undefined) {
-        processedAmount = amount.balance;
-      }
-      // Handle objects with valueOf
-      else if (amount.valueOf) {
-        processedAmount = amount.valueOf();
-      }
-      // Handle objects with toString
-      else if (amount.toString) {
+      } else if (typeof amount.toString === 'function') {
         processedAmount = amount.toString();
       }
     }
 
-    // Ensure we're working with a string
-    processedAmount = processedAmount?.toString() || '0';
+    // Create BigNumber from the processed amount
+    const bn = new BigNumber(processedAmount);
 
-    // First convert from scientific notation if needed
-    const normalizedValue = fromScientific(processedAmount);
-    const bn = new BigNumber(normalizedValue);
-    const isNegative = bn.isNegative();
-    const absoluteValue = bn.abs();
+    // Check if it's a valid number
+    if (bn.isNaN()) {
+      console.warn('Invalid amount:', amount);
+      return '0.000000000000000000';
+    }
 
-    // Use toFixed instead of toFormat for more reliable decimal handling
-    const formatted = absoluteValue.toFixed(18);
-    return isNegative ? `-${formatted}` : formatted;
+    // Handle negative values
+    if (bn.isNegative() && !allowNegative) {
+      console.warn('Negative amount detected:', amount);
+      // Return absolute value for storage
+      return bn.abs().toFixed(18);
+    }
+
+    // Format with exactly 18 decimal places
+    const result = bn.toFixed(18);
+
+    // Ensure result has exactly 18 decimal places
+    const parts = result.split('.');
+    const integer = parts[0] || '0';
+    const fraction = (parts[1] || '').padEnd(18, '0');
+
+    return `${integer}.${fraction}`;
   } catch (error) {
     console.error('Error formatting BTC amount:', error);
     return '0.000000000000000000';

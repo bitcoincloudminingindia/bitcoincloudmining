@@ -1,9 +1,8 @@
 const mongoose = require('mongoose');
 const Joi = require('joi');
 const crypto = require('crypto');
-
-// Drop existing model if it exists
-mongoose.models = {};
+const { formatBTC } = require('../utils/format');
+const BigNumber = require('bignumber.js');
 
 const withdrawalSchema = new mongoose.Schema({
   withdrawalId: {
@@ -27,7 +26,7 @@ const withdrawalSchema = new mongoose.Schema({
     type: String,
     required: true,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return !isNaN(parseFloat(v)) && parseFloat(v) > 0;
       },
       message: 'Amount must be a positive number'
@@ -37,7 +36,7 @@ const withdrawalSchema = new mongoose.Schema({
     type: String,
     required: true,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return !isNaN(parseFloat(v)) && parseFloat(v) > 0;
       },
       message: 'Net amount must be a positive number'
@@ -47,7 +46,7 @@ const withdrawalSchema = new mongoose.Schema({
     type: String,
     required: true,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return !isNaN(parseFloat(v)) && parseFloat(v) >= 0;
       },
       message: 'Fees must be a non-negative number'
@@ -79,7 +78,7 @@ const withdrawalSchema = new mongoose.Schema({
     type: String,
     required: true,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return !isNaN(parseFloat(v)) && parseFloat(v) > 0;
       },
       message: 'Original amount must be a positive number'
@@ -91,6 +90,26 @@ const withdrawalSchema = new mongoose.Schema({
     enum: ['BTC', 'USD', 'INR'],
     default: 'BTC'
   },
+  localAmount: {
+    type: String,
+    required: false,
+    validate: {
+      validator: function (v) {
+        return !isNaN(parseFloat(v)) && parseFloat(v) >= 0;
+      },
+      message: 'Local amount must be a non-negative number'
+    }
+  },
+  exchangeRate: {
+    type: String,
+    required: false,
+    validate: {
+      validator: function (v) {
+        return !isNaN(parseFloat(v)) && parseFloat(v) > 0;
+      },
+      message: 'Exchange rate must be a positive number'
+    }
+  },
   timestamp: {
     type: Date,
     default: Date.now
@@ -98,6 +117,27 @@ const withdrawalSchema = new mongoose.Schema({
 }, {
   timestamps: true,
   strict: true
+});
+
+// Add pre-save middleware to format local amount
+withdrawalSchema.pre('save', function (next) {
+  if (this.localAmount) {
+    try {
+      // Format local amount to exactly 10 decimal places
+      this.localAmount = new BigNumber(this.localAmount).toFixed(10);
+    } catch (error) {
+      console.error('Error formatting local amount:', error);
+    }
+  }
+  if (this.exchangeRate) {
+    try {
+      // Format exchange rate to exactly 10 decimal places
+      this.exchangeRate = new BigNumber(this.exchangeRate).toFixed(10);
+    } catch (error) {
+      console.error('Error formatting exchange rate:', error);
+    }
+  }
+  next();
 });
 
 // Create new indexes
@@ -129,14 +169,33 @@ const validateWithdrawal = (data) => {
         }
       }
       return value;
-    }, 'btc-amount-validation').messages({
+    }, 'btc-amount-validation'),
+    localAmount: Joi.string().optional().custom((value, helpers) => {
+      if (value) {
+        const num = parseFloat(value);
+        if (isNaN(num) || num < 0) {
+          return helpers.error('any.invalid');
+        }
+      }
+      return value;
+    }, 'local-amount-validation'),
+    exchangeRate: Joi.string().optional().custom((value, helpers) => {
+      if (value) {
+        const num = parseFloat(value);
+        if (isNaN(num) || num <= 0) {
+          return helpers.error('any.invalid');
+        }
+      }
+      return value;
+    }, 'exchange-rate-validation'),
+    originalAmount: Joi.string().optional().messages({
       'any.invalid': 'BTC amount must be at least 0.000000000000000001 BTC'
     }),
     status: Joi.string().valid('pending', 'processing', 'completed', 'failed', 'cancelled').default('pending'),
     timestamp: Joi.date().default(() => new Date())
   });
 
-  const { error } = schema.validate(data, { 
+  const { error } = schema.validate(data, {
     abortEarly: false,
     stripUnknown: true,
     convert: true

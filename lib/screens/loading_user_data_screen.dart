@@ -52,8 +52,8 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
         debugPrint('✅ Wallet balance updated: $balance BTC');
       }
 
-      // 3. Sync wallet balance with server
-      await walletProvider.syncWalletBalance();
+      // 3. Load wallet balance from server
+      await walletProvider.loadWallet();
 
       if (!mounted) return;
 

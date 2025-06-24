@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
-const User = require('../models/user.model');
+const { User } = require('../models');
 const logger = require('../utils/logger');
 const config = require('../config/config');
 

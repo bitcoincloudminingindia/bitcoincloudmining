@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:bitcoin_cloud_mining/providers/reward_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/screens/referral_screen.dart';
-import 'package:bitcoin_cloud_mining/services/custom_ad_service.dart';
+import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -18,7 +18,7 @@ class RewardScreen extends StatefulWidget {
 class _RewardScreenState extends State<RewardScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final CustomAdService _adService = CustomAdService();
+  final AdService _adService = AdService();
   late ConfettiController _confettiController;
   late RewardClaimHandler _rewardClaimHandler;
   Timer? _countdownTimer;
@@ -39,6 +39,7 @@ class _RewardScreenState extends State<RewardScreen>
       context: context,
       rewardProvider: Provider.of<RewardProvider>(context, listen: false),
       walletProvider: Provider.of<WalletProvider>(context, listen: false),
+      adService: _adService, // Pass the shared instance
     );
   }
 
@@ -49,6 +50,7 @@ class _RewardScreenState extends State<RewardScreen>
       context: context,
       rewardProvider: Provider.of<RewardProvider>(context, listen: false),
       walletProvider: Provider.of<WalletProvider>(context, listen: false),
+      adService: _adService, // Pass the shared instance
     );
   }
 
@@ -249,13 +251,14 @@ class RewardClaimHandler {
   final BuildContext context;
   final RewardProvider rewardProvider;
   final WalletProvider walletProvider;
-  final CustomAdService adService;
+  final AdService adService;
 
   RewardClaimHandler({
     required this.context,
     required this.rewardProvider,
     required this.walletProvider,
-  }) : adService = CustomAdService();
+    required this.adService,
+  });
 
   void _showAdNotLoadedMessage() {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -634,10 +637,10 @@ class DailyRewardSection extends StatelessWidget {
               canClaim: rewardProvider.canClaimDailyMine,
               onClaim: () async {
                 await rewardClaimHandler.handleRewardClaim(
-                  rewardType: 'daily_reward',
+                  rewardType: 'daily_mine_reward', // <-- FIXED
                   amount: rewardProvider.dailyMineReward,
                   requiresAd:
-                      rewardProvider.requiresAdForReward('daily_reward'),
+                      rewardProvider.requiresAdForReward('daily_mine_reward'),
                   onSuccess: () {
                     // No additional action needed after claiming
                   },
@@ -878,7 +881,8 @@ class _HourlyRewardSectionState extends State<HourlyRewardSection> {
                   amount: rewardProvider.hourlyReward,
                   requiresAd: rewardProvider.canClaimHourly && _isReady,
                   onSuccess: () {
-                    // No additional action needed after claiming
+                    // Optionally trigger confetti here
+                    // widget.rewardClaimHandler.confettiController?.play();
                   },
                 );
               },
@@ -902,8 +906,6 @@ class _HourlyRewardSectionState extends State<HourlyRewardSection> {
                           Text(
                             _countdownText,
                             style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -915,7 +917,7 @@ class _HourlyRewardSectionState extends State<HourlyRewardSection> {
             RewardCard(
               icon: Icons.local_fire_department,
               title: 'Streak Bonus',
-              subtitle: 'Current streak: ${rewardProvider.streakCount} days',
+              subtitle: 'Current streak: rewardProvider.streakCount} days',
               rewardAmount:
                   '${rewardProvider.streakBonusReward.toStringAsFixed(16)} BTC',
               canClaim: rewardProvider.canClaimStreakBonus,
@@ -925,7 +927,8 @@ class _HourlyRewardSectionState extends State<HourlyRewardSection> {
                   amount: rewardProvider.streakBonusReward,
                   requiresAd: rewardProvider.canClaimStreakBonus,
                   onSuccess: () {
-                    // No additional action needed after claiming
+                    // Optionally trigger confetti here
+                    // widget.rewardClaimHandler.confettiController?.play();
                   },
                 );
               },

@@ -22,7 +22,8 @@ class Wallet {
           double.tryParse(json['pendingBalance']?.toString() ?? '0') ?? 0.0,
       currency: json['currency'] ?? 'BTC',
       transactions: (json['transactions'] as List<dynamic>?)
-              ?.map(Transaction.fromJson)
+              ?.map((txJson) =>
+                  Transaction.fromJson(txJson as Map<String, dynamic>))
               .toList() ??
           [],
       lastUpdated: json['lastUpdated'] != null

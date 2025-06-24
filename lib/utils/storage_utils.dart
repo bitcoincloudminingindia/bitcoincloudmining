@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../models/transaction.dart';
 import '../services/api_service.dart';
+import '../utils/number_formatter.dart';
 
 class StorageUtils {
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
@@ -386,48 +387,112 @@ class StorageUtils {
     }
   }
 
-  // Wallet balance methods
-  static Future<void> saveWalletBalance(double balance) async {
+  // Transaction storage methods
+  static Future<List<Transaction>?> getStoredTransactions() async {
     try {
-      // Format balance to 18 decimal places
-      final formattedBalance = balance.toStringAsFixed(18);
-      print('💰 Formatted balance for storage: $formattedBalance');
+      final prefs = await SharedPreferences.getInstance();
+      final transactionsJson = prefs.getString('transactions');
 
-      final prefs = await _getPrefs();
-      await prefs.setString(_walletBalanceKey, formattedBalance);
-      print('💾 Balance saved to storage: $formattedBalance');
+      if (transactionsJson == null) {
+        return null;
+      }
+
+      final List<dynamic> decodedList = json.decode(transactionsJson);
+      return decodedList
+          .map((item) => Transaction.fromJson(item as Map<String, dynamic>))
+          .toList();
     } catch (e) {
-      print('❌ Error saving wallet balance: $e');
-      rethrow;
+      print('Error getting stored transactions: $e');
+      return null;
     }
   }
 
-  static Future<double?> getWalletBalance() async {
+  static Future<void> storeTransactions(List<Transaction> transactions) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final transactionsJson = json.encode(
+        transactions.map((tx) => tx.toJson()).toList(),
+      );
+      await prefs.setString('transactions', transactionsJson);
+    } catch (e) {
+      print('Error storing transactions: $e');
+    }
+  }
+
+  static Future<List<Transaction>> getTransactions() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final transactionsJson = prefs.getString('transactions');
+      if (transactionsJson == null) return [];
+
+      final List<dynamic> decoded = json.decode(transactionsJson);
+      return decoded
+          .map((item) => Transaction.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('❌ Error getting transactions: $e');
+      return [];
+    }
+  }
+
+  // Format balance to string with 18 decimal places
+  static String formatBalanceString(String balance) {
+    try {
+      if (balance.isEmpty) return '0.000000000000000000';
+
+      // Remove any existing formatting
+      final cleanBalance = balance.replaceAll(RegExp(r'[^\d.-]'), '');
+
+      // Parse as double
+      final amount = double.tryParse(cleanBalance) ?? 0.0;
+
+      // Format with exactly 18 decimal places
+      return amount.toStringAsFixed(18);
+    } catch (e) {
+      print('❌ Error formatting balance: $e');
+      return '0.000000000000000000';
+    }
+  }
+
+  // Save wallet balance to storage
+  static Future<void> saveWalletBalance(String balance) async {
     try {
       final prefs = await _getPrefs();
-      final balanceStr = prefs.getString(_walletBalanceKey);
-
-      if (balanceStr != null) {
-        // Convert string to double
-        final balance = double.tryParse(balanceStr);
-        if (balance != null) {
-          print('💰 Retrieved balance from storage: $balance');
-          return balance;
-        }
-      }
-
-      // If no balance found or invalid format, return 0
-      print('💰 No valid balance found in storage, returning 0');
-      return 0.0;
+      final walletData = {
+        'balance': balance,
+        'lastUpdated': DateTime.now().toIso8601String()
+      };
+      await prefs.setString(_walletBalanceKey, json.encode(walletData));
     } catch (e) {
-      print('❌ Error getting wallet balance: $e');
-      return 0.0;
+      print('❌ Error saving wallet balance: $e');
+      throw Exception('Failed to save wallet balance: $e');
+    }
+  }
+
+  // Get wallet balance from storage
+  static Future<String?> getWalletBalance() async {
+    try {
+      final prefs = await _getPrefs();
+      final walletJson = prefs.getString(_walletBalanceKey);
+      if (walletJson != null) {
+        final walletData = json.decode(walletJson);
+        return walletData['balance'] as String?;
+      }
+      return null;
+    } catch (e) {
+      print('❌ Error reading wallet balance: $e');
+      return null;
     }
   }
 
   static Future<void> removeWalletBalance() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_walletBalanceKey);
+    try {
+      final prefs = await _getPrefs();
+      await prefs.remove(_walletBalanceKey);
+      print('✅ Wallet balance removed from storage');
+    } catch (e) {
+      print('❌ Error removing wallet balance: $e');
+    }
   }
 
   static Future<bool> refreshToken() async {
@@ -479,99 +544,6 @@ class StorageUtils {
       prefs.remove(_adminNameKey),
       prefs.remove(_adminEmailKey),
     ]);
-  }
-
-  static Future<List<Transaction>?> getStoredTransactions() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final transactionsJson = prefs.getString('transactions');
-
-      if (transactionsJson == null) {
-        return null;
-      }
-
-      final List<dynamic> decodedList = json.decode(transactionsJson);
-      return decodedList.map(Transaction.fromJson).toList();
-    } catch (e) {
-      print('Error getting stored transactions: $e');
-      return null;
-    }
-  }
-
-  static Future<void> storeTransactions(List<Transaction> transactions) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final transactionsJson = json.encode(
-        transactions.map((tx) => tx.toJson()).toList(),
-      );
-      await prefs.setString('transactions', transactionsJson);
-    } catch (e) {
-      print('Error storing transactions: $e');
-    }
-  }
-
-  static Future<void> updateWalletBalance(double balance) async {
-    try {
-      print('🔄 Updating wallet balance: $balance');
-
-      // Format balance to 18 decimal places
-      final formattedBalance = balance.toStringAsFixed(18);
-      print('💰 Formatted balance: $formattedBalance');
-
-      // Get current user data
-      final userData = await getUserData();
-      if (userData != null) {
-        // Update balance in user data
-        userData['walletBalance'] = balance;
-        userData['balance'] = balance;
-
-        // Save updated user data
-        await saveUserData(userData);
-        print('✅ Wallet balance updated in user data');
-      }
-
-      // Save to SharedPreferences
-      final prefs = await _getPrefs();
-      await prefs.setDouble(_walletBalanceKey, balance);
-      print('✅ Wallet balance saved to storage');
-    } catch (e) {
-      print('❌ Error updating wallet balance: $e');
-      rethrow;
-    }
-  }
-
-  static Future<void> playRewardSound() async {
-    try {
-      print('🎵 Playing reward sound...');
-      // Sound playback temporarily disabled
-    } catch (e) {
-      print('⚠️ Error playing reward sound: $e');
-      // Continue without sound if there's an error
-    }
-  }
-
-  static Future<void> saveTransactions(List<Transaction> transactions) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final transactionsJson = transactions.map((tx) => tx.toJson()).toList();
-      await prefs.setString('transactions', json.encode(transactionsJson));
-    } catch (e) {
-      print('❌ Error saving transactions: $e');
-    }
-  }
-
-  static Future<List<Transaction>> getTransactions() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final transactionsJson = prefs.getString('transactions');
-      if (transactionsJson == null) return [];
-
-      final List<dynamic> decoded = json.decode(transactionsJson);
-      return decoded.map(Transaction.fromJson).toList();
-    } catch (e) {
-      print('❌ Error getting transactions: $e');
-      return [];
-    }
   }
 
   static Future<void> saveClaimedTransactions(Set<String> transactions) async {
@@ -680,56 +652,6 @@ class StorageUtils {
     }
   }
 
-  // Format balance to 18 decimal places
-  static String formatBalance(String balance) {
-    try {
-      if (balance.isEmpty) return '0.000000000000000000';
-
-      // Remove any existing formatting
-      final cleanBalance = balance.replaceAll(RegExp(r'[^\d.-]'), '');
-
-      // Parse as double
-      final amount = double.tryParse(cleanBalance) ?? 0.0;
-
-      // Format with exactly 18 decimal places
-      return amount.toStringAsFixed(18);
-    } catch (e) {
-      print('❌ Error formatting balance: $e');
-      return '0.000000000000000000';
-    }
-  }
-
-  // Save wallet balance to storage
-  static Future<void> _saveWalletBalance(String balance) async {
-    try {
-      final prefs = await _getPrefs();
-      final walletData = {
-        'balance': balance,
-        'lastUpdated': DateTime.now().toIso8601String()
-      };
-      await prefs.setString(_walletBalanceKey, json.encode(walletData));
-    } catch (e) {
-      print('❌ Error saving wallet balance: $e');
-      throw Exception('Failed to save wallet balance: $e');
-    }
-  }
-
-  // Retrieve wallet balance from storage
-  static Future<String?> readWalletBalance() async {
-    try {
-      final prefs = await _getPrefs();
-      final walletJson = prefs.getString(_walletBalanceKey);
-      if (walletJson != null) {
-        final walletData = json.decode(walletJson);
-        return walletData['balance'] as String?;
-      }
-      return null;
-    } catch (e) {
-      print('❌ Error reading wallet balance: $e');
-      return null;
-    }
-  }
-
   // Sync balance with server
   static Future<Map<String, dynamic>> syncWalletBalance(String balance) async {
     try {
@@ -749,7 +671,7 @@ class StorageUtils {
       print('🔐 Token parts: ${parts.length}');
 
       // Make API request
-      const url = '${ApiConfig.baseUrl}/api/wallet/sync-balance';
+      const url = ' {ApiConfig.baseUrl}/api/wallet/sync-balance';
       print('📤 POST request to $url');
 
       final data = {'balance': balance};
@@ -809,18 +731,18 @@ class StorageUtils {
       print('🔄 Updating wallet balance...');
       print('💰 New balance: $newBalance');
 
-      final currentBalance =
-          await readWalletBalance() ?? '0.000000000000000000';
+      final currentBalance = await getWalletBalance() ?? '0.000000000000000000';
       print('📊 Current balance: $currentBalance');
 
       // Format balances to 18 decimal places
-      final formattedNewBalance = formatBalance(newBalance);
+      final formattedNewBalance =
+          NumberFormatter.formatBalanceString(newBalance);
       print('💫 Formatted balance: $formattedNewBalance');
 
       if (formattedNewBalance == currentBalance) {
         print('ℹ️ Balance unchanged');
         // Save the balance even if unchanged to update lastUpdated
-        await _saveWalletBalance(formattedNewBalance);
+        await saveWalletBalance(formattedNewBalance);
         print('✅ Wallet balance updated: $formattedNewBalance BTC');
 
         // Sync with server
@@ -833,7 +755,7 @@ class StorageUtils {
       } else {
         print(
             '📈 Balance changed from $currentBalance to $formattedNewBalance');
-        await _saveWalletBalance(formattedNewBalance);
+        await saveWalletBalance(formattedNewBalance);
         print('✅ Wallet balance updated: $formattedNewBalance BTC');
 
         // Sync with server

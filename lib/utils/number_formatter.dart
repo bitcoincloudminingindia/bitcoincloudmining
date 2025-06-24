@@ -19,6 +19,25 @@ class NumberFormatter {
     return trimmed;
   }
 
+  // Format balance string with exactly 18 decimal places
+  static String formatBalanceString(String balance) {
+    try {
+      if (balance.isEmpty) return '0.000000000000000000';
+
+      // Remove any existing formatting
+      final cleanBalance = balance.replaceAll(RegExp(r'[^\d.-]'), '');
+
+      // Parse as double
+      final amount = double.tryParse(cleanBalance) ?? 0.0;
+
+      // Format with exactly 18 decimal places
+      return amount.toStringAsFixed(18);
+    } catch (e) {
+      print('❌ Error formatting balance: $e');
+      return '0.000000000000000000';
+    }
+  }
+
   static String formatCrypto(double value) {
     if (value == 0) return '0.000000000000000000';
     return value.toStringAsFixed(18);
@@ -147,5 +166,40 @@ class NumberFormatter {
       }
     }
     return 0.0;
+  }
+
+  // Convert scientific notation to decimal string
+  static String fromScientific(double value) {
+    if (value == 0) return '0.000000000000000000';
+
+    // Convert to string in scientific notation
+    final String str = value.toString();
+
+    // If not in scientific notation, pad with zeros to 18 decimal places
+    if (!str.contains('e')) {
+      final parts = str.split('.');
+      final decimals = parts.length > 1 ? parts[1] : '';
+      return '${parts[0]}.${decimals.padRight(18, '0')}';
+    }
+
+    // Parse scientific notation
+    final parts = str.split('e');
+    final base = double.parse(parts[0]);
+    final exponent = int.parse(parts[1]);
+
+    if (exponent > 0) {
+      // Move decimal point right
+      String result = base.abs().toString().replaceAll('.', '');
+      result = result.padRight(exponent + 1, '0');
+      return '${base < 0 ? '-' : ''}${result.substring(0, result.length - 18)}.${result.substring(result.length - 18)}';
+    } else {
+      // Move decimal point left
+      final abs = exponent.abs();
+      final baseStr = base.abs().toString().replaceAll('.', '');
+      final String result = '0.${'0' * (abs - 1)}$baseStr';
+      // Ensure 18 decimal places
+      final parts = result.split('.');
+      return '${base < 0 ? '-' : ''}${parts[0]}.${parts[1].padRight(18, '0')}';
+    }
   }
 }

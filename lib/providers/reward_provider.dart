@@ -75,32 +75,32 @@ class RewardProvider with ChangeNotifier {
   List<Map<String, dynamic>> _socialMediaPlatforms = [
     {
       'platform': 'instagram',
-      'handle': '@bitcoin_cloud_mining',
-      'url': 'https://instagram.com/bitcoin_cloud_mining',
+      'handle': '@bitcoincloudmining',
+      'url': 'https://www.instagram.com/bitcoincloudmining/',
       'rewardAmount': '0.000000000000010000'
     },
     {
-      'platform': 'twitter',
-      'handle': '@btc_cloud_mining',
-      'url': 'https://twitter.com/btc_cloud_mining',
+      'platform': 'whatsapp',
+      'handle': 'Bitcoin Cloud Mining',
+      'url': 'https://chat.whatsapp.com/InL9NrT9gtuKpXRJ3Gu5A5',
       'rewardAmount': '0.000000000000010000'
     },
     {
       'platform': 'telegram',
       'handle': '@bitcoin_cloud_mining',
-      'url': 'https://t.me/bitcoin_cloud_mining',
+      'url': 'https://t.me/+v6K5Agkb5r8wMjhl',
       'rewardAmount': '0.000000000000100000'
     },
     {
       'platform': 'facebook',
       'handle': 'Bitcoin Cloud Mining',
-      'url': 'https://facebook.com/bitcoin_cloud_mining',
+      'url': 'https://www.facebook.com/groups/1743859249846928',
       'rewardAmount': '0.000000000000100000'
     },
     {
       'platform': 'youtube',
       'handle': 'Bitcoin Cloud Mining',
-      'url': 'https://youtube.com/@bitcoin_cloud_mining',
+      'url': 'https://www.youtube.com/channel/UC1V43aMm3KYUJu_J9Lx2DAw',
       'rewardAmount': '0.000000000000010000'
     },
     {
@@ -709,38 +709,38 @@ class RewardProvider with ChangeNotifier {
       _socialMediaPlatforms = [
         {
           'platform': 'instagram',
-          'handle': '@bitcoin_cloud_mining',
-          'url': 'https://instagram.com/bitcoin_cloud_mining',
+          'handle': '@bitcoincloudmining',
+          'url': 'https://www.instagram.com/bitcoincloudmining/',
           'rewardAmount': '0.000000000000010000'
         },
         {
           'platform': 'twitter',
-          'handle': '@btc_cloud_mining',
-          'url': 'https://twitter.com/btc_cloud_mining',
+          'handle': '@bitcoinclmining',
+          'url': 'https://x.com/bitcoinclmining',
           'rewardAmount': '0.000000000000010000'
         },
         {
           'platform': 'telegram',
           'handle': '@bitcoin_cloud_mining',
-          'url': 'https://t.me/bitcoin_cloud_mining',
+          'url': 'https://t.me/+v6K5Agkb5r8wMjhl',
           'rewardAmount': '0.000000000000100000'
         },
         {
           'platform': 'facebook',
           'handle': 'Bitcoin Cloud Mining',
-          'url': 'https://facebook.com/bitcoin_cloud_mining',
+          'url': 'https://www.facebook.com/groups/1743859249846928',
           'rewardAmount': '0.000000000000100000'
         },
         {
           'platform': 'youtube',
           'handle': 'Bitcoin Cloud Mining',
-          'url': 'https://youtube.com/@bitcoin_cloud_mining',
+          'url': 'https://www.youtube.com/channel/UC1V43aMm3KYUJu_J9Lx2DAw',
           'rewardAmount': '0.000000000000010000'
         },
         {
-          'platform': 'tiktok',
-          'handle': '@bitcoin_cloud_mining',
-          'url': 'https://tiktok.com/@bitcoin_cloud_mining',
+          'platform': 'whatsapp',
+          'handle': 'Bitcoin Cloud Mining',
+          'url': 'https://chat.whatsapp.com/InL9NrT9gtuKpXRJ3Gu5A5',
           'rewardAmount': '0.000000000000010000'
         }
       ];

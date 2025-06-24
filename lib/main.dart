@@ -1,5 +1,3 @@
-import 'dart:async';
-import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
@@ -17,13 +15,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:web/web.dart' show document, HTMLScriptElement;
 import 'package:window_manager/window_manager.dart';
 import 'package:workmanager/workmanager.dart';
-
-const String miningTask = 'startMiningTask';
-const String cloudMiningTask = 'startCloudMiningTask';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -40,10 +33,9 @@ void main() {
       baseUrl: kIsWeb ? 'http://localhost:5000' : 'http://10.0.2.2:5000',
       apiService: apiService);
 
-  // Initialize platform specific features
-  if (!kIsWeb) {
+  // Only initialize window_manager on desktop platforms
+  if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
     try {
-      // Initialize window manager
       windowManager.ensureInitialized().then((_) {
         const WindowOptions windowOptions = WindowOptions(
           size: Size(800, 600),
@@ -58,111 +50,28 @@ void main() {
           windowManager.setPreventClose(true);
         });
       });
-
-      // Initialize mobile ads
-      MobileAds.instance.initialize();
     } catch (e) {
       print('Platform initialization error: $e');
     }
-  } else {
+  }
+
+  // Always initialize mobile ads on supported platforms (not web)
+  if (!kIsWeb) {
     try {
-      // Web specific initialization
-      const int webHeapSize = 32768;
-      const String javaScriptFlags =
-          '--max_old_space_size=$webHeapSize --optimize-for-size --max-old-space-size=32768 --gc-interval=10 --js-flags="--expose-gc --max-old-space-size=32768"';
-
-      final scriptElement =
-          document.createElement('script') as HTMLScriptElement;
-      scriptElement.text = '''
-        if (typeof window !== 'undefined') {
-          window.flutterWebRenderer = "html";
-          window.JsConfig = {
-            'flags': '$javaScriptFlags'
-          };
-          
-          setInterval(() => {
-            if (window.performance && window.performance.memory) {
-              const used = Math.round(window.performance.memory.usedJSHeapSize / 1048576);
-              if (used > 28000 && window.gc) {
-                window.gc();
-              }
-            }
-          }, 500);
-
-          // Initialize Google Mobile Ads for web
-          window.google = window.google || {};
-          window.google.mobileads = {
-            initialize: () => {
-              console.log('Google Mobile Ads initialized for web');
-              return Promise.resolve();
-            },
-            loadInterstitialAd: () => {
-              console.log('Loading interstitial ad for web');
-              return Promise.resolve();
-            },
-            loadRewardedAd: () => {
-              console.log('Loading rewarded ad for web');
-              return Promise.resolve();
-            },
-            loadNativeAd: () => {
-              console.log('Loading native ad for web');
-              return Promise.resolve();
-            },
-            disposeAd: () => {
-              console.log('Disposing ad for web');
-              return Promise.resolve();
-            }
-          };
-        }
-      ''';
-      document.body?.appendChild(scriptElement);
+      MobileAds.instance.initialize();
     } catch (e) {
-      print('Web initialization error: $e');
+      print('Mobile Ads initialization error: $e');
     }
   }
 
   // Initialize background tasks if not on web
   if (!kIsWeb) {
     try {
-      Workmanager()
-          .initialize(
+      Workmanager().initialize(
         callbackDispatcher,
         isInDebugMode: kDebugMode,
-      )
-          .then((_) {
-        // Register mining tasks
-        Workmanager().registerPeriodicTask(
-          'mining_periodic_task',
-          miningTask,
-          frequency: const Duration(minutes: 5),
-          constraints: Constraints(
-            networkType: NetworkType.connected,
-            requiresBatteryNotLow: false,
-            requiresCharging: false,
-            requiresDeviceIdle: false,
-            requiresStorageNotLow: false,
-          ),
-          existingWorkPolicy: ExistingWorkPolicy.keep,
-          backoffPolicy: BackoffPolicy.linear,
-          backoffPolicyDelay: const Duration(minutes: 1),
-        );
-
-        Workmanager().registerPeriodicTask(
-          'cloud_mining_periodic_task',
-          cloudMiningTask,
-          frequency: const Duration(minutes: 10),
-          constraints: Constraints(
-            networkType: NetworkType.connected,
-            requiresBatteryNotLow: false,
-            requiresCharging: false,
-            requiresDeviceIdle: false,
-            requiresStorageNotLow: false,
-          ),
-          existingWorkPolicy: ExistingWorkPolicy.keep,
-          backoffPolicy: BackoffPolicy.linear,
-          backoffPolicyDelay: const Duration(minutes: 2),
-        );
-      });
+      );
+      // Removed periodic mining and cloud mining task registration for manual mining only
     } catch (e) {
       print('Background task initialization error: $e');
     }
@@ -279,104 +188,3 @@ class _MyAppState extends State<MyApp> with WindowListener {
   }
 }
 
-void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      double currentBalance = prefs.getDouble('btcBalance') ?? 0.0;
-      final List<String> txJsonList = prefs.getStringList('transactions') ?? [];
-      final DateTime now = DateTime.now();
-
-      // Get last mining time with better error handling
-      DateTime lastMiningTime;
-      try {
-        final lastMiningTimeStr = prefs.getString('lastMiningTime');
-        lastMiningTime = lastMiningTimeStr != null
-            ? DateTime.parse(lastMiningTimeStr)
-            : now.subtract(const Duration(minutes: 5));
-      } catch (e) {
-        print('Last mining time parsing error: $e');
-        lastMiningTime = now.subtract(const Duration(minutes: 5));
-      }
-
-      // Calculate time difference in minutes with validation
-      final minutesDiff = now.difference(lastMiningTime).inMinutes;
-      if (minutesDiff < 0) {
-        print('Invalid time difference: $minutesDiff');
-        return Future.value(false);
-      }
-
-      if (task == miningTask) {
-        // Calculate mining reward with improved rate
-        const double baseMiningRate =
-            0.000000000000000003; // Increased base rate
-        final double miningReward = baseMiningRate * minutesDiff;
-
-        // Update balance with validation
-        if (miningReward > 0) {
-          currentBalance += miningReward;
-          await prefs.setDouble('btcBalance', currentBalance);
-          await prefs.setString('lastMiningTime', now.toIso8601String());
-
-          // Record transaction with more details
-          final transaction = {
-            'type': 'Mining',
-            'amount': miningReward,
-            'date': now.toIso8601String(),
-            'status': 'Completed',
-            'source': 'Background Mining',
-            'duration': minutesDiff,
-            'rate': baseMiningRate.toString(),
-            'deviceInfo': {
-              'platform': Platform.operatingSystem,
-              'version': Platform.operatingSystemVersion,
-            }
-          };
-          txJsonList.insert(0, json.encode(transaction));
-          await prefs.setStringList('transactions', txJsonList);
-
-          print('✅ Background mining completed: $miningReward BTC earned');
-        }
-
-        return Future.value(true);
-      } else if (task == cloudMiningTask) {
-        // Calculate cloud mining reward with improved rate
-        const double baseCloudRate =
-            0.000000000000000006; // Increased base rate
-        final double cloudReward = baseCloudRate * minutesDiff;
-
-        // Update balance with validation
-        if (cloudReward > 0) {
-          currentBalance += cloudReward;
-          await prefs.setDouble('btcBalance', currentBalance);
-          await prefs.setString('lastCloudMiningTime', now.toIso8601String());
-
-          // Record transaction with more details
-          final transaction = {
-            'type': 'Cloud Mining',
-            'amount': cloudReward,
-            'date': now.toIso8601String(),
-            'status': 'Completed',
-            'source': 'Background Cloud Mining',
-            'duration': minutesDiff,
-            'rate': baseCloudRate.toString(),
-            'deviceInfo': {
-              'platform': Platform.operatingSystem,
-              'version': Platform.operatingSystemVersion,
-            }
-          };
-          txJsonList.insert(0, json.encode(transaction));
-          await prefs.setStringList('transactions', txJsonList);
-
-          print('✅ Background cloud mining completed: $cloudReward BTC earned');
-        }
-
-        return Future.value(true);
-      }
-      return Future.value(false);
-    } catch (e) {
-      print('Background mining task error: $e');
-      return Future.value(false);
-    }
-  });
-}

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AboutUsScreen extends StatefulWidget {
   const AboutUsScreen({super.key});
@@ -18,7 +20,12 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() {
-        totalBtcMined += 0.000001; // simulate earnings
+        try {
+          totalBtcMined += 0.000001; // simulate earnings
+        } catch (e) {
+          debugPrint('Error updating BTC mined: $e');
+          // Handle error gracefully
+        }
       });
     });
   }
@@ -38,14 +45,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color.fromARGB(255, 4, 37, 94),
-              Color.fromARGB(255, 165, 151, 25)
-            ],
-          ),
+          color: Color.fromARGB(255, 4, 37, 94), // Changed to solid blue
         ),
         child: CustomScrollView(
           slivers: [
@@ -54,29 +54,23 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
               expandedHeight: 200,
               pinned: true,
               flexibleSpace: FlexibleSpaceBar(
-                title: const Text('📜 About Us – Bitcoin Mining Cloud App 🚀'),
+                title: const Text('📜 About Us – Bitcoin Cloud Mining 🚀'),
                 background: Container(
                   decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Color.fromARGB(255, 4, 37, 94),
-                        Color.fromARGB(255, 165, 151, 25)
-                      ],
-                    ),
+                    color:
+                        Color.fromARGB(255, 4, 37, 94), // Changed to solid blue
                   ),
                 ),
               ),
             ),
             SliverList(
               delegate: SliverChildListDelegate([
-                _AnimatedSection(
+                const _AnimatedSection(
                   delay: 300,
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.all(16.0),
                     child: Text(
-                      "Introduction\nWelcome to Bitcoin Mining Cloud App, the ultimate gamified Bitcoin mining experience! Here, mining is not just about numbers—it's an interactive adventure filled with mini-games, power-ups, challenges, and real BTC rewards.",
+                      'Introduction\nWelcome to Bitcoin Cloud Mining, your trusted platform for cloud-based cryptocurrency mining. We provide a secure, efficient, and user-friendly way to mine Bitcoin through our advanced cloud infrastructure.',
                       style: textStyle,
                     ),
                   ),
@@ -86,38 +80,45 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: RichText(
-                      text: TextSpan(
+                      text: const TextSpan(
                         style: textStyle,
                         children: [
-                          TextSpan(text: '🌍 Our Mission (Why We Exist)\n'),
+                          TextSpan(text: '🌍 Our Mission\n'),
                           TextSpan(
                               text:
-                                  'At Bitcoin Mining Cloud App, we believe that cryptocurrency should be fun, accessible, and rewarding for all.\n'),
+                                  'At Bitcoin Cloud Mining, we are committed to making cryptocurrency mining accessible, efficient, and profitable for everyone.\n\n'),
                           TextSpan(
                               text:
-                                  '💎 Turn Bitcoin mining into a game that anyone can enjoy.\n'),
+                                  '💎 Provide reliable and efficient cloud mining solutions.\n'),
                           TextSpan(
                               text:
-                                  '⚡ Make earning BTC engaging and rewarding.\n'),
+                                  '⚡ Deliver transparent and competitive mining returns.\n'),
                           TextSpan(
                               text:
-                                  '🔗 Create a secure, fair, and transparent mining experience.\n'),
+                                  '🔒 Ensure secure and timely withdrawals.\n'),
+                          TextSpan(
+                              text:
+                                  '🌐 Make Bitcoin mining accessible globally.\n'),
+                          TextSpan(
+                              text:
+                                  '💫 Maintain 99.9% mining facility uptime.\n'),
                         ],
                       ),
                     ),
                   ),
                 ),
-                _AnimatedSection(
+                const _AnimatedSection(
                   delay: 500,
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(16.0),
                     child: Text(
-                      '🔥 Why Choose Bitcoin Mining Cloud App?\n\n'
-                      '🎮 Gamified Mining Experience – Tap, strategize, and mine BTC through interactive mini-games. Unlock power-ups, achievements, and leaderboard rankings.\n\n'
-                      '🔐 Secure & Transparent Earnings – Your BTC earnings are stored safely with real-time transaction tracking.\n\n'
-                      '💰 Fair & Fun Rewards – Earn BTC fairly with no hidden fees.\n\n'
-                      '🌎 Global Crypto Community – Compete, collaborate, and trade with miners worldwide.\n\n'
-                      '⚡ Power-Ups & Customization – Upgrade your mining gear and customize your rig, avatars, and skins.\n',
+                      '🔥 Why Choose Bitcoin Cloud Mining?\n\n'
+                      '⚡ State-of-the-Art Mining Facilities – Advanced ASIC miners maintained in professional data centers with optimal conditions.\n\n'
+                      '🔐 Secure & Transparent Operations – Real-time mining monitoring and secure wallet system with instant tracking.\n\n'
+                      '💰 Competitive Returns – Efficient mining operations with zero hidden fees and minimum withdrawal of 0.000000000000000001 BTC.\n\n'
+                      '� 24/7 Mining Performance – Continuous operation with 99.9% uptime and professional maintenance.\n\n'
+                      '🛟 24/7 Support – Dedicated customer service team available round the clock.\n\n'
+                      '⚡ Quick Withdrawals – All withdrawal requests are processed within 48 hours.\n',
                       style: textStyle,
                     ),
                   ),
@@ -130,7 +131,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Dynamic BTC Earnings Tracker: ${totalBtcMined.toStringAsFixed(8)} BTC mined globally',
+                          'Global Mining Statistics: ${totalBtcMined.toStringAsFixed(18)} BTC mined by our users',
                           style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -147,50 +148,47 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                     ),
                   ),
                 ),
-                _AnimatedSection(
+                const _AnimatedSection(
                   delay: 700,
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
                           '👥 Meet the Team (Tap for Interactive Profiles)',
                           style: boldTextStyle,
                         ),
                         SizedBox(height: 12),
                         _TeamMember(
-                          name: 'John Doe',
-                          role: 'CEO',
+                          name: 'Alexander Wright',
+                          role: 'CEO & Founder',
                           description:
-                              'Visionary leader with 10+ years in blockchain technology. Passionate about making crypto accessible to everyone.',
-                          avatar:
-                              'assets/team_member1.png.webp', // updated asset path
+                              'Blockchain pioneer with 15+ years in cryptocurrency mining operations. Expert in large-scale mining infrastructure.',
                         ),
                         SizedBox(height: 16),
                         _TeamMember(
-                          name: 'Jane Smith',
-                          role: 'Lead Developer',
+                          name: 'Dr. Sarah Chen',
+                          role: 'CTO',
                           description:
-                              'Expert in blockchain development and smart contracts. Loves building scalable and secure systems.',
-                          avatar:
-                              'assets/team_member2.png.webp', // updated asset path
+                              'Ph.D. in Distributed Systems. Former lead engineer at major cryptocurrency exchanges. Expert in mining optimization.',
                         ),
                       ],
                     ),
                   ),
                 ),
-                _AnimatedSection(
+                const _AnimatedSection(
                   delay: 800,
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(16.0),
                     child: Text(
-                      '🌟 Our Vision (The Future of Bitcoin Mining Cloud App)\n\n'
-                      "🔮 What's Coming Next?\n"
-                      '🚀 New Mini-Games – More ways to mine BTC!\n'
-                      '🎁 Daily Challenges & Rewards – Earn weekly BTC bonuses!\n'
-                      '🏆 Leaderboards & Achievements – Track your progress and claim rewards!\n'
-                      '🎨 Mining Rig Customization – Design your dream mining setup!',
+                      '🌟 Our Vision & Future Plans\n\n'
+                      '🔮 Upcoming Developments:\n'
+                      '🚀 Expanding Mining Facilities – Adding more state-of-the-art data centers\n'
+                      '⚡ Enhanced Mining Efficiency – Implementing next-gen ASIC technology\n'
+                      '� Global Expansion – New mining facilities in renewable energy locations\n'
+                      '💹 Advanced Analytics – Real-time mining statistics and performance metrics\n'
+                      '🔗 Multi-Chain Support – Expanding to mine other profitable cryptocurrencies',
                       style: textStyle,
                     ),
                   ),
@@ -264,6 +262,66 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
+                const _AnimatedSection(
+                  delay: 650,
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '🌐 Connect With Us',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        Wrap(
+                          spacing: 16,
+                          runSpacing: 12,
+                          children: [
+                            _SocialMediaButton(
+                              icon: Icons.camera_alt,
+                              label: 'Instagram',
+                              url:
+                                  'https://www.instagram.com/bitcoincloudmining/',
+                              color: Color(0xFF833AB4),
+                            ),
+                            _SocialMediaButton(
+                              icon: FontAwesomeIcons.whatsapp,
+                              label: 'WhatsApp',
+                              url:
+                                  'https://chat.whatsapp.com/InL9NrT9gtuKpXRJ3Gu5A5',
+                              color: Color(0xFF25D366),
+                            ),
+                            _SocialMediaButton(
+                              icon: Icons.send,
+                              label: 'Telegram',
+                              url: 'https://t.me/+v6K5Agkb5r8wMjhl',
+                              color: Color(0xFF0088cc),
+                            ),
+                            _SocialMediaButton(
+                              icon: Icons.facebook,
+                              label: 'Facebook',
+                              url:
+                                  'https://www.facebook.com/groups/1743859249846928',
+                              color: Color(0xFF4267B2),
+                            ),
+                            _SocialMediaButton(
+                              icon: Icons.video_library,
+                              label: 'YouTube',
+                              url:
+                                  'https://www.youtube.com/channel/UC1V43aMm3KYUJu_J9Lx2DAw',
+                              color: Color(0xFFFF0000),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ]),
             ),
           ],
@@ -332,57 +390,43 @@ class _TeamMember extends StatelessWidget {
   final String name;
   final String role;
   final String description;
-  final String avatar;
 
   const _TeamMember({
     required this.name,
     required this.role,
     required this.description,
-    required this.avatar,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: _FlipCard(
-        front: Column(
-          crossAxisAlignment: CrossAxisAlignment.end, // Align to right
-          children: [
-            ClipOval(
-              child: Image.asset(
-                avatar,
-                width: 100,
-                height: 100,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              name,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
-            ),
-            Text(
-              role,
-              textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 16, color: Colors.white),
-            ),
-          ],
-        ),
-        back: Column(
-          crossAxisAlignment: CrossAxisAlignment.end, // Align to right
-          children: [
-            Text(
-              description,
-              textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 14, color: Colors.white),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          const Icon(
+            Icons.person, // Changed from person_circle to person
+            size: 100,
+            color: Colors.white70,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            name,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+                fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          Text(
+            role,
+            textAlign: TextAlign.right,
+            style: const TextStyle(fontSize: 16, color: Colors.white),
+          ),
+          Text(
+            description,
+            textAlign: TextAlign.right,
+            style: const TextStyle(fontSize: 14, color: Colors.white),
+          ),
+        ],
       ),
     );
   }
@@ -392,7 +436,10 @@ class _TestimonialCard extends StatelessWidget {
   final String text;
   final int rating;
 
-  const _TestimonialCard({required this.text, required this.rating});
+  const _TestimonialCard({
+    required this.text,
+    required this.rating,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -401,14 +448,16 @@ class _TestimonialCard extends StatelessWidget {
       margin: const EdgeInsets.only(right: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(
-            25, 255, 255, 255), // 0.1 opacity = 25 in alpha
+        color: const Color.fromARGB(25, 255, 255, 255),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(text, style: const TextStyle(fontSize: 14, color: Colors.white)),
+          Text(
+            text,
+            style: const TextStyle(fontSize: 14, color: Colors.white),
+          ),
           const SizedBox(height: 8),
           Row(
             children: List.generate(
@@ -464,6 +513,48 @@ class _FlipCardState extends State<_FlipCard> {
         switchInCurve: Curves.easeIn,
         switchOutCurve: Curves.easeOut,
         child: _showFront ? widget.front : widget.back,
+      ),
+    );
+  }
+}
+
+class _SocialMediaButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String url;
+  final Color color;
+
+  const _SocialMediaButton({
+    required this.icon,
+    required this.label,
+    required this.url,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () async {
+        // ignore: deprecated_member_use
+        await launchUrl(Uri.parse(url));
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withAlpha(30),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,5 +1,4 @@
-const Wallet = require('../models/wallet.model');
-const User = require('../models/user.model');
+const { User, Wallet } = require('../models');
 const logger = require('./logger');
 const BigNumber = require('bignumber.js');
 
@@ -21,19 +20,21 @@ const formatAmount = (amount, method) => {
   return formatBTCAmount(amount);
 };
 
-// बैलेंस अपडेट के लिए हेल्पर फंक्शन
+// Balance update helper function
 const updateWalletAndUserBalance = async (userId, amount, type = 'add', session = null) => {
   try {
-    const wallet = await Wallet.findOne({ userId }).session(session);
-    const user = await User.findOne({ userId }).session(session);
+    const options = session ? { session } : {};
+    const wallet = await Wallet.findOne({ userId }, null, options);
+    const user = await User.findOne({ userId }, null, options);
 
     if (!wallet || !user) {
+      logger.error('Wallet or user not found:', { userId });
       throw new Error('Wallet or user not found');
     }
 
-    // Update wallet balance
-    const currentBalance = new BigNumber(wallet.balance);
-    const transactionAmount = new BigNumber(amount);
+    // Update wallet balance with proper decimal handling
+    const currentBalance = new BigNumber(wallet.balance || '0.000000000000000000');
+    const transactionAmount = new BigNumber(amount || '0.000000000000000000');
 
     if (type === 'add') {
       wallet.balance = currentBalance.plus(transactionAmount).toFixed(18);
@@ -61,7 +62,7 @@ const updateWalletAndUserBalance = async (userId, amount, type = 'add', session 
 const verifyAndFixBalance = async (userId, session) => {
   try {
     console.log('Verifying balance for user:', userId);
-    
+
     // Get wallet and user data
     const wallet = await Wallet.findOne({ userId }).session(session);
     const user = await User.findById(userId).session(session);
@@ -84,7 +85,7 @@ const verifyAndFixBalance = async (userId, session) => {
     // Check if balances match
     if (walletBalance !== userBalance || walletBalance !== verifiedBalance) {
       console.log('Balance mismatch detected, updating balances...');
-      
+
       // Use the highest non-zero balance
       let highestBalance = '0.000000000000000000';
       if (parseFloat(walletBalance) > 0) highestBalance = walletBalance;
@@ -96,7 +97,7 @@ const verifyAndFixBalance = async (userId, session) => {
       }
 
       console.log('Using highest balance:', highestBalance);
-      
+
       // Update wallet balance
       wallet.balance = highestBalance;
       wallet.verifiedBalance = highestBalance;
@@ -133,7 +134,7 @@ const validateTransaction = (amount, type, withdrawalId) => {
   if (isNaN(num)) {
     throw new Error('Invalid amount');
   }
-  
+
   if (type.startsWith('Withdrawal') && !withdrawalId) {
     throw new Error('Withdrawal ID is required for withdrawal transactions');
   }
@@ -178,8 +179,8 @@ const validateTransaction = (amount, type, withdrawalId) => {
 const formatTransactionAmount = (amount, type) => {
   const num = parseFloat(amount);
   if (isNaN(num)) return '0.000000000000000000';
-  return type.startsWith('Withdrawal') ? 
-    (-num).toFixed(18) : 
+  return type.startsWith('Withdrawal') ?
+    (-num).toFixed(18) :
     num.toFixed(18);
 };
 
@@ -266,7 +267,7 @@ const checkWalletAndUser = async (userId) => {
 const addVerifiedBalanceToExistingWallets = async () => {
   try {
     console.log('🔄 Adding verifiedBalance to existing wallets...');
-    
+
     const wallets = await Wallet.find({});
     let updatedCount = 0;
 

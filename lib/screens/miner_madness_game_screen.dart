@@ -9,7 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../providers/wallet_provider.dart';
-import '../services/custom_ad_service.dart';
+import '../services/ad_service.dart';
 
 class MinerMadnessGameScreen extends StatefulWidget {
   final String gameTitle;
@@ -53,7 +53,7 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
   static const int SPINS_FOR_BONUS = 1000;
 
   // Ad service
-  final CustomAdService _adService = CustomAdService();
+  final AdService _adService = AdService();
   bool _isAdLoaded = false;
   bool _isAdLoading = false;
   String? _adError;
@@ -117,7 +117,7 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
     });
 
     try {
-      await _adService.loadBannerAd();
+      _adService.loadBannerAd(); // No await, as this is a void method
       await _adService.loadRewardedAd();
 
       if (mounted) {
@@ -506,7 +506,7 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
       child: Column(
         children: [
           Text(
-            'Spin the wheel and win BTC rewards! Each spin can reward you with 0.000000000001 to 0.000000001 BTC.',
+            'Spin the wheel and win BTC rewards! Each spin can reward you with 0.000000000001 to 0.00000000009 BTC.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.blue.shade100,

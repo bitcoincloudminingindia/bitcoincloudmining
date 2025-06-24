@@ -22,7 +22,7 @@ class BTCSlotSpinGameScreen extends StatefulWidget {
 }
 
 class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
-  final List<String> symbols = ['🪙', '💎', '🔥', '❌'];
+  final List<String> symbols = ['💲', '💎', '🔥', '❌'];
   final List<List<String>> reels = List.generate(3, (_) => []);
   bool isSpinning = false;
   Timer? spinTimer;
@@ -37,12 +37,14 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
   List<List<Color>> symbolColors =
       List.generate(3, (_) => List.generate(5, (_) => Colors.white));
   final AdService _adService = AdService();
+  Future<Widget?>? _bannerAdFuture;
 
   @override
   void initState() {
     super.initState();
     _initializeReels();
     _loadAds();
+    _bannerAdFuture = _adService.getBannerAdWidget();
   }
 
   Future<void> _loadAds() async {
@@ -104,7 +106,7 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
     setState(() {
       // Check only middle line
       for (int i = 0; i < 3; i++) {
-        lineMatches[1][i] = reels[i][2] == '🪙' || reels[i][2] == '💎';
+        lineMatches[1][i] = reels[i][2] == '💲' || reels[i][2] == '💎';
         symbolColors[i][2] =
             lineMatches[1][i] ? Colors.greenAccent : Colors.white;
       }
@@ -190,12 +192,12 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
     if (currentResults.contains('❌')) {
       reward = 0;
       message = 'Cross appeared! No reward!';
-    } else if (currentResults.every((symbol) => symbol == '🪙')) {
+    } else if (currentResults.every((symbol) => symbol == '💲')) {
       reward = 0.000000000000002500;
-      message = '3x Bitcoin Coin! +0.000000000000002500 BTC';
-    } else if (currentResults.where((symbol) => symbol == '🪙').length == 2) {
+      message = '3x Dollar! +0.000000000000002500 BTC';
+    } else if (currentResults.where((symbol) => symbol == '💲').length == 2) {
       reward = 0.000000000000001000;
-      message = '2x Bitcoin Coin! +0.000000000000001000 BTC';
+      message = '2x Dollar! +0.000000000000001000 BTC';
     } else if (currentResults.every((symbol) => symbol == '💎')) {
       reward = 0.000000000000010000;
       message = '3x BTC Gem (Jackpot)! +0.000000000000010000 BTC';
@@ -203,7 +205,7 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
       reward = 0.000000000000005000;
       message = '2x BTC Gem! +0.000000000000005000 BTC';
     } else if (currentResults
-        .any((symbol) => symbol == '🪙' || symbol == '💎')) {
+        .any((symbol) => symbol == '💲' || symbol == '💎')) {
       reward = 0.000000000000000500;
       message = '1x Match! +0.000000000000000500 BTC';
     }
@@ -344,357 +346,236 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(26),
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(
-                      color: Colors.black.withAlpha(51),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
+          child: Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
                     children: [
-                      const Icon(Icons.account_balance_wallet,
-                          color: Colors.greenAccent),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Slot Wallet: ${gameWalletBalance.toStringAsFixed(18)} BTC',
-                          style: GoogleFonts.poppins(
-                            color: Colors.greenAccent,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(26),
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(
+                            color: Colors.black.withAlpha(51),
+                            width: 1,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Slot Machine
-                      Expanded(
-                        flex: 3,
-                        child: Column(
+                        child: Row(
                           children: [
-                            Container(
-                              height: 280,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withAlpha(26),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.black.withAlpha(51),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Stack(
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: List.generate(3, (index) {
-                                      return Container(
-                                        width: 80,
-                                        margin: const EdgeInsets.symmetric(
-                                            horizontal: 3),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withAlpha(26),
-                                          borderRadius:
-                                              BorderRadius.circular(15),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withAlpha(51),
-                                              blurRadius: 10,
-                                              spreadRadius: 2,
-                                            ),
-                                          ],
-                                        ),
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children:
-                                              List.generate(5, (symbolIndex) {
-                                            return Container(
-                                              margin:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 3.0),
-                                              padding: const EdgeInsets.all(2),
-                                              decoration: BoxDecoration(
-                                                color: symbolColors[index]
-                                                            [symbolIndex] ==
-                                                        Colors.greenAccent
-                                                    ? Colors.greenAccent
-                                                        .withAlpha(51)
-                                                    : Colors.transparent,
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              child: Text(
-                                                reels[index][symbolIndex],
-                                                style: TextStyle(
-                                                  fontSize: 24,
-                                                  color: symbolColors[index]
-                                                      [symbolIndex],
-                                                  fontWeight: symbolColors[
-                                                                  index]
-                                                              [symbolIndex] ==
-                                                          Colors.greenAccent
-                                                      ? FontWeight.bold
-                                                      : FontWeight.normal,
-                                                ),
-                                              ),
-                                            );
-                                          }),
-                                        ),
-                                      );
-                                    }),
-                                  ),
-                                  Positioned.fill(
-                                    child: Center(
-                                      child: Container(
-                                        height: 50,
-                                        width: 230,
-                                        decoration: BoxDecoration(
-                                          border: Border.all(
-                                            color: Colors.yellowAccent
-                                                .withAlpha(128),
-                                            width: 2.5,
-                                          ),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          color:
-                                              Colors.yellowAccent.withAlpha(26),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.grey.withAlpha(40),
-                                              blurRadius: 24,
-                                              spreadRadius: 1,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: isSpinning ? null : _spin,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.yellowAccent,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 40,
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(25),
-                                ),
-                                elevation: 5,
-                                shadowColor: Colors.yellowAccent.withAlpha(100),
-                              ),
+                            const Icon(Icons.account_balance_wallet,
+                                color: Colors.greenAccent),
+                            const SizedBox(width: 8),
+                            Expanded(
                               child: Text(
-                                isSpinning ? 'SPINNING...' : 'SPIN',
+                                'Slot Wallet: ${gameWalletBalance.toStringAsFixed(18)} BTC',
                                 style: GoogleFonts.poppins(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
+                                  color: Colors.greenAccent,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      // Info Section
+                      const SizedBox(height: 20),
                       Expanded(
-                        flex: 2,
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withAlpha(26),
-                                  borderRadius: BorderRadius.circular(15),
-                                  border: Border.all(
-                                    color: Colors.black.withAlpha(51),
-                                    width: 1,
-                                  ),
-                                ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Slot Machine centered
+                            Expanded(
+                              child: Center(
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            'Winning Combinations',
-                                            style: GoogleFonts.poppins(
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
+                                    Container(
+                                      height: 340, // Decreased from 380
+                                      width: 270, // Decreased from 320
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withAlpha(26),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: Colors.black.withAlpha(51),
+                                          width: 1,
                                         ),
-                                        IconButton(
-                                          icon: const Icon(Icons.help_outline,
-                                              color: Colors.greenAccent),
-                                          onPressed: () {
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) => AlertDialog(
-                                                backgroundColor:
-                                                    Colors.blue.shade900,
-                                                shape: RoundedRectangleBorder(
+                                      ),
+                                      child: Stack(
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: List.generate(3, (index) {
+                                              return Container(
+                                                width: 80, // Decreased from 100
+                                                margin:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal:
+                                                            4), // Less spacing
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white
+                                                      .withAlpha(26),
                                                   borderRadius:
                                                       BorderRadius.circular(15),
-                                                ),
-                                                title: Text(
-                                                  'How to Play',
-                                                  style: GoogleFonts.poppins(
-                                                    color: Colors.white,
-                                                    fontSize: 20,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                content: Column(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    _buildInstruction(
-                                                        '1. Press the spin button'),
-                                                    const SizedBox(height: 12),
-                                                    _buildInstruction(
-                                                        '2. Check for matching symbols in the middle line'),
-                                                    const SizedBox(height: 12),
-                                                    _buildInstruction(
-                                                        '3. No reward if cross (❌) appears'),
-                                                    const SizedBox(height: 12),
-                                                    _buildInstruction(
-                                                        '4. Get rewards according to winning combinations'),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black
+                                                          .withAlpha(51),
+                                                      blurRadius: 10,
+                                                      spreadRadius: 2,
+                                                    ),
                                                   ],
                                                 ),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(context),
-                                                    child: Text(
-                                                      'Got it',
-                                                      style:
-                                                          GoogleFonts.poppins(
-                                                        color:
-                                                            Colors.greenAccent,
-                                                        fontWeight:
-                                                            FontWeight.bold,
+                                                child: Column(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: List.generate(5,
+                                                      (symbolIndex) {
+                                                    return Container(
+                                                      margin: const EdgeInsets
+                                                          .symmetric(
+                                                          vertical:
+                                                              4.0), // Less vertical space
+                                                      padding: const EdgeInsets
+                                                          .all(
+                                                          3), // Less padding
+                                                      decoration: BoxDecoration(
+                                                        color: symbolColors[
+                                                                        index][
+                                                                    symbolIndex] ==
+                                                                Colors
+                                                                    .greenAccent
+                                                            ? Colors.greenAccent
+                                                                .withAlpha(51)
+                                                            : Colors
+                                                                .transparent,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(10),
                                                       ),
-                                                    ),
+                                                      child: Text(
+                                                        reels[index]
+                                                            [symbolIndex],
+                                                        style: TextStyle(
+                                                          fontSize: 30,
+                                                          color: symbolColors[
+                                                                  index]
+                                                              [symbolIndex],
+                                                          fontWeight: symbolColors[
+                                                                          index]
+                                                                      [
+                                                                      symbolIndex] ==
+                                                                  Colors
+                                                                      .greenAccent
+                                                              ? FontWeight.bold
+                                                              : FontWeight
+                                                                  .normal,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }),
+                                                ),
+                                              );
+                                            }),
+                                          ),
+                                          Positioned.fill(
+                                            child: Center(
+                                              child: Container(
+                                                height: 55, // Decreased from 70
+                                                width:
+                                                    210, // Decreased from 300
+                                                decoration: BoxDecoration(
+                                                  border: Border.all(
+                                                    color: Colors.yellowAccent
+                                                        .withAlpha(128),
+                                                    width: 2.5, // Thinner
                                                   ),
-                                                ],
+                                                  borderRadius:
+                                                      BorderRadius.circular(14),
+                                                  color: Colors.yellowAccent
+                                                      .withAlpha(26),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.grey
+                                                          .withAlpha(40),
+                                                      blurRadius: 20,
+                                                      spreadRadius: 1,
+                                                      offset:
+                                                          const Offset(0, 2),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
-                                            );
-                                          },
-                                        ),
-                                      ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    const SizedBox(height: 12),
-                                    _buildWinningCombo(
-                                        '🪙🪙🪙', '0.000000000000002500 BTC'),
-                                    const SizedBox(height: 8),
-                                    _buildWinningCombo(
-                                        '🪙🪙', '0.000000000000001000 BTC'),
-                                    const SizedBox(height: 8),
-                                    _buildWinningCombo(
-                                        '💎💎💎', '0.000000000000010000 BTC'),
-                                    const SizedBox(height: 8),
-                                    _buildWinningCombo(
-                                        '💎💎', '0.000000000000005000 BTC'),
-                                    const SizedBox(height: 8),
-                                    _buildWinningCombo(
-                                        'Any 1x', '0.000000000000000500 BTC'),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton(
+                                      onPressed: isSpinning ? null : _spin,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.yellowAccent,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 40,
+                                          vertical: 12,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(25),
+                                        ),
+                                        elevation: 5,
+                                        shadowColor:
+                                            Colors.yellowAccent.withAlpha(100),
+                                      ),
+                                      child: Text(
+                                        isSpinning ? 'SPINNING...' : 'SPIN',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Good luck!',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+              // Banner Ad at the bottom
+              FutureBuilder<Widget?>(
+                future: _bannerAdFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.done &&
+                      snapshot.data != null) {
+                    return snapshot.data!;
+                  } else {
+                    return const SizedBox(height: 0);
+                  }
+                },
+              ),
+            ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildWinningCombo(String symbols, String reward) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(26),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          color: Colors.black.withAlpha(51),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            symbols,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            reward,
-            style: GoogleFonts.poppins(
-              color: Colors.greenAccent,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInstruction(String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(Icons.arrow_right, color: Colors.greenAccent, size: 20),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

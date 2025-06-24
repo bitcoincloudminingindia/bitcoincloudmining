@@ -133,137 +133,62 @@ class Transaction {
     };
   }
 
-  factory Transaction.fromJson(dynamic json) {
+  factory Transaction.fromJson(Map<String, dynamic> json) {
     try {
-      // Convert LinkedMap to Map<String, dynamic>
-      final Map<String, dynamic> data = json is Map
-          ? Map<String, dynamic>.from(json)
-          : throw Exception('Invalid transaction data format');
-
       // Safely parse amount
       double amount = 0.0;
-      if (data['amount'] is String) {
-        amount = double.tryParse(data['amount']) ?? 0.0;
-      } else if (data['amount'] is num) {
-        amount = data['amount'].toDouble();
+      if (json['amount'] != null) {
+        if (json['amount'] is String) {
+          amount = double.tryParse(json['amount']) ?? 0.0;
+        } else if (json['amount'] is num) {
+          amount = (json['amount'] as num).toDouble();
+        }
       }
 
       // Safely parse netAmount
       double netAmount = 0.0;
-      if (data['netAmount'] is String) {
-        netAmount = double.tryParse(data['netAmount']) ?? 0.0;
-      } else if (data['netAmount'] is num) {
-        netAmount = data['netAmount'].toDouble();
+      if (json['netAmount'] != null) {
+        if (json['netAmount'] is String) {
+          netAmount = double.tryParse(json['netAmount']) ?? 0.0;
+        } else if (json['netAmount'] is num) {
+          netAmount = (json['netAmount'] as num).toDouble();
+        }
       }
 
-      // Safely parse timestamp and date
+      // Parse timestamp
       DateTime timestamp = DateTime.now();
-      if (data['timestamp'] != null) {
+      if (json['timestamp'] != null) {
         try {
-          timestamp = DateTime.parse(data['timestamp'].toString());
+          timestamp = DateTime.parse(json['timestamp'].toString());
         } catch (e) {
-          print('⚠️ Error parsing timestamp: $e');
-        }
-      }
-
-      DateTime date = DateTime.now();
-      if (data['date'] != null) {
-        try {
-          date = DateTime.parse(data['date'].toString());
-        } catch (e) {
-          print('⚠️ Error parsing date: $e');
-        }
-      }
-
-      // Parse createdAt and updatedAt
-      DateTime createdAt = DateTime.now();
-      if (data['createdAt'] != null) {
-        try {
-          createdAt = DateTime.parse(data['createdAt'].toString());
-        } catch (e) {
-          print('⚠️ Error parsing createdAt: $e');
-        }
-      }
-
-      DateTime updatedAt = DateTime.now();
-      if (data['updatedAt'] != null) {
-        try {
-          updatedAt = DateTime.parse(data['updatedAt'].toString());
-        } catch (e) {
-          print('⚠️ Error parsing updatedAt: $e');
-        }
-      }
-
-      // Parse balanceBefore and balanceAfter
-      double? balanceBefore;
-      if (data['balanceBefore'] != null) {
-        if (data['balanceBefore'] is String) {
-          balanceBefore = double.tryParse(data['balanceBefore']);
-        } else if (data['balanceBefore'] is num) {
-          balanceBefore = data['balanceBefore'].toDouble();
-        }
-      }
-
-      double? balanceAfter;
-      if (data['balanceAfter'] != null) {
-        if (data['balanceAfter'] is String) {
-          balanceAfter = double.tryParse(data['balanceAfter']);
-        } else if (data['balanceAfter'] is num) {
-          balanceAfter = data['balanceAfter'].toDouble();
-        }
-      }
-
-      // Parse localAmount and exchangeRate
-      double? localAmount;
-      if (data['localAmount'] != null) {
-        if (data['localAmount'] is String) {
-          localAmount = double.tryParse(data['localAmount']);
-        } else if (data['localAmount'] is num) {
-          localAmount = data['localAmount'].toDouble();
-        }
-      }
-
-      double? exchangeRate;
-      if (data['exchangeRate'] != null) {
-        if (data['exchangeRate'] is String) {
-          exchangeRate = double.tryParse(data['exchangeRate']);
-        } else if (data['exchangeRate'] is num) {
-          exchangeRate = data['exchangeRate'].toDouble();
+          print('Error parsing timestamp: $e');
         }
       }
 
       // Parse details map
-      Map<String, dynamic>? details;
-      if (data['details'] != null) {
-        if (data['details'] is Map) {
-          details = Map<String, dynamic>.from(data['details']);
-        }
+      Map<String, dynamic> details = {};
+      if (json['details'] != null && json['details'] is Map) {
+        details = Map<String, dynamic>.from(json['details']);
       }
 
       return Transaction(
-        id: data['_id']?.toString() ?? data['id']?.toString() ?? '',
-        transactionId: data['transactionId']?.toString(),
+        id: json['_id']?.toString() ??
+            json['id']?.toString() ??
+            DateTime.now().millisecondsSinceEpoch.toString(),
+        transactionId: json['transactionId']?.toString() ??
+            json['_id']?.toString() ??
+            DateTime.now().millisecondsSinceEpoch.toString(),
+        type: json['type']?.toString() ?? 'unknown',
         amount: amount,
         netAmount: netAmount,
-        type: data['type']?.toString() ?? '',
-        status: data['status']?.toString() ?? 'pending',
-        date: date,
-        currency: data['currency']?.toString() ?? 'BTC',
+        status: json['status']?.toString() ?? 'pending',
         timestamp: timestamp,
-        planName: data['planName']?.toString(),
-        source: data['source']?.toString(),
-        destination: data['destination']?.toString(),
-        adminNote: data['adminNote']?.toString(),
-        description: data['description']?.toString() ?? '',
-        withdrawalId: data['withdrawalId']?.toString(),
-        balanceBefore: balanceBefore,
-        balanceAfter: balanceAfter,
+        currency: json['currency']?.toString() ?? 'BTC',
+        description: json['description']?.toString() ?? '',
+        adminNote: json['adminNote']?.toString(),
+        withdrawalId: json['withdrawalId']?.toString(),
         details: details,
-        localAmount: localAmount,
-        exchangeRate: exchangeRate,
-        isClaimed: data['isClaimed'] ?? false,
-        createdAt: createdAt,
-        updatedAt: updatedAt,
+        isClaimed: json['isClaimed'] ?? false,
       );
     } catch (e) {
       print('❌ Error parsing transaction: $e');

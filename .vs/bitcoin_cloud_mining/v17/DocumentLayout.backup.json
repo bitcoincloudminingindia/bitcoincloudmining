@@ -1,12 +1,99 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\bitcoin_cloud_mining\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\bitcoin_cloud_mining\\admin_panel\\lib\\config\\api_config.dart||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:admin_panel\\lib\\config\\api_config.dart||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\bitcoin_cloud_mining\\ios\\Flutter\\Debug.xcconfig||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:ios\\Flutter\\Debug.xcconfig||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\bitcoin_cloud_mining\\ios\\Flutter\\AppFrameworkInfo.plist||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:ios\\Flutter\\AppFrameworkInfo.plist||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\bitcoin_cloud_mining\\android\\gradle\\wrapper\\gradle-wrapper.properties||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:android\\gradle\\wrapper\\gradle-wrapper.properties||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\bitcoin_cloud_mining\\android\\settings.gradle||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:android\\settings.gradle||{8B382828-6202-11D1-8870-0000F87579D2}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": []
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "api_config.dart",
+              "DocumentMoniker": "C:\\bitcoin_cloud_mining\\admin_panel\\lib\\config\\api_config.dart",
+              "RelativeDocumentMoniker": "admin_panel\\lib\\config\\api_config.dart",
+              "ToolTip": "C:\\bitcoin_cloud_mining\\admin_panel\\lib\\config\\api_config.dart",
+              "RelativeToolTip": "admin_panel\\lib\\config\\api_config.dart",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-06-16T04:43:52.103Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Debug.xcconfig",
+              "DocumentMoniker": "C:\\bitcoin_cloud_mining\\ios\\Flutter\\Debug.xcconfig",
+              "RelativeDocumentMoniker": "ios\\Flutter\\Debug.xcconfig",
+              "ToolTip": "C:\\bitcoin_cloud_mining\\ios\\Flutter\\Debug.xcconfig",
+              "RelativeToolTip": "ios\\Flutter\\Debug.xcconfig",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-06-16T04:43:00.616Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "AppFrameworkInfo.plist",
+              "DocumentMoniker": "C:\\bitcoin_cloud_mining\\ios\\Flutter\\AppFrameworkInfo.plist",
+              "RelativeDocumentMoniker": "ios\\Flutter\\AppFrameworkInfo.plist",
+              "ToolTip": "C:\\bitcoin_cloud_mining\\ios\\Flutter\\AppFrameworkInfo.plist",
+              "RelativeToolTip": "ios\\Flutter\\AppFrameworkInfo.plist",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-06-16T04:42:55.305Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "gradle-wrapper.properties",
+              "DocumentMoniker": "C:\\bitcoin_cloud_mining\\android\\gradle\\wrapper\\gradle-wrapper.properties",
+              "RelativeDocumentMoniker": "android\\gradle\\wrapper\\gradle-wrapper.properties",
+              "ToolTip": "C:\\bitcoin_cloud_mining\\android\\gradle\\wrapper\\gradle-wrapper.properties",
+              "RelativeToolTip": "android\\gradle\\wrapper\\gradle-wrapper.properties",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-06-16T04:42:19.498Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "settings.gradle",
+              "DocumentMoniker": "C:\\bitcoin_cloud_mining\\android\\settings.gradle",
+              "RelativeDocumentMoniker": "android\\settings.gradle",
+              "ToolTip": "C:\\bitcoin_cloud_mining\\android\\settings.gradle",
+              "RelativeToolTip": "android\\settings.gradle",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-06-16T04:37:27.125Z"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

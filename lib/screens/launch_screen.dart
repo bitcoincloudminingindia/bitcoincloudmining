@@ -352,7 +352,7 @@ class _LaunchScreenState extends State<LaunchScreen>
                                       Text(
                                         'Bitcoin Cloud Mining',
                                         style: GoogleFonts.poppins(
-                                          fontSize: 40,
+                                          fontSize: 28, // reduced from 40
                                           fontWeight: FontWeight.bold,
                                           color: const Color.fromRGBO(
                                               0, 0, 0, 0.3),
@@ -363,7 +363,7 @@ class _LaunchScreenState extends State<LaunchScreen>
                                       Text(
                                         'Bitcoin Cloud Mining',
                                         style: GoogleFonts.poppins(
-                                          fontSize: 40,
+                                          fontSize: 28, // reduced from 40
                                           fontWeight: FontWeight.bold,
                                           color: Colors.white,
                                           letterSpacing: 1.5,

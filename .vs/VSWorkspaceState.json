@@ -1,6 +1,9 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\android",
+    "\\android\\.gradle",
+    "\\android\\.gradle\\vcs-1"
   ],
   "PreviewInSolutionExplorer": false
 }

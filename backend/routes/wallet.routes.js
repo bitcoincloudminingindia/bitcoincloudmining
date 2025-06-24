@@ -6,29 +6,47 @@ const walletController = require('../controllers/wallet.controller');
 const transactionController = require('../controllers/transaction.controller');
 const { formatBTC, toBigNumber } = require('../utils/format');
 const logger = require('../utils/logger');
+const withdrawalController = require('../controllers/withdrawal.controller');
+const claimCheckRoutes = require('./claimCheck.routes');
+const marketRatesRoutes = require('./marketRates.routes'); // <-- create if needed
 
 // Store last sync times for each wallet
 const lastSyncTimes = new Map();
 const MIN_SYNC_INTERVAL = 5000; // 5 seconds minimum between syncs
+
+// Initialize wallet
+router.post('/initialize', authenticate, async (req, res) => {
+    try {
+        const wallet = await walletController.initializeWallet(req.user.userId);
+        res.json({
+            success: true,
+            data: wallet
+        });
+    } catch (error) {
+        logger.error('Error initializing wallet:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error initializing wallet',
+            error: error.message
+        });
+    }
+});
 
 // Get wallet balance and info
 router.get('/balance', authenticate, async (req, res) => {
     try {
         const wallet = await walletController.getWalletByUserId(req.user.userId);
 
-        // Get all completed transactions
-        const transactions = await wallet.transactions || [];
-
-        // Get the current balance
-        const balance = wallet.balance || '0.000000000000000000';
+        // Only use wallet.transactions (not global transactions)
+        const transactions = wallet.transactions || [];
 
         res.json({
             success: true,
             data: {
-                balance: formatBTC(balance),
+                balance: formatBTC(wallet.balance || '0.000000000000000000'),
                 currency: 'BTC',
                 transactions: transactions.map(tx => ({
-                    ...tx.toObject(),
+                    ...(typeof tx.toObject === 'function' ? tx.toObject() : tx),
                     amount: formatBTC(tx.amount),
                     netAmount: formatBTC(tx.netAmount)
                 })),
@@ -52,120 +70,90 @@ router.get('/balance', authenticate, async (req, res) => {
 
 // Transaction routes
 router.post('/transactions', authenticate, formatBTCAmounts, transactionController.createTransaction);
-router.get('/transactions', authenticate, transactionController.getUserTransactions);
+
+// Show only wallet.transactions for the user wallet screen
+router.get('/transactions', authenticate, async (req, res) => {
+    try {
+        const wallet = await walletController.getWalletByUserId(req.user.userId);
+        const transactions = wallet.transactions || [];
+        res.json({
+            success: true,
+            data: {
+                transactions: transactions.map(tx => ({
+                    ...(typeof tx.toObject === 'function' ? tx.toObject() : tx),
+                    amount: formatBTC(tx.amount),
+                    netAmount: formatBTC(tx.netAmount)
+                }))
+            }
+        });
+    } catch (error) {
+        logger.error('Error fetching wallet transactions:', error);
+        res.status(200).json({
+            success: true,
+            data: {
+                transactions: []
+            },
+            message: 'No wallet transactions found'
+        });
+    }
+});
+
 router.get('/transactions/:id', authenticate, transactionController.getTransactionById);
 router.get('/transactions/stats', authenticate, transactionController.getTransactionStats);
 
+// Withdrawal routes
+router.post('/withdraw', authenticate, withdrawalController.createWithdrawal);
+router.get('/withdrawals', authenticate, withdrawalController.getUserWithdrawals);
+router.get('/withdrawals/:id', authenticate, withdrawalController.getWithdrawalById);
+router.post('/withdrawals/:id/cancel', authenticate, withdrawalController.cancelWithdrawal);
+
 // Sync wallet balance with rate limiting
-router.post('/sync-balance', authenticate, formatBTCAmounts, async (req, res) => {
+router.post('/sync-balance', authenticate, async (req, res) => {
     try {
         const userId = req.user.userId;
         const now = Date.now();
         const lastSync = lastSyncTimes.get(userId) || 0;
 
-        // Check if enough time has passed since last sync
+        // Check if too frequent
         if (now - lastSync < MIN_SYNC_INTERVAL) {
-            logger.debug('Skipping sync - too soon since last sync', {
-                userId,
-                timeSinceLastSync: now - lastSync,
-                minInterval: MIN_SYNC_INTERVAL
-            });
             return res.json({
                 success: true,
                 message: 'Sync skipped - too frequent'
             });
         }
 
-        const wallet = await walletController.getWalletByUserId(userId);
-        const newBalance = req.body.balance || wallet.balance || '0';
+        // Get new balance from request
+        const { balance } = req.body;
 
-        // Only sync if balance has changed
-        const currentBalance = toBigNumber(wallet.balance || '0');
-        const updatedBalance = toBigNumber(newBalance);
-
-        if (currentBalance.isEqualTo(updatedBalance)) {
-            logger.debug('Skipping sync - no balance change', {
-                userId,
-                currentBalance: formatBTC(currentBalance.toString())
-            });
-            return res.json({
-                success: true,
-                message: 'Sync skipped - no change'
-            });
-        }
-
-        // Update balance with type 'balance_sync'
-        await walletController.updateWalletBalance(
-            wallet,
-            newBalance,
-            'balance_sync'
-        );
+        // Sync the balance
+        const result = await walletController.syncWalletBalance(userId, balance);
 
         // Update last sync time
         lastSyncTimes.set(userId, now);
 
-        // Return updated wallet info
-        const walletInfo = await walletController.getWalletInfo(userId);
-
         res.json({
             success: true,
-            data: walletInfo
+            data: result
         });
     } catch (error) {
         logger.error('Error syncing wallet balance:', error);
         res.status(500).json({
             success: false,
-            message: 'Error syncing wallet balance'
+            message: 'Error syncing wallet balance',
+            error: error.message
         });
     }
 });
 
-// Sync wallet balance
-router.post('/sync-balance', authenticate, async (req, res) => {
-    try {
-        const { userId } = req.user;
-
-        // Check if we need to throttle syncs
-        const lastSync = lastSyncTimes.get(userId);
-        const now = Date.now();
-        if (lastSync && now - lastSync < MIN_SYNC_INTERVAL) {
-            return res.json({
-                success: true,
-                message: 'Balance sync throttled'
-            });
-        }
-
-        // Update last sync time
-        lastSyncTimes.set(userId, now);
-
-        // Get wallet and transactions
-        const wallet = await walletController.getWalletByUserId(userId);
-        const Transaction = require('../models/transaction.model');
-        const transactions = await Transaction.find({
-            userId,
-            status: 'completed'
-        }).sort({ timestamp: 1 });
-
-        // Import balance utilities
-        const { updateWalletBalance } = require('../utils/balance');
-
-        // Update the wallet balance
-        const newBalance = await updateWalletBalance(wallet, transactions);
-
-        res.json({
-            success: true,
-            data: {
-                balance: formatBTC(newBalance),
-                updatedAt: new Date()
-            }
-        });
-    } catch (error) {
-        logger.error('Error syncing wallet balance:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error syncing balance'
-        });
-    }
+// Claim rejected withdrawal transaction
+router.post('/transactions/claim', authenticate, async (req, res) => {
+    await withdrawalController.claimRejectedTransaction(req, res);
 });
+
+// Add this route to support POST /api/transactions/claim
+router.use('/transactions', claimCheckRoutes);
+
+// Add this route to support GET /api/market/rates
+router.use('/market', marketRatesRoutes); // <-- create this router if not present
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const Referral = require('../models/referral.model');
 const User = require('../models/user.model');
+const Wallet = require('../models/wallet.model');
 const logger = require('../utils/logger');
 
 exports.validateReferralCode = async (req, res) => {
@@ -39,20 +40,32 @@ exports.getReferrals = async (req, res) => {
   try {
     const referrals = await Referral.find({ referrerId: req.user.userId });
     const totalEarnings = referrals.reduce((sum, ref) => sum + (ref.earnings || 0), 0);
+    const totalEarningsStr = Number(totalEarnings).toFixed(18);
     const user = await User.findOne({ userId: req.user.userId });
-
+    // Find the most recent lastClaimDate among all referrals
+    let lastClaimDate = null;
+    referrals.forEach(ref => {
+      if (ref.lastClaimDate && (!lastClaimDate || ref.lastClaimDate > lastClaimDate)) {
+        lastClaimDate = ref.lastClaimDate;
+      }
+    });
     res.status(200).json({
       success: true,
       data: {
         referralCode: user.referralCode,
-        totalEarnings,
+        totalEarnings: totalEarningsStr,
         totalReferrals: referrals.length,
+        statistics: {
+          totalEarnings: totalEarningsStr,
+          lastClaimDate,
+        },
         referrals: referrals.map(ref => ({
           id: ref.referredId,
           username: ref.referredUserDetails.username,
           email: ref.referredUserDetails.email,
           joinedAt: ref.referredUserDetails.joinedAt,
-          earnings: ref.earnings || 0
+          earnings: ref.earnings != null ? Number(ref.earnings).toFixed(18) : '0.000000000000000000',
+          pendingEarnings: ref.pendingEarnings != null ? Number(ref.pendingEarnings).toFixed(18) : '0.000000000000000000'
         }))
       }
     });
@@ -70,6 +83,14 @@ exports.getReferralEarnings = async (req, res) => {
     const referrals = await Referral.find({ referrerId: req.user.userId });
     const totalEarnings = referrals.reduce((sum, ref) => sum + (ref.earnings || 0), 0);
 
+    // Fetch wallet balances for all referred users
+    const referredIds = referrals.map(ref => ref.referredId);
+    const wallets = await Wallet.find({ userId: { $in: referredIds } });
+    const walletMap = {};
+    wallets.forEach(w => {
+      walletMap[w.userId] = w.balance;
+    });
+
     res.status(200).json({
       success: true,
       data: {
@@ -78,8 +99,10 @@ exports.getReferralEarnings = async (req, res) => {
         referrals: referrals.map(ref => ({
           id: ref.referredId,
           earnings: ref.earnings || 0,
+          pendingEarnings: ref.pendingEarnings != null ? Number(ref.pendingEarnings).toFixed(18) : '0.000000000000000000',
           username: ref.referredUserDetails.username,
-          joinedAt: ref.referredUserDetails.joinedAt
+          joinedAt: ref.referredUserDetails.joinedAt,
+          walletBalance: walletMap[ref.referredId] || '0.000000000000000000'
         }))
       }
     });
@@ -155,7 +178,6 @@ exports.createReferral = async (req, res) => {
 exports.claimReferralRewards = async (req, res) => {
   try {
     const user = req.user;
-
     // Find all referrals where the user is the referrer
     const referrals = await Referral.find({
       referrerId: user.userId,
@@ -169,16 +191,38 @@ exports.claimReferralRewards = async (req, res) => {
       });
     }
 
-    let totalEarnings = 0;
-
-    // Calculate and update earnings for each referral
+    // Check claim cooldown (all referrals must be eligible)
+    const now = new Date();
+    let canClaim = false;
     for (const referral of referrals) {
-      if (!referral.lastClaimDate || isClaimable(referral.lastClaimDate)) {
-        const earnings = calculateReferralRewards(referral);
-        totalEarnings += earnings;
+      // Allow claim if lastClaimDate is null (reset at 1 AM)
+      if (!referral.lastClaimDate) {
+        canClaim = true;
+        break;
+      }
+      const hoursSinceLastClaim = (now - new Date(referral.lastClaimDate)) / (1000 * 60 * 60);
+      if (hoursSinceLastClaim >= 24) {
+        canClaim = true;
+        break;
+      }
+    }
+    if (!canClaim) {
+      return res.status(400).json({
+        success: false,
+        message: 'You can only claim referral rewards once every 24 hours. Next claim available after 1 AM or 24 hours from your last claim.'
+      });
+    }
 
-        referral.earnings = (referral.earnings || 0) + earnings;
-        referral.lastClaimDate = new Date();
+    let totalEarnings = 0;
+    for (const referral of referrals) {
+      if ((referral.pendingEarnings || 0) > 0) {
+        // Ensure both are numbers
+        const earningsNum = typeof referral.earnings === 'number' ? referral.earnings : parseFloat(referral.earnings || '0');
+        const pendingNum = typeof referral.pendingEarnings === 'number' ? referral.pendingEarnings : parseFloat(referral.pendingEarnings || '0');
+        totalEarnings += pendingNum;
+        referral.earnings = parseFloat((earningsNum + pendingNum).toFixed(18));
+        referral.pendingEarnings = 0;
+        referral.lastClaimDate = now;
         await referral.save();
       }
     }
@@ -190,11 +234,29 @@ exports.claimReferralRewards = async (req, res) => {
       });
     }
 
-    // Update user's balance
-    await User.findOneAndUpdate(
-      { userId: user.userId },
-      { $inc: { balance: totalEarnings } }
-    );
+    // Update user's wallet balance (not User model)
+    const Wallet = require('../models/wallet.model');
+    const userWallet = await Wallet.findOne({ userId: user.userId });
+    const txnId = 'TXN-' + Date.now(); // Generate a unique transactionId
+    if (userWallet) {
+      await userWallet.addTransaction({
+        transactionId: txnId,
+        type: 'referral',
+        amount: totalEarnings.toFixed(18),
+        status: 'completed',
+        description: 'Referral earnings claimed',
+      });
+    } else {
+      // If wallet does not exist, create one and add transaction
+      const newWallet = await Wallet.create({ userId: user.userId, balance: totalEarnings.toFixed(18) });
+      await newWallet.addTransaction({
+        transactionId: txnId,
+        type: 'referral',
+        amount: totalEarnings.toFixed(18),
+        status: 'completed',
+        description: 'Referral earnings claimed',
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -221,9 +283,11 @@ function isClaimable(lastClaimDate) {
 
 // Helper function to calculate referral rewards
 function calculateReferralRewards(referral) {
-  // Basic implementation - can be adjusted based on your reward structure
-  const BASE_REWARD = 0.0001; // Base reward in BTC
-  return BASE_REWARD;
+  // Calculate 1% of referred user's wallet balance
+  const referredId = referral.referredId;
+  // This function will be called inside an async context, so we need to handle the async call where it's used
+  // Here, just return a placeholder and update the usage in the claim logic
+  return { referredId };
 }
 
 module.exports = exports;

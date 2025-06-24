@@ -3,7 +3,7 @@ import 'dart:math';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
-import 'package:bitcoin_cloud_mining/services/custom_ad_service.dart';
+import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -32,6 +32,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
   bool gameStarted = false;
   bool isAdLoaded = false;
   bool isAdLoading = false;
+  bool isDialogOpen = false; // Track if a dialog is open
   String? adError;
   List<FallingItem> fallingItems = [];
   Timer? gameTimer;
@@ -39,7 +40,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
   Timer? animationTimer;
   double fallingSpeed = 3.5;
   final AudioPlayer _audioPlayer = AudioPlayer();
-  final CustomAdService _adService = CustomAdService();
+  final AdService _adService = AdService();
 
   @override
   void initState() {
@@ -47,6 +48,10 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
     Future.delayed(Duration.zero, showStartPopup);
     _initializeAudio();
     _initializeAds();
+  }
+
+  void _disposeBannerAd() {
+    // No need to null a widget, just let AdService handle disposal if needed
   }
 
   @override
@@ -60,8 +65,33 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
     gameTimer?.cancel();
     itemTimer?.cancel();
     animationTimer?.cancel();
+    _disposeBannerAd();
     _adService.dispose();
     super.dispose();
+  }
+
+  Future<void> _reloadBannerAd() async {
+    await _adService.loadBannerAd();
+    if (mounted) {
+      setState(() {
+        isAdLoaded = _adService.isBannerAdLoaded;
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant BitcoinBlastGameScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!isDialogOpen && _adService.isBannerAdLoaded) {
+      _reloadBannerAd();
+    }
+  }
+
+  void _onDialogClose() {
+    setState(() {
+      isDialogOpen = false;
+    });
+    _reloadBannerAd();
   }
 
   Future<void> _initializeAudio() async {
@@ -184,6 +214,8 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
 
   void showStartPopup() {
     pauseGame();
+    setState(() => isDialogOpen = true);
+    _disposeBannerAd();
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -201,6 +233,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
+                _onDialogClose();
                 resumeGame();
                 startGame();
               },
@@ -210,7 +243,9 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
           ],
         );
       },
-    );
+    ).then((_) {
+      if (mounted) _onDialogClose();
+    });
   }
 
   void pauseGame() {
@@ -298,6 +333,8 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
 
   void showGameOverScreen() {
     pauseGame();
+    setState(() => isDialogOpen = true);
+    _disposeBannerAd();
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -315,6 +352,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
+                _onDialogClose();
                 resumeGame();
                 _showRewardedAd(startGame);
               },
@@ -324,6 +362,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
+                _onDialogClose();
                 exitGame();
               },
               child: const Text('Exit', style: TextStyle(color: Colors.white)),
@@ -331,11 +370,15 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
           ],
         );
       },
-    );
+    ).then((_) {
+      if (mounted) _onDialogClose();
+    });
   }
 
   void showWinScreen() {
     pauseGame();
+    setState(() => isDialogOpen = true);
+    _disposeBannerAd();
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -354,6 +397,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
+                _onDialogClose();
                 resumeGame();
                 _showRewardedAd(startGame);
               },
@@ -363,6 +407,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
+                _onDialogClose();
                 exitGame();
               },
               child: const Text('Exit', style: TextStyle(color: Colors.white)),
@@ -370,7 +415,9 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
           ],
         );
       },
-    );
+    ).then((_) {
+      if (mounted) _onDialogClose();
+    });
   }
 
   void resetGame() {
@@ -568,16 +615,6 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
                           fontSize: 22, fontWeight: FontWeight.bold)),
                 ),
               ),
-              if (isAdLoaded)
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: SizedBox(
-                    height: 50,
-                    child: _adService.getBannerAd(),
-                  ),
-                ),
               if (isAdLoading)
                 Container(
                   color: Colors.black.withAlpha(179),

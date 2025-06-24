@@ -41,6 +41,10 @@ class AuthProvider extends ChangeNotifier {
   static const String tokenKey = 'auth_token';
   static const String userDataKey = 'user_data';
 
+  // Initialization state
+  bool _isInitializing = false;
+  bool _isInitialized = false;
+
   // User state
   String? _userId;
   String? _fullName;
@@ -433,6 +437,7 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> logout() async {
     try {
+      debugPrint('🚪 Logging out...');
       final token = await StorageUtils.getToken();
       final userId = _userId;
 
@@ -482,13 +487,15 @@ class AuthProvider extends ChangeNotifier {
       // Clear ApiConfig
       ApiConfig.clear();
 
-      // Reset state
+      // Reset all state
       _token = null;
       _refreshToken = null;
       _userId = null;
       _user = null;
       _isLoggedIn = false;
       _userData = null;
+      _isInitialized = false; // Reset initialization state
+      _isInitializing = false;
 
       debugPrint('✅ Logged out successfully');
       notifyListeners();
@@ -563,7 +570,7 @@ class AuthProvider extends ChangeNotifier {
       _walletBalance = _parseBalance(formattedBalance);
 
       // Save formatted balance
-      await StorageUtils.saveWalletBalance(_walletBalance);
+      await StorageUtils.saveWalletBalance(formattedBalance);
 
       // Update user data with formatted balance
       final userData = await StorageUtils.getUserData() ?? {};
@@ -679,7 +686,23 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> initializeAuth() async {
+    // Prevent concurrent initialization
+    if (_isInitializing) {
+      print('⚠️ Auth initialization already in progress, waiting...');
+      while (_isInitializing) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      return _isInitialized && _isLoggedIn;
+    }
+
+    // Return cached state if already initialized
+    if (_isInitialized) {
+      print('✅ Auth already initialized, returning cached state');
+      return _isLoggedIn;
+    }
+
     try {
+      _isInitializing = true;
       print('🔄 Starting auth initialization...');
 
       // Get token from storage
@@ -689,9 +712,14 @@ class AuthProvider extends ChangeNotifier {
       if (token == null) {
         print('❌ No token found, auth initialization failed');
         _isLoggedIn = false;
+        _isInitialized = true;
         notifyListeners();
         return false;
       }
+
+      // Update token state
+      _token = token;
+      ApiConfig.setToken(token);
 
       // Get user data from storage
       final userData = await StorageUtils.getUserData();
@@ -714,6 +742,7 @@ class AuthProvider extends ChangeNotifier {
             // Update state
             await _updateUserState(serverData);
             _isLoggedIn = true;
+            _isInitialized = true;
             notifyListeners();
             return true;
           }
@@ -723,6 +752,7 @@ class AuthProvider extends ChangeNotifier {
           if (e.toString().contains('SocketException') ||
               e.toString().contains('TimeoutException')) {
             print('⚠️ Network error, keeping login state');
+            _isInitialized = true;
             return true;
           }
         }
@@ -730,24 +760,8 @@ class AuthProvider extends ChangeNotifier {
         // Only logout if we couldn't get data from server
         print('❌ Could not get user data from server');
         await logout();
+        _isInitialized = true;
         return false;
-      }
-
-      // Validate user data
-      final userId = userData['userId']?.toString();
-      if (userId == null || userId.isEmpty) {
-        print('❌ No userId in stored user data');
-        // Try to get userId from API config
-        final configUserId = ApiConfig.userId;
-        if (configUserId != null && configUserId.isNotEmpty) {
-          print('✅ Found userId in API config: $configUserId');
-          userData['userId'] = configUserId;
-          await StorageUtils.saveUserData(userData);
-        } else {
-          print('❌ No userId found anywhere');
-          await logout();
-          return false;
-        }
       }
 
       try {
@@ -758,12 +772,13 @@ class AuthProvider extends ChangeNotifier {
           {'token': token},
         );
 
-        if (response['success'] == true) {
+        if (response['success'] == true || response['status'] == 'success') {
           print('✅ Token is valid');
 
           // Update state with stored data
           await _updateUserState(userData);
           _isLoggedIn = true;
+          _isInitialized = true;
 
           notifyListeners();
           return true;
@@ -778,6 +793,7 @@ class AuthProvider extends ChangeNotifier {
           // Update state with stored data
           await _updateUserState(userData);
           _isLoggedIn = true;
+          _isInitialized = true;
 
           notifyListeners();
           return true;
@@ -786,6 +802,7 @@ class AuthProvider extends ChangeNotifier {
         // If refresh also fails, then logout
         print('❌ Token validation and refresh failed');
         await logout();
+        _isInitialized = true;
         return false;
       } catch (e) {
         print('❌ Token validation error: $e');
@@ -796,11 +813,14 @@ class AuthProvider extends ChangeNotifier {
           print('⚠️ Network error, keeping login state');
           await _updateUserState(userData);
           _isLoggedIn = true;
+          _isInitialized = true;
           notifyListeners();
           return true;
         }
 
+        // For other errors, logout
         await logout();
+        _isInitialized = true;
         return false;
       }
     } catch (e) {
@@ -811,7 +831,10 @@ class AuthProvider extends ChangeNotifier {
           e.toString().contains('TypeError')) {
         await logout();
       }
+      _isInitialized = true;
       return false;
+    } finally {
+      _isInitializing = false;
     }
   }
 
@@ -905,6 +928,10 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> maintainAuthState() async {
+    // Skip if not initialized or initializing
+    if (!_isInitialized || _isInitializing) return;
+
+    // Skip if not logged in or no token
     if (!_isLoggedIn || _token == null) return;
 
     try {
@@ -922,6 +949,16 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> loadUserProfile() async {
+    // Skip if not initialized
+    if (!_isInitialized) {
+      debugPrint('⚠️ Auth not initialized, initializing first...');
+      final initialized = await initializeAuth();
+      if (!initialized) {
+        throw Exception('Auth initialization failed');
+      }
+      return;
+    }
+
     try {
       debugPrint('🔄 Loading user profile...');
 
@@ -959,6 +996,15 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> validateToken() async {
+    // If not initialized, perform initialization first
+    if (!_isInitialized) {
+      debugPrint('⚠️ Auth not initialized, initializing first...');
+      final initialized = await initializeAuth();
+      if (!initialized) {
+        return {'success': false, 'message': 'Auth initialization failed'};
+      }
+    }
+
     try {
       if (_token == null) {
         return {'success': false, 'message': 'No token available'};
@@ -969,8 +1015,9 @@ class AuthProvider extends ChangeNotifier {
         {'token': _token},
       );
 
-      if (response['success'] == true) {
+      if (response['success'] == true || response['status'] == 'success') {
         _isLoggedIn = true;
+        _isInitialized = true;
         notifyListeners();
       } else {
         _token = null;

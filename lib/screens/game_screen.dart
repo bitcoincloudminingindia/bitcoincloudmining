@@ -5,7 +5,7 @@ import 'package:bitcoin_cloud_mining/screens/crypto_craze_game_screen.dart';
 import 'package:bitcoin_cloud_mining/screens/flip_coin_game_screen.dart';
 import 'package:bitcoin_cloud_mining/screens/hash_rush_game_screen.dart';
 import 'package:bitcoin_cloud_mining/screens/miner_madness_game_screen.dart';
-import 'package:bitcoin_cloud_mining/services/custom_ad_service.dart';
+import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -21,7 +21,7 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  final CustomAdService _adService = CustomAdService();
+  final AdService _adService = AdService();
   bool isAdLoaded = false;
 
   final List<Map<String, dynamic>> gameOptions = [
@@ -82,7 +82,9 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _loadAd() async {
-    await _adService.loadBannerAd();
+    _adService.loadBannerAd(); // No await, as this is a void method
+    // Optionally, you can setState after a short delay to check if the ad loaded
+    await Future.delayed(const Duration(milliseconds: 500));
     setState(() {
       isAdLoaded = _adService.isBannerAdLoaded;
     });
@@ -247,7 +249,7 @@ class _GameScreenState extends State<GameScreen> {
                     },
                   ),
                 ),
-                if (isAdLoaded) _adService.getBannerAd(),
+                // Remove banner ad from this screen
               ],
             ),
           ),

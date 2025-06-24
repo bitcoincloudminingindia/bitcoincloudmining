@@ -19,6 +19,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
   List<Map<String, dynamic>> _referredUsers = [];
   bool _isLoading = true;
   String? _error;
+  DateTime? _lastClaimDate;
 
   @override
   void initState() {
@@ -57,24 +58,39 @@ class _ReferralScreenState extends State<ReferralScreen> {
             'totalEarnings': (statistics['totalEarnings'] ?? 0).toString(),
             'pendingEarnings': (statistics['pendingEarnings'] ?? 0).toString(),
             'claimedEarnings': (statistics['claimedEarnings'] ?? 0).toString(),
+            'lastClaimDate': statistics['lastClaimDate'],
           };
 
           // Handle referred users
           final usersData = usersResult['data'] ?? {};
-          final referredUser = usersData['referredUser'] ?? {};
-          final userStats = usersData['statistics'] ?? {};
+          final referredList = usersData['referrals'] ?? [];
 
-          _referredUsers = [
-            {
-              'fullName':
-                  referredUser['username']?.toString() ?? 'Unknown User',
-              'userName': referredUser['email']?.toString() ?? '',
-              'earnings': (userStats['totalEarnings'] ?? 0).toString(),
-              'isActive': usersData['status']?.toString() == 'active',
-              'joinedAt': usersData['createdAt']?.toString() ??
+          // Sum all pendingEarnings from referred users
+          double totalPendingEarnings = 0;
+          _referredUsers = referredList.map<Map<String, dynamic>>((user) {
+            final pending =
+                double.tryParse(user['pendingEarnings']?.toString() ?? '0') ??
+                    0;
+            totalPendingEarnings += pending;
+            return {
+              'fullName': user['username']?.toString() ?? 'Unknown User',
+              'userName': user['email']?.toString() ?? '',
+              'walletBalance':
+                  (user['walletBalance'] ?? '0.000000000000000000').toString(),
+              'isActive':
+                  true, // You can add logic for active status if available
+              'joinedAt': user['joinedAt']?.toString() ??
                   DateTime.now().toIso8601String(),
-            }
-          ];
+            };
+          }).toList();
+
+          // Use summed pending earnings for display
+          _referralStats['pendingEarnings'] =
+              totalPendingEarnings.toStringAsFixed(18);
+
+          _lastClaimDate = statistics['lastClaimDate'] != null
+              ? DateTime.tryParse(statistics['lastClaimDate'])
+              : null;
 
           _error = null;
         });
@@ -130,38 +146,77 @@ class _ReferralScreenState extends State<ReferralScreen> {
   }
 
   Future<void> _claimEarnings() async {
-    try {
-      final referralId = _referralStats['referralId'];
-      if (referralId == null || referralId.isEmpty) {
-        throw Exception('Referral ID not found');
+    // Confirmation dialog before claim
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Claim'),
+        content: const Text(
+            'You can only claim referral earnings once every 24 hours or after 1 AM daily. Do you want to proceed?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Claim'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    // Check eligibility before sending claim request
+    final now = DateTime.now();
+    if (_lastClaimDate != null) {
+      final next1AM = DateTime(now.year, now.month, now.day, 1);
+      final after1AM = now.isAfter(next1AM);
+      final hoursSinceLastClaim = now.difference(_lastClaimDate!).inHours;
+      if (!after1AM && hoursSinceLastClaim < 24) {
+        final nextClaim = _lastClaimDate!.add(const Duration(hours: 24));
+        final nextClaimStr =
+            '${nextClaim.hour.toString().padLeft(2, '0')}:${nextClaim.minute.toString().padLeft(2, '0')} on ${nextClaim.day}/${nextClaim.month}/${nextClaim.year}';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'You can only claim once every 24 hours or after 1 AM. Next claim: $nextClaimStr'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
       }
+    }
 
+    try {
+      // Do not send referralId, backend does not use it
       final result = await ApiService.post(
-        '/api/referral/claim-rewards',
-        {'referralId': referralId},
+        '/api/referral/claim',
+        {},
       );
-
       if (result['success'] == true) {
         if (!mounted) return;
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Referral rewards claimed successfully!'),
             backgroundColor: Colors.green,
           ),
         );
-
-        // Reload data after claiming
         await _loadData();
       } else {
         throw Exception(result['message'] ?? 'Failed to claim rewards');
       }
     } catch (e) {
       if (!mounted) return;
-
+      String errorMsg = e.toString();
+      if (errorMsg.contains('once every 24 hours') ||
+          errorMsg.contains('Next claim available after 1 AM')) {
+        errorMsg =
+            'You can only claim referral rewards once every 24 hours or after 1 AM. Please try again later.';
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to claim rewards: ${e.toString()}'),
+          content: Text('Failed to claim rewards: $errorMsg'),
           backgroundColor: Colors.red,
         ),
       );
@@ -251,11 +306,43 @@ class _ReferralScreenState extends State<ReferralScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildInfoMessageBox(),
           _buildReferralCodeCard(),
           const SizedBox(height: 16),
           _buildStatsOverview(),
           const SizedBox(height: 16),
           _buildReferredUsersList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoMessageBox() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blueAccent.withAlpha(38), // ~15% opacity
+        borderRadius: BorderRadius.circular(12),
+        border:
+            Border.all(color: Colors.blueAccent.withAlpha(77)), // ~30% opacity
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, color: Colors.blueAccent, size: 28),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Invite friends and earn! You will receive 1% of the daily income generated by each user you refer, automatically added to your pending earnings every day.',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -382,7 +469,8 @@ class _ReferralScreenState extends State<ReferralScreen> {
               ),
               _buildStatItem(
                 'Total Earnings',
-                '${_referralStats['totalEarnings'] ?? '0.00000000'} BTC',
+                (_referralStats['totalEarnings'] ?? '0.000000000000000000')
+                    .toString(),
                 Icons.account_balance_wallet,
               ),
             ],
@@ -418,28 +506,32 @@ class _ReferralScreenState extends State<ReferralScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Pending Earnings',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[800],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pending Earnings',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[800],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${pendingEarnings.toStringAsFixed(18)} BTC',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: ColorConstants.primaryColor,
+                    const SizedBox(height: 4),
+                    Text(
+                      '${pendingEarnings.toStringAsFixed(18)} BTC',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: ColorConstants.primaryColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -579,8 +671,11 @@ class _ReferralScreenState extends State<ReferralScreen> {
   Widget _buildReferredUserItem(Map<String, dynamic> user) {
     final joinDate = DateTime.parse(user['joinedAt']);
     final formattedDate = '${joinDate.day}/${joinDate.month}/${joinDate.year}';
-    final earnings = user['earnings'] ?? '0.00000000';
+    final walletBalance = user['walletBalance'] ?? '0.000000000000000000';
     final isActive = user['isActive'] ?? false;
+    final walletBalanceFormatted =
+        double.tryParse(walletBalance)?.toStringAsFixed(18) ??
+            '0.000000000000000000';
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -599,17 +694,11 @@ class _ReferralScreenState extends State<ReferralScreen> {
               color: isActive
                   ? Colors.green.withAlpha(51)
                   : Colors.grey.withAlpha(51),
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(20),
             ),
-            child: Center(
-              child: Text(
-                user['fullName'][0].toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+            child: Icon(
+              isActive ? Icons.check_circle : Icons.person_outline,
+              color: isActive ? Colors.green : Colors.grey,
             ),
           ),
           const SizedBox(width: 12),
@@ -618,42 +707,37 @@ class _ReferralScreenState extends State<ReferralScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user['fullName'],
+                  user['fullName'] ?? '',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
                     fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
                 ),
                 Text(
-                  '@${user['userName']}',
-                  style: TextStyle(
-                    color: Colors.white.withAlpha(179),
+                  user['userName'] ?? '',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  'Joined: $formattedDate',
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  'Wallet: $walletBalanceFormatted BTC',
+                  style: const TextStyle(
+                    color: Colors.lightBlueAccent,
+                    fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
                 ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '$earnings BTC',
-                style: const TextStyle(
-                  color: Colors.amber,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                'Joined: $formattedDate',
-                style: TextStyle(
-                  color: Colors.white.withAlpha(179),
-                  fontSize: 12,
-                ),
-              ),
-            ],
           ),
         ],
       ),

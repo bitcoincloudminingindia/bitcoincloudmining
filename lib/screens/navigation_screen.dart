@@ -1,7 +1,6 @@
 import 'package:bitcoin_cloud_mining/screens/home_screen.dart'; // Import HomeScreen
 // import 'package:bitcoin_cloud_mining/screens/rewards_screen.dart'; // रिवॉर्ड्स स्क्रीन को हटा दिया
 import 'package:bitcoin_cloud_mining/screens/setting_screen.dart';
-import 'package:bitcoin_cloud_mining/services/custom_ad_service.dart';
 import 'package:flutter/material.dart';
 
 import 'contract_screen.dart';
@@ -16,7 +15,6 @@ class NavigationScreen extends StatefulWidget {
 
 class _NavigationScreenState extends State<NavigationScreen> {
   int _selectedIndex = 0;
-  final CustomAdService _adService = CustomAdService();
 
   static final List<Widget> _screens = <Widget>[
     const HomeScreen(),
@@ -26,26 +24,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
     const SettingScreen(),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _adService.loadInterstitialAd();
-  }
-
   void _onItemTapped(int index) {
-    // Show ad every 3rd tab switch
-    if (_selectedIndex != index && index % 3 == 0) {
-      _adService.showInterstitialAd();
-    }
     setState(() {
       _selectedIndex = index;
     });
-  }
-
-  @override
-  void dispose() {
-    _adService.dispose();
-    super.dispose();
   }
 
   @override

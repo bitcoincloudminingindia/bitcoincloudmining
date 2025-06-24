@@ -8,8 +8,10 @@ const {
 
 if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
   logger.error('❌ Missing Gmail credentials in environment variables');
-  process.exit(1);
+  // Do not exit, just log the error
 }
+
+let emailServiceAvailable = true;
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -24,10 +26,15 @@ transporter.verify()
   .then(() => logger.info('✅ Email service connected successfully'))
   .catch(error => {
     logger.error('❌ Email service connection failed:', error);
-    process.exit(1);
+    emailServiceAvailable = false;
+    // Do not exit, just log the error and set flag
   });
 
 const sendVerificationEmail = async (email, otp) => {
+  if (!emailServiceAvailable) {
+    logger.error('❌ Email service unavailable. Cannot send verification email.');
+    return false;
+  }
   try {
     logger.info(`📧 Sending verification email to ${email}`);
 
@@ -48,6 +55,10 @@ const sendVerificationEmail = async (email, otp) => {
 };
 
 const sendPasswordResetEmail = async (email, otp) => {
+  if (!emailServiceAvailable) {
+    logger.error('❌ Email service unavailable. Cannot send password reset email.');
+    return false;
+  }
   try {
     logger.info(`📧 Sending password reset email to ${email}`);
 
@@ -68,6 +79,10 @@ const sendPasswordResetEmail = async (email, otp) => {
 };
 
 const sendTransactionNotification = async (user, transaction) => {
+  if (!emailServiceAvailable) {
+    logger.error('❌ Email service unavailable. Cannot send transaction notification.');
+    return false;
+  }
   try {
     const { type, amount, currency, status } = transaction;
     logger.info(`📧 Sending transaction notification to ${user.userEmail}`);
@@ -99,6 +114,10 @@ const sendTransactionNotification = async (user, transaction) => {
 };
 
 const sendPromotionalEmail = async (email, promotion) => {
+  if (!emailServiceAvailable) {
+    logger.error('❌ Email service unavailable. Cannot send promotional email.');
+    return false;
+  }
   try {
     logger.info(`📧 Sending promotional email to ${email}`);
 
@@ -120,6 +139,10 @@ const sendPromotionalEmail = async (email, promotion) => {
 };
 
 const sendRewardNotification = async (user, reward) => {
+  if (!emailServiceAvailable) {
+    logger.error('❌ Email service unavailable. Cannot send reward notification.');
+    return false;
+  }
   try {
     logger.info(`📧 Sending reward notification to ${user.userEmail}`);
 

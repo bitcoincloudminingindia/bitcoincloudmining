@@ -1,11 +1,9 @@
 import 'dart:async'; // For Timer
-import 'dart:io' show Platform;
 
 import 'package:audioplayers/audioplayers.dart'; // For AudioPlayer
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
-import 'package:bitcoin_cloud_mining/services/custom_ad_service.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart'; // For Flutter Toast
 import 'package:font_awesome_flutter/font_awesome_flutter.dart'; // For FontAwesomeIcons
@@ -35,16 +33,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static const double POWER_BOOST_INCREMENT = 0.1; // Increment per click
   static const int POWER_BOOST_DURATION_MINUTES = 5; // 5 minutes duration
   static const double TAP_REWARD_RATE = 0.000000000000001000;
-  static const int STATE_SAVE_INTERVAL_SECONDS = 30;
 
   // Variables
-  final CustomAdService _adService = CustomAdService();
+  final AdService _adService = AdService();
   double _hashRate = 2.5;
   bool _isMining = false;
   Timer? _miningTimer;
   Timer? _powerBoostTimer;
   int _percentage = 0;
-  int _tapCount = 0;
   double _miningEarnings = 0.0;
   late AudioPlayer _audioPlayer;
   DateTime? _miningStartTime;
@@ -68,43 +64,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isScrolled = false;
   String? _errorMessage;
 
-  bool _isVibrationEnabled = true;
-  bool _isDarkMode = false;
-
-  // Add static variables to maintain state across screen changes
-  static bool _staticIsMining = false;
-  static DateTime? _staticMiningStartTime;
-  static double _staticMiningProgress = 0.0;
-  static double _staticMiningEarnings = 0.0;
-  static double _staticCurrentMiningRate = BASE_MINING_RATE;
-  static double _staticHashRate = 2.5;
-  static bool _staticIsPowerBoostActive = false;
-  static double _staticCurrentPowerBoostMultiplier = 0.0;
-  static Timer? _staticMiningTimer;
+  Timer? _uiUpdateTimer; // Add a timer for UI updates only
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Restore state from static variables
-    setState(() {
-      _isMining = _staticIsMining;
-      _miningStartTime = _staticMiningStartTime;
-      _miningProgress = _staticMiningProgress;
-      _miningEarnings = _staticMiningEarnings;
-      _currentMiningRate = _staticCurrentMiningRate;
-      _hashRate = _staticHashRate;
-      _isPowerBoostActive = _staticIsPowerBoostActive;
-      _currentPowerBoostMultiplier = _staticCurrentPowerBoostMultiplier;
-    });
-
     _audioPlayer = AudioPlayer();
     _initializeData();
     _loadUserProfile();
-    _initializeMining();
     _loadPercentage();
-    _loadAds();
+
     _loadSavedSettings();
     _startAdReloadTimer();
     _startAdTimer();
@@ -115,6 +86,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         setState(() => _isScrolled = true);
       } else if (_scrollController.offset <= 50 && _isScrolled) {
         setState(() => _isScrolled = false);
+      }
+    });
+
+    // Start mining UI update timer if mining is active
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_isMining && _miningStartTime != null) {
+        _startMiningUiTimer();
+      }
+    });
+  }
+
+  void _startMiningUiTimer() {
+    _uiUpdateTimer?.cancel();
+    _uiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted || !_isMining || _miningStartTime == null) {
+        timer.cancel();
+        return;
+      }
+      _updateMiningProgressFromElapsed();
+      // If mining completed, stop timer
+      final now = DateTime.now();
+      final elapsedMinutes = now.difference(_miningStartTime!).inMinutes;
+      if (elapsedMinutes >= MINING_DURATION_MINUTES) {
+        timer.cancel();
+        _resetMiningState();
       }
     });
   }
@@ -131,39 +127,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       case AppLifecycleState.resumed:
         // App came to foreground
         if (_isMining && _miningStartTime != null) {
-          final now = DateTime.now();
-          final elapsedMinutes = now.difference(_miningStartTime!).inMinutes;
-
-          if (elapsedMinutes >= MINING_DURATION_MINUTES) {
-            // Complete mining if time is up
-            print('Mining duration completed, finalizing earnings');
-            _resetMiningState();
-          } else {
-            // Resume mining if not completed
-            if (kIsWeb) {
-              _startWebMining();
-            } else if (Platform.isWindows) {
-              _startForegroundMining();
-            } else {
-              _startMiningTimer();
-            }
-          }
+          _updateMiningProgressFromElapsed();
+          _startMiningUiTimer();
         }
         break;
-
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
-        // App going to background - save state and continue mining
+        // App going to background - save state
         if (_isMining) {
           _saveMiningState();
         }
         break;
-
       case AppLifecycleState.detached:
         // App terminated
         if (_isMining) {
-          print('App terminated, saving final mining state');
           _saveMiningState();
         }
         break;
@@ -172,34 +150,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    // Save state to static variables
-    _staticIsMining = _isMining;
-    _staticMiningStartTime = _miningStartTime;
-    _staticMiningProgress = _miningProgress;
-    _staticMiningEarnings = _miningEarnings;
-    _staticCurrentMiningRate = _currentMiningRate;
-    _staticHashRate = _hashRate;
-    _staticIsPowerBoostActive = _isPowerBoostActive;
-    _staticCurrentPowerBoostMultiplier = _currentPowerBoostMultiplier;
-
-    // Only cancel timers if app is being closed, not during navigation
-    if (!mounted) {
-      _cancelAllTimers();
-      _staticMiningTimer?.cancel();
-    }
-
-    // Remove observer and dispose resources
+    _cancelAllTimers();
+    _uiUpdateTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _audioPlayer.dispose();
     _scrollController.dispose();
-
     try {
       _adService.dispose();
     } catch (e) {
       print('Ad dispose error: $e');
     }
-
     super.dispose();
+  }
+
+  void _cancelAllTimers() {
+    _miningTimer?.cancel();
+    _adTimer?.cancel();
+    _adReloadTimer?.cancel();
+    _powerBoostTimer?.cancel();
+    _uiUpdateTimer?.cancel();
+    _miningTimer = null;
+    _adTimer = null;
+    _adReloadTimer = null;
+    _powerBoostTimer = null;
+    _uiUpdateTimer = null;
   }
 
   Future<void> _initializeApp() async {
@@ -209,14 +183,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       // Initialize all processes silently
       await _initializeData();
       await _loadUserProfile();
-      _initializeMining();
       await _loadPercentage();
-      await _loadAds();
 
-      // Get wallet balance from backend
+      // Load wallet balance from backend
       final walletProvider =
           Provider.of<WalletProvider>(context, listen: false);
       await walletProvider.loadWallet();
+      print('✅ Wallet balance loaded successfully');
     } catch (e) {
       print('Error initializing app: $e');
       if (mounted) {
@@ -230,147 +203,155 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _initializeData() async {
-    if (!mounted) return;
+  // --- MINING LOGIC START ---
 
+  // Start a new mining session
+  Future<void> _startMiningProcess() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      if (_isMining && _miningStartTime != null) {
+        final now = DateTime.now();
+        final elapsedMinutes = now.difference(_miningStartTime!).inMinutes;
+        if (elapsedMinutes < MINING_DURATION_MINUTES) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Please wait \\${MINING_DURATION_MINUTES - elapsedMinutes} minutes for current session to complete',
+                style: const TextStyle(fontSize: 16),
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+          return;
+        } else {
+          await _resetMiningState();
+        }
+      }
+      final now = DateTime.now();
       setState(() {
-        _isSoundEnabled = prefs.getBool('isSoundEnabled') ?? true;
-        _isVibrationEnabled = prefs.getBool('isVibrationEnabled') ?? true;
-        _isDarkMode = prefs.getBool('isDarkMode') ?? false;
-        _isMining = prefs.getBool('isMining') ?? false;
-        _miningStartTime = prefs.getString('miningStartTime') != null
-            ? DateTime.parse(prefs.getString('miningStartTime')!)
-            : null;
-        _miningProgress = prefs.getDouble('miningProgress') ?? 0.0;
-        _miningEarnings = prefs.getDouble('miningEarnings') ?? 0.0;
-        _miningStatus = prefs.getString('miningStatus') ?? 'Inactive';
-        _currentMiningRate =
-            prefs.getDouble('currentMiningRate') ?? BASE_MINING_RATE;
-        _lastMiningTime = prefs.getInt('lastMiningTime') ?? 0;
-        _isPowerBoostActive = prefs.getBool('powerBoostActive') ?? false;
-        _currentPowerBoostMultiplier =
-            prefs.getDouble('currentPowerBoostMultiplier') ?? 0.0;
-        _powerBoostClickCount = prefs.getInt('powerBoostClickCount') ?? 0;
-        _powerBoostStartTime = prefs.getString('powerBoostStartTime') != null
-            ? DateTime.parse(prefs.getString('powerBoostStartTime')!)
-            : null;
-        _hashRate = prefs.getDouble('hashRate') ?? 2.5;
+        _isMining = true;
+        _miningStartTime = now;
+        _miningProgress = 0.0;
+        _miningEarnings = 0.0;
+        _miningStatus = 'Active';
+        _currentMiningRate = BASE_MINING_RATE;
+        _lastMiningTime = 0;
+        _totalMiningTime = 0;
+        _isPowerBoostActive = false;
+        _hashRate = 2.5;
       });
-
-      // Initialize audio only if sound is enabled
-      if (_isSoundEnabled) {
-        await _initializeAudio();
+      await _saveMiningState();
+      _startMiningUiTimer();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Mining started! Session will complete in 30 minutes',
+              style: TextStyle(fontSize: 16),
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 5),
+          ),
+        );
       }
     } catch (e) {
-      print('Error initializing data: $e');
+      _showError('Start Mining Error', e.toString());
     }
   }
 
-  Future<void> _initializeAudio() async {
-    if (!mounted) return;
-
-    try {
-      await _audioPlayer.dispose();
-      _audioPlayer = AudioPlayer();
-
-      // Web platform check
-      if (kIsWeb) {
-        if (mounted) {
-          setState(() {
-            _isSoundEnabled = false;
-          });
-        }
-        return;
-      }
-
-      // Mobile platform check
-      bool isSupportedPlatform = false;
+  // End/reset the mining session
+  Future<void> _resetMiningState() async {
+    _cancelAllTimers();
+    _uiUpdateTimer?.cancel();
+    // Store earnings before resetting state
+    final double earningsToAdd = _miningEarnings;
+    if (mounted) {
+      setState(() {
+        _isMining = false;
+        _miningStartTime = null;
+        _miningProgress = 0.0;
+        _currentMiningRate = BASE_MINING_RATE;
+        _hashRate = 2.5;
+        _isPowerBoostActive = false;
+        _currentPowerBoostMultiplier = 0.0;
+        _miningEarnings = 0.0;
+        _miningStatus = 'Completed';
+        _lastMiningTime = 0;
+        _powerBoostClickCount = 0;
+        _powerBoostStartTime = null;
+      });
+    }
+    if (earningsToAdd > 0) {
       try {
-        if (!kIsWeb) {
-          isSupportedPlatform = Platform.isAndroid || Platform.isIOS;
+        final walletProvider = context.read<WalletProvider>();
+        await walletProvider.addEarning(
+          earningsToAdd,
+          type: 'mining',
+          description: 'Mining session earnings',
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'You earned \\${earningsToAdd.toStringAsFixed(18)} BTC from mining! Added to your wallet.',
+                style: const TextStyle(fontSize: 16),
+              ),
+              backgroundColor: Colors.amber,
+              duration: const Duration(seconds: 5),
+            ),
+          );
         }
       } catch (e) {
-        print('Platform check error: $e');
-        return;
-      }
-
-      if (isSupportedPlatform) {
-        await _audioPlayer.setReleaseMode(ReleaseMode.stop);
-        await _audioPlayer.setVolume(0.5);
-
-        bool audioLoaded = false;
-
-        // Try loading main audio file first
-        const audioPath = 'audio/reward_sound.mp3';
-        try {
-          final source = AssetSource(audioPath);
-          await _audioPlayer.setSource(source);
-          audioLoaded = true;
-        } catch (e) {
-          print('Main audio file error: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to add mining earnings to wallet: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
-
-        // Try backup file if main file fails
-        if (!audioLoaded) {
-          const backupAudioPath = 'audio/collect.mp3';
-          try {
-            final backupSource = AssetSource(backupAudioPath);
-            await _audioPlayer.setSource(backupSource);
-            audioLoaded = true;
-          } catch (e) {
-            print('Backup audio file error: $e');
-          }
-        }
-
-        if (!audioLoaded && mounted) {
-          setState(() {
-            _isSoundEnabled = false;
-          });
-        }
-      } else if (mounted) {
-        setState(() {
-          _isSoundEnabled = false;
-        });
       }
-    } catch (e) {
-      print('Audio initialization error: $e');
-      if (mounted) {
-        setState(() {
-          _isSoundEnabled = false;
-        });
-      }
+    }
+    // Always save state after resetting, to clear mining keys
+    await _saveMiningState();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Mining session completed! You can start a new session now.'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      setState(() {
+        _miningStatus = 'Inactive';
+      });
     }
   }
 
-  void _cancelAllTimers() {
-    // Cancel all timers
-    _miningTimer?.cancel();
-    _adTimer?.cancel();
-    _adReloadTimer?.cancel();
-    _powerBoostTimer?.cancel();
-    _staticMiningTimer?.cancel();
-
-    // Reset timer variables
-    _miningTimer = null;
-    _adTimer = null;
-    _adReloadTimer = null;
-    _powerBoostTimer = null;
-    _staticMiningTimer = null;
+  // Update mining progress and earnings
+  void _updateMiningProgressFromElapsed() {
+    if (!_isMining || _miningStartTime == null) return;
+    final now = DateTime.now();
+    final elapsedSeconds = now.difference(_miningStartTime!).inSeconds;
+    final elapsedMinutes = now.difference(_miningStartTime!).inMinutes;
+    final miningRate = BASE_MINING_RATE *
+        (1 + (_isPowerBoostActive ? _currentPowerBoostMultiplier : 0.0));
+    final earnings = miningRate * elapsedSeconds;
+    setState(() {
+      _currentMiningRate = miningRate;
+      _miningEarnings = double.parse(earnings.toStringAsFixed(18));
+      _miningProgress = (elapsedMinutes / MINING_DURATION_MINUTES) * 100;
+      if (_miningProgress > 100) _miningProgress = 100;
+    });
   }
 
+  // Save mining state
   Future<void> _saveMiningState() async {
-    if (!mounted) {
-      print('Widget not mounted, skipping state save');
-      return;
-    }
-
+    if (!mounted) return;
     try {
       final prefs = await SharedPreferences.getInstance();
-
       if (_isMining && _miningStartTime != null) {
-        // Save essential mining state
         await prefs.setBool('isMining', true);
         await prefs.setString(
             'miningStartTime', _miningStartTime!.toIso8601String());
@@ -386,755 +367,188 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         if (_powerBoostStartTime != null) {
           await prefs.setString(
               'powerBoostStartTime', _powerBoostStartTime!.toIso8601String());
+        } else {
+          await prefs.remove('powerBoostStartTime');
         }
         await prefs.setString('miningStatus', _miningStatus);
         await prefs.setInt('lastMiningTime', _lastMiningTime);
-
-        print('Mining state saved successfully');
-      }
-    } catch (e) {
-      print('Mining state save error: $e');
-    }
-  }
-
-  void _playMiningSound() async {
-    if (!_isSoundEnabled || !mounted) return;
-
-    // Skip sound on web platform
-    if (kIsWeb) return;
-
-    // Skip sound on unsupported platforms
-    if (!Platform.isAndroid && !Platform.isIOS) return;
-
-    try {
-      // Try playing main audio file first
-      const audioPath = 'audio/reward_sound.mp3';
-      try {
-        final source = AssetSource(audioPath);
-        await _audioPlayer.play(source).timeout(
-              const Duration(seconds: 2),
-              onTimeout: () => null,
-            );
-        return;
-      } catch (e) {
-        print('Main sound play error: $e');
-      }
-
-      // Try backup file if main file fails
-      const backupAudioPath = 'audio/collect.mp3';
-      try {
-        final backupSource = AssetSource(backupAudioPath);
-        await _audioPlayer.play(backupSource).timeout(
-              const Duration(seconds: 2),
-              onTimeout: () => null,
-            );
-      } catch (e) {
-        print('Backup sound play error: $e');
-        if (mounted) {
-          setState(() {
-            _isSoundEnabled = false;
-          });
-        }
-      }
-    } catch (e) {
-      print('Sound play error: $e');
-      if (mounted) {
-        setState(() {
-          _isSoundEnabled = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _loadPercentage() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _percentage = prefs.getInt('sci_fi_tap_percentage') ?? 0;
-    });
-  }
-
-  Future<void> _savePercentage() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('sci_fi_tap_percentage', _percentage);
-    await _saveDataToPreferences();
-  }
-
-  void _onSciFiObjectTapped() async {
-    if (!mounted) return;
-
-    const double rewardAmount = TAP_REWARD_RATE;
-
-    try {
-      // Show rewarded ad every 10 taps
-      if (_tapCount % 10 == 0) {
-        // Show loading dialog after ad
-        final success = await _adService.showRewardedAd(
-          onRewarded: (reward) async {
-            // Show loading dialog after ad is watched
-            if (mounted) {
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => const Center(
-                  child: CircularProgressIndicator(
-                    color: Colors.blue,
-                  ),
-                ),
-              );
-            }
-
-            // Double the reward when ad is watched
-            const double finalReward = rewardAmount * 2;
-            setState(() {
-              _tapCount++;
-              _percentage++;
-              if (_percentage > 100) _percentage = 0;
-            });
-            await _savePercentage(); // Save percentage after update
-            await _saveDataToPreferences(); // Save other data
-
-            if (mounted) {
-              try {
-                final walletProvider = context.read<WalletProvider>();
-                await walletProvider.addEarning(
-                  finalReward,
-                  type: 'tap',
-                  description: 'Sci-Fi Object Tap Reward (Ad Bonus)',
-                );
-
-                // Close loading dialog before showing congratulations
-                if (mounted) Navigator.pop(context);
-
-                // Show congratulations dialog
-                if (mounted) {
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      backgroundColor: Colors.blue[900],
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      title: const Text(
-                        '🎉 Congratulations!',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      content: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'You won',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 18,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            '${finalReward.toStringAsFixed(18)} BTC',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                      actions: [
-                        Center(
-                          child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 30,
-                                vertical: 12,
-                              ),
-                            ),
-                            child: const Text(
-                              'OK',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                if (_isSoundEnabled) {
-                  const audioPath = 'audio/reward_sound.mp3';
-                  final source = AssetSource(audioPath);
-
-                  try {
-                    if (_audioPlayer.source == null) {
-                      await _audioPlayer.setSource(source);
-                    }
-                    await _audioPlayer.play(source).timeout(
-                      const Duration(seconds: 2),
-                      onTimeout: () {
-                        print('Timeout playing tap sound');
-                        return;
-                      },
-                    );
-                  } catch (e) {
-                    print('Error playing sound: $e');
-                  }
-                }
-              } catch (e) {
-                print('Error adding earning: $e');
-                // Close loading dialog if there's an error
-                if (mounted) Navigator.pop(context);
-              }
-            }
-          },
-          onAdDismissed: () {
-            // Show loading dialog after ad is dismissed
-            if (mounted) {
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => const Center(
-                  child: CircularProgressIndicator(
-                    color: Colors.blue,
-                  ),
-                ),
-              );
-            }
-            // Show regular reward if ad is dismissed
-            _addRegularReward(rewardAmount);
-          },
-        );
-
-        if (!success) {
-          // Show loading dialog if ad fails to load
-          if (mounted) {
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => const Center(
-                child: CircularProgressIndicator(
-                  color: Colors.blue,
-                ),
-              ),
-            );
-          }
-          // Show regular reward if ad fails to load
-          _addRegularReward(rewardAmount);
-        }
       } else {
-        // Show loading dialog for regular reward
-        if (mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => const Center(
-              child: CircularProgressIndicator(
-                color: Colors.blue,
-              ),
-            ),
-          );
-        }
-        // Regular reward without ad
-        _addRegularReward(rewardAmount);
+        // Mining is not active, clear mining-related keys
+        await prefs.setBool('isMining', false);
+        await prefs.remove('miningStartTime');
+        await prefs.remove('miningEarnings');
+        await prefs.remove('miningProgress');
+        await prefs.remove('hashRate');
+        await prefs.remove('currentPowerBoostMultiplier');
+        await prefs.remove('powerBoostActive');
+        await prefs.remove('totalMiningTime');
+        await prefs.remove('currentMiningRate');
+        await prefs.remove('powerBoostClickCount');
+        await prefs.remove('powerBoostStartTime');
+        await prefs.setString('miningStatus', 'Inactive');
+        await prefs.remove('lastMiningTime');
       }
     } catch (e) {
-      print('Error in _onSciFiObjectTapped: $e');
-      // Ensure loading dialog is closed in case of any error
-      if (mounted) Navigator.pop(context);
+      // Optionally log error
     }
   }
 
-  // Add new method for regular reward
-  Future<void> _addRegularReward(double rewardAmount) async {
-    setState(() {
-      _tapCount++;
-      _percentage++;
-      if (_percentage > 100) _percentage = 0;
-    });
-    await _savePercentage(); // Save percentage after update
-    await _saveDataToPreferences(); // Save other data
+  // Load mining state and settings
+  Future<void> _initializeData() async {
+    if (!mounted) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      final DateTime? loadedMiningStartTime =
+          prefs.getString('miningStartTime') != null
+              ? DateTime.parse(prefs.getString('miningStartTime')!)
+              : null;
+      final bool loadedIsMining = prefs.getBool('isMining') ?? false;
+      final double loadedMiningEarnings =
+          prefs.getDouble('miningEarnings') ?? 0.0;
+      final String loadedMiningStatus =
+          prefs.getString('miningStatus') ?? 'Inactive';
+      final double loadedCurrentMiningRate =
+          prefs.getDouble('currentMiningRate') ?? BASE_MINING_RATE;
+      final int loadedLastMiningTime = prefs.getInt('lastMiningTime') ?? 0;
+      final bool loadedIsPowerBoostActive =
+          prefs.getBool('powerBoostActive') ?? false;
+      final double loadedCurrentPowerBoostMultiplier =
+          prefs.getDouble('currentPowerBoostMultiplier') ?? 0.0;
+      final int loadedPowerBoostClickCount =
+          prefs.getInt('powerBoostClickCount') ?? 0;
+      final DateTime? loadedPowerBoostStartTime =
+          prefs.getString('powerBoostStartTime') != null
+              ? DateTime.parse(prefs.getString('powerBoostStartTime')!)
+              : null;
+      final double loadedHashRate = prefs.getDouble('hashRate') ?? 2.5;
+      final double loadedMiningProgress =
+          prefs.getDouble('miningProgress') ?? 0.0;
+      final bool loadedIsSoundEnabled = prefs.getBool('isSoundEnabled') ?? true;
+      final int loadedPercentage = prefs.getInt('percentage') ?? 0;
 
-    if (mounted) {
-      try {
-        final walletProvider = context.read<WalletProvider>();
-        await walletProvider.addEarning(
-          rewardAmount,
-          type: 'tap',
-          description: 'Sci-Fi Object Tap Reward',
-        );
-
-        // Close loading dialog before showing congratulations
-        if (mounted) Navigator.pop(context);
-
-        // Show congratulations dialog
-        if (mounted) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              backgroundColor: Colors.blue[900],
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: const Text(
-                '🎉 Congratulations!',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'You won',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 18,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    '${rewardAmount.toStringAsFixed(18)} BTC',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-              actions: [
-                Center(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 30,
-                        vertical: 12,
-                      ),
-                    ),
-                    child: const Text(
-                      'OK',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
+      // Check if mining session should be expired
+      bool miningExpired = false;
+      int elapsedSeconds = 0;
+      if (loadedIsMining && loadedMiningStartTime != null) {
+        final now = DateTime.now();
+        elapsedSeconds = now.difference(loadedMiningStartTime).inSeconds;
+        final elapsedMinutes = elapsedSeconds ~/ 60;
+        if (elapsedMinutes >= MINING_DURATION_MINUTES) {
+          miningExpired = true;
         }
+      }
 
-        if (_isSoundEnabled) {
-          const audioPath = 'audio/reward_sound.mp3';
-          final source = AssetSource(audioPath);
+      // Check if power boost should be expired
+      bool powerBoostExpired = false;
+      if (loadedIsPowerBoostActive && loadedPowerBoostStartTime != null) {
+        final now = DateTime.now();
+        final elapsedSecondsPB =
+            now.difference(loadedPowerBoostStartTime).inSeconds;
+        if (elapsedSecondsPB >= POWER_BOOST_DURATION_MINUTES * 60) {
+          powerBoostExpired = true;
+        }
+      }
 
+      if (miningExpired && loadedIsMining && loadedMiningStartTime != null) {
+        // Calculate total earnings for the session
+        const double miningRate = BASE_MINING_RATE; // No boost after reload
+        final double earningsToAdd = double.parse(
+            (miningRate * (MINING_DURATION_MINUTES * 60)).toStringAsFixed(18));
+        if (earningsToAdd > 0) {
           try {
-            if (_audioPlayer.source == null) {
-              await _audioPlayer.setSource(source);
-            }
-            await _audioPlayer.play(source).timeout(
-              const Duration(seconds: 2),
-              onTimeout: () {
-                print('Timeout playing tap sound');
-                return;
-              },
+            final walletProvider = context.read<WalletProvider>();
+            await walletProvider.addEarning(
+              earningsToAdd,
+              type: 'mining',
+              description: 'Mining session earnings (auto on reload)',
             );
           } catch (e) {
-            print('Error playing sound: $e');
+            // Optionally log error
           }
         }
-      } catch (e) {
-        print('Error adding earning: $e');
-        // Close loading dialog if there's an error
-        if (mounted) Navigator.pop(context);
-      }
-    }
-  }
-
-  void _handleNavigation() {
-    // Don't stop mining during navigation, just save state
-    if (_isMining) {
-      _saveMiningState();
-    }
-  }
-
-  void _navigateToWalletScreen() async {
-    if (mounted) {
-      Navigator.pushNamed(context, '/wallet');
-    }
-  }
-
-  void _navigateToGameScreen() async {
-    if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const GameScreen()),
-      );
-    }
-  }
-
-  void _navigateToRewardScreen() async {
-    if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const RewardScreen()),
-      );
-    }
-  }
-
-  void _navigateToReferralScreen() async {
-    if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const ReferralScreen()),
-      );
-    }
-  }
-
-  Future<void> _loadAds() async {
-    // Platform check
-    bool isSupportedPlatform = false;
-    try {
-      isSupportedPlatform = Platform.isAndroid || Platform.isIOS;
-    } catch (e) {
-      print('Platform check error: $e');
-      return;
-    }
-
-    if (isSupportedPlatform) {
-      try {
-        await _adService.loadNativeAd();
-      } catch (e) {
-        print('Ads loading error: $e');
-      }
-    } else {
-      print('Ads only supported on Android and iOS');
-    }
-  }
-
-  Future<void> _resetMiningState() async {
-    print('Resetting mining state');
-
-    // Cancel all timers first
-    _cancelAllTimers();
-    _staticMiningTimer?.cancel();
-    _staticMiningTimer = null;
-
-    // Reset static variables
-    _staticIsMining = false;
-    _staticMiningStartTime = null;
-    _staticMiningProgress = 0.0;
-    _staticCurrentMiningRate = BASE_MINING_RATE;
-    _staticHashRate = 2.5;
-    _staticIsPowerBoostActive = false;
-    _staticCurrentPowerBoostMultiplier = 0.0;
-    _staticMiningEarnings = 0.0;
-
-    // Reset instance variables
-    if (mounted) {
-      setState(() {
-        _isMining = false;
-        _miningStartTime = null;
-        _miningProgress = 0.0;
-        _currentMiningRate = BASE_MINING_RATE;
-        _hashRate = 2.5;
-        _isPowerBoostActive = false;
-        _currentPowerBoostMultiplier = 0.0;
-        _miningEarnings = 0.0;
-        _miningStatus = 'Inactive';
-        _lastMiningTime = 0;
-        _powerBoostClickCount = 0;
-        _powerBoostStartTime = null;
-      });
-    }
-
-    // Save state
-    await _saveMiningState();
-
-    // Show completion message
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'Mining session completed! You can start a new session now.'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
-      );
-    }
-  }
-
-  void _startMiningTimer() {
-    print('Starting mining timer');
-    _cancelAllTimers();
-
-    if (_miningStartTime == null) {
-      print('No mining start time, cannot start timer');
-      return;
-    }
-
-    // Use static timer if it exists and is active
-    if (_staticMiningTimer != null && _staticMiningTimer!.isActive) {
-      _miningTimer = _staticMiningTimer;
-      return;
-    }
-
-    // Create new timer
-    _staticMiningTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!_staticIsMining || _staticMiningStartTime == null) {
-        timer.cancel();
-        _staticMiningTimer = null;
-        return;
-      }
-
-      final now = DateTime.now();
-      final elapsedMinutes = now.difference(_staticMiningStartTime!).inMinutes;
-
-      if (elapsedMinutes >= MINING_DURATION_MINUTES) {
-        print('Mining duration completed');
-        timer.cancel();
-        _staticMiningTimer = null;
-        _resetMiningState();
-        return;
-      }
-
-      // Update both static and instance variables
-      _staticMiningEarnings += _staticCurrentMiningRate;
-      _staticMiningEarnings =
-          double.parse(_staticMiningEarnings.toStringAsFixed(18));
-      _staticMiningProgress = (elapsedMinutes / MINING_DURATION_MINUTES) * 100;
-
-      // Update UI if mounted
-      if (mounted) {
-        setState(() {
-          _isMining = _staticIsMining;
-          _miningStartTime = _staticMiningStartTime;
-          _miningProgress = _staticMiningProgress;
-          _miningEarnings = _staticMiningEarnings;
-          _currentMiningRate = _staticCurrentMiningRate;
-          _hashRate = _staticHashRate;
-          _isPowerBoostActive = _staticIsPowerBoostActive;
-          _currentPowerBoostMultiplier = _staticCurrentPowerBoostMultiplier;
-        });
-      }
-
-      // Save state periodically
-      if (_lastMiningTime % STATE_SAVE_INTERVAL_SECONDS == 0) {
-        _saveMiningState();
-      }
-
-      // Play sound if enabled and mounted
-      if (_isSoundEnabled && mounted) {
-        _playMiningSound();
-      }
-    });
-
-    _miningTimer = _staticMiningTimer;
-  }
-
-  void _startForegroundMining() {
-    print('Starting foreground mining');
-    _cancelAllTimers();
-
-    // Set mining start time
-    _miningStartTime = DateTime.now();
-
-    _miningTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      if (!mounted || !_isMining) {
-        timer.cancel();
-        return;
-      }
-
-      // Check if 30 minutes have passed
-      final now = DateTime.now();
-      final miningDuration = now.difference(_miningStartTime!).inMinutes;
-
-      if (miningDuration >= MINING_DURATION_MINUTES) {
-        print('Mining session completed after $miningDuration minutes');
-        timer.cancel();
-        _resetMiningState();
-        return;
-      }
-
-      // Use setState only if widget is mounted
-      if (mounted) {
-        setState(() {
-          // Calculate current mining rate with power boost multiplier
-          _currentMiningRate = BASE_MINING_RATE *
-              (1 + (_isPowerBoostActive ? _currentPowerBoostMultiplier : 0.0));
-
-          // Add earnings based on current rate
-          _miningEarnings += _currentMiningRate;
-          _miningEarnings = double.parse(_miningEarnings.toStringAsFixed(18));
-
-          // Update progress
-          _miningProgress = (miningDuration / MINING_DURATION_MINUTES) * 100;
-          _lastMiningTime++;
-          _totalMiningTime++;
-        });
-      }
-
-      // Save state every STATE_SAVE_INTERVAL_SECONDS seconds
-      if (_lastMiningTime % STATE_SAVE_INTERVAL_SECONDS == 0) {
-        await _saveMiningState();
-      }
-
-      // Play mining sound if enabled and mounted
-      if (_isSoundEnabled && mounted) {
-        _playMiningSound();
-      }
-    });
-  }
-
-  void _startWebMining() {
-    print('Starting web mining');
-    _cancelAllTimers();
-
-    // Set mining start time if not set
-    _miningStartTime ??= DateTime.now();
-
-    _miningTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      if (!mounted || !_isMining) {
-        timer.cancel();
-        return;
-      }
-
-      // Calculate mining duration
-      final now = DateTime.now();
-      final miningDuration = now.difference(_miningStartTime!).inMinutes;
-
-      // Check if mining session is complete
-      if (miningDuration >= MINING_DURATION_MINUTES) {
-        print('Mining session completed after $miningDuration minutes');
-        timer.cancel();
-        _resetMiningState();
-        return;
       }
 
       setState(() {
-        // Calculate current mining rate with power boost multiplier
-        _currentMiningRate = BASE_MINING_RATE *
-            (1 + (_isPowerBoostActive ? _currentPowerBoostMultiplier : 0.0));
-
-        // Add earnings based on current rate
-        _miningEarnings += _currentMiningRate;
-        _miningEarnings = double.parse(_miningEarnings.toStringAsFixed(18));
-
-        // Update progress
-        _miningProgress = (miningDuration / MINING_DURATION_MINUTES) * 100;
-        _lastMiningTime++;
-        _totalMiningTime++;
-      });
-
-      // Save state every STATE_SAVE_INTERVAL_SECONDS seconds
-      if (_lastMiningTime % STATE_SAVE_INTERVAL_SECONDS == 0) {
-        await _saveMiningState();
-        print(
-            'Mining earnings updated: ${_miningEarnings.toStringAsFixed(18)} BTC');
-      }
-
-      // Play mining sound if enabled
-      if (_isSoundEnabled && mounted) {
-        _playMiningSound();
-      }
-    });
-  }
-
-  Future<void> _startMiningProcess() async {
-    try {
-      // Check if previous mining session is still active
-      if (_isMining && _miningStartTime != null) {
-        final now = DateTime.now();
-        final elapsedMinutes = now.difference(_miningStartTime!).inMinutes;
-
-        if (elapsedMinutes < MINING_DURATION_MINUTES) {
-          print('Previous mining session still active');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Please wait ${MINING_DURATION_MINUTES - elapsedMinutes} minutes for current session to complete',
-                style: const TextStyle(fontSize: 16),
-              ),
-              backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 5),
-            ),
-          );
-          return;
+        _isSoundEnabled = loadedIsSoundEnabled;
+        _percentage = loadedPercentage;
+        if (miningExpired) {
+          _isMining = false;
+          _miningStartTime = null;
+          _miningProgress = 0.0;
+          _miningEarnings = 0.0;
+          _miningStatus = 'Completed';
+          _currentMiningRate = BASE_MINING_RATE;
+          _lastMiningTime = 0;
+          _isPowerBoostActive = false;
+          _currentPowerBoostMultiplier = 0.0;
+          _powerBoostClickCount = 0;
+          _powerBoostStartTime = null;
+          _hashRate = 2.5;
+        } else if (!loadedIsMining) {
+          // Explicitly reset all mining state if not mining
+          _isMining = false;
+          _miningStartTime = null;
+          _miningProgress = 0.0;
+          _miningEarnings = 0.0;
+          _miningStatus = 'Inactive';
+          _currentMiningRate = BASE_MINING_RATE;
+          _lastMiningTime = 0;
+          _isPowerBoostActive = false;
+          _currentPowerBoostMultiplier = 0.0;
+          _powerBoostClickCount = 0;
+          _powerBoostStartTime = null;
+          _hashRate = 2.5;
         } else {
-          // Complete previous session if time is up
-          _resetMiningState();
+          _isMining = loadedIsMining;
+          _miningStartTime = loadedMiningStartTime;
+          _miningProgress = loadedMiningProgress;
+          _miningEarnings = loadedMiningEarnings;
+          _miningStatus = loadedMiningStatus;
+          _currentMiningRate = loadedCurrentMiningRate;
+          _lastMiningTime = loadedLastMiningTime;
+          if (powerBoostExpired) {
+            _isPowerBoostActive = false;
+            _currentPowerBoostMultiplier = 0.0;
+            _powerBoostClickCount = 0;
+            _powerBoostStartTime = null;
+            _hashRate = 2.5;
+          } else {
+            _isPowerBoostActive = loadedIsPowerBoostActive;
+            _currentPowerBoostMultiplier = loadedCurrentPowerBoostMultiplier;
+            _powerBoostClickCount = loadedPowerBoostClickCount;
+            _powerBoostStartTime = loadedPowerBoostStartTime;
+            _hashRate = loadedHashRate;
+          }
         }
-      }
-
-      // Start new mining session
-      final now = DateTime.now();
-      setState(() {
-        _isMining = true;
-        _miningStartTime = now;
-        _miningProgress = 0.0;
-        _miningEarnings = 0.0;
-        _miningStatus = 'Active';
-        _currentMiningRate = BASE_MINING_RATE;
-        _lastMiningTime = 0;
-        _totalMiningTime = 0;
-        _isPowerBoostActive = false;
-        _hashRate = 2.5;
       });
 
-      // Save initial state
-      await _saveMiningState();
-      print('New mining session started at: ${now.toIso8601String()}');
-
-      // Start appropriate mining based on platform
-      if (kIsWeb) {
-        _startWebMining();
-      } else if (Platform.isWindows) {
-        _startForegroundMining();
-      } else {
-        _startMiningTimer();
+      // If mining expired, reset mining state (this will also clear prefs)
+      if (miningExpired) {
+        await _resetMiningState();
+      } else if (powerBoostExpired && _isMining) {
+        // If only power boost expired, save state to update prefs
+        await _saveMiningState();
       }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Mining started! Session will complete in 30 minutes',
-              style: TextStyle(fontSize: 16),
-            ),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 5),
-          ),
-        );
+      if (_isSoundEnabled) {
+        await _initializeAudio();
       }
     } catch (e) {
-      print('Start mining error: $e');
-      _showError('Start Mining Error', e.toString());
+      // Optionally log error
+    }
+  }
+
+  // Loads the mining progress percentage from SharedPreferences
+  Future<void> _loadPercentage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      setState(() {
+        _percentage = prefs.getInt('percentage') ?? 0;
+      });
+    } catch (e) {
+      // Optionally log error
     }
   }
 
@@ -1144,6 +558,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       canPop: false,
       child: Scaffold(
         appBar: AppBar(
+          automaticallyImplyLeading: false,
           toolbarHeight: _isScrolled ? 70 : 140,
           flexibleSpace: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
@@ -1217,12 +632,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 102),
+                          color: Colors.black.withAlpha(102),
                           offset: const Offset(3, 3),
                           blurRadius: 6,
                         ),
                         BoxShadow(
-                          color: Colors.white.withValues(alpha: 26),
+                          color: Colors.white.withAlpha(26),
                           offset: const Offset(-1, -1),
                           blurRadius: 6,
                         ),
@@ -1272,8 +687,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF00F5A0)
-                                    .withValues(alpha: 102),
+                                color: const Color(0xFF00F5A0).withAlpha(102),
                                 blurRadius: 8,
                                 spreadRadius: 1,
                               ),
@@ -1414,7 +828,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Text('Start Mining'),
-                          if (_isMining)
+                          // Only show remaining if mining is active and not completed
+                          if (_isMining &&
+                              _miningStatus != 'Completed' &&
+                              _miningStartTime != null)
                             Text(
                               'Remaining: ${_getRemainingTime()}',
                               style: const TextStyle(fontSize: 12),
@@ -1500,7 +917,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     icon: const FaIcon(FontAwesomeIcons.telegram,
                         color: Colors.blue, size: 36),
                     onPressed: () async {
-                      const telegramUrl = 'https://www.telegram.com';
+                      const telegramUrl = 'https://t.me/+v6K5Agkb5r8wMjhl';
                       final Uri telegramUri = Uri.parse(telegramUrl);
                       if (await launchUrl(telegramUri)) {
                         await launchUrl(telegramUri);
@@ -1513,7 +930,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     icon: const FaIcon(FontAwesomeIcons.instagram,
                         color: Colors.pink, size: 36),
                     onPressed: () async {
-                      const instagramUrl = 'https://www.instagram.com';
+                      const instagramUrl =
+                          'https://www.instagram.com/bitcoincloudmining/';
                       final Uri instagramUri = Uri.parse(instagramUrl);
                       if (await launchUrl(instagramUri)) {
                         await launchUrl(instagramUri);
@@ -1527,7 +945,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     icon: const FaIcon(FontAwesomeIcons.whatsapp,
                         color: Colors.green, size: 36),
                     onPressed: () async {
-                      const whatsappUrl = 'https://www.whatsapp.com';
+                      const whatsappUrl =
+                          'https://chat.whatsapp.com/InL9NrT9gtuKpXRJ3Gu5A5';
                       final Uri whatsappUri = Uri.parse(whatsappUrl);
                       if (await launchUrl(whatsappUri)) {
                         await launchUrl(whatsappUri);
@@ -1767,13 +1186,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   String _getRemainingTime() {
-    if (!_isMining || _miningStartTime == null) return '';
+    // If not mining or mining just completed, return empty string
+    if (!_isMining || _miningStartTime == null || _miningStatus == 'Completed')
+      return '';
 
     final now = DateTime.now();
     final elapsedMinutes = now.difference(_miningStartTime!).inMinutes;
     final remainingMinutes = MINING_DURATION_MINUTES - elapsedMinutes;
 
-    if (remainingMinutes <= 0) return 'Completed';
+    if (remainingMinutes <= 0) return '';
 
     final hours = remainingMinutes ~/ 60;
     final minutes = remainingMinutes % 60;
@@ -1813,55 +1234,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _initializeMining() async {
-    if (!mounted) return;
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      // Reset mining state on app start
-      await prefs.setBool('isMining', false);
-      await prefs.setString('miningStartTime', '');
-      await prefs.setDouble('miningProgress', 0.0);
-      await prefs.setDouble('miningEarnings', 0.0);
-      await prefs.setString('miningStatus', 'Inactive');
-      await prefs.setDouble('currentMiningRate', BASE_MINING_RATE);
-      await prefs.setInt('lastMiningTime', 0);
-      await prefs.setBool('powerBoostActive', false);
-      await prefs.setDouble('currentPowerBoostMultiplier', 0.0);
-      await prefs.setInt('powerBoostClickCount', 0);
-      await prefs.setString('powerBoostStartTime', '');
-      await prefs.setDouble('hashRate', 2.5);
-
-      setState(() {
-        _isMining = false;
-        _miningStartTime = null;
-        _miningProgress = 0.0;
-        _miningEarnings = 0.0;
-        _miningStatus = 'Inactive';
-        _currentMiningRate = BASE_MINING_RATE;
-        _lastMiningTime = 0;
-        _totalMiningTime = 0;
-        _isPowerBoostActive = false;
-        _currentPowerBoostMultiplier = 0.0;
-        _powerBoostClickCount = 0;
-        _powerBoostStartTime = null;
-        _hashRate = 2.5;
-      });
-    } catch (e) {
-      print('Error initializing mining: $e');
-    }
-  }
-
-  Future<void> _saveDataToPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    final btcBalance = context.read<WalletProvider>().btcBalance;
-    await prefs.setDouble('btcBalance', btcBalance);
-    await prefs.setInt('tapCount', _tapCount);
-    await prefs.setBool('isSoundEnabled', _isSoundEnabled);
-    await prefs.setBool('isVibrationEnabled', _isVibrationEnabled);
-    await prefs.setBool('isDarkMode', _isDarkMode);
-  }
-
   void _loadSavedSettings() {
     // Implement the logic to load saved settings from SharedPreferences
   }
@@ -1870,7 +1242,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _adReloadTimer?.cancel();
     _adReloadTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
       if (mounted) {
-        _loadAds();
+        // _loadAds(); // Removed as only rewarded ads are used
       }
     });
   }
@@ -1932,10 +1304,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (!mounted || !_isMining) return;
 
     try {
-      // Show rewarded ad using CustomAdService
+      // Show rewarded ad using AdService
       final bool adWatched = await _adService.showRewardedAd(
         onRewarded: (double amount) async {
-          // After ad is watched, activate power boost
           if (!mounted) return;
 
           setState(() {
@@ -1957,20 +1328,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           });
 
           // Show boost activation message
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Power Boost activated! Mining rate increased by ${(_currentPowerBoostMultiplier * 100).toStringAsFixed(0)}%\n'
-                  'New rate: ${_currentMiningRate.toStringAsFixed(18)} BTC/sec\n'
-                  'New hash rate: ${_hashRate.toStringAsFixed(1)} GH/s\n'
-                  'Duration: 5 minutes',
-                ),
-                backgroundColor: Colors.green,
-                duration: const Duration(seconds: 3),
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Power Boost activated! Mining rate increased by \\${(_currentPowerBoostMultiplier * 100).toStringAsFixed(0)}%\\n'
+                'New rate: \\${_currentMiningRate.toStringAsFixed(18)} BTC/sec\\n'
+                'New hash rate: \\${_hashRate.toStringAsFixed(1)} GH/s\\n'
+                'Duration: 5 minutes',
               ),
-            );
-          }
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
 
           // Start power boost timer
           _powerBoostTimer?.cancel();
@@ -1987,56 +1357,108 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               _powerBoostStartTime = null;
             });
 
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Power Boost ended! Mining rate back to normal',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  backgroundColor: Colors.orange,
-                  duration: Duration(seconds: 3),
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Power Boost ended! Mining rate back to normal',
+                  style: TextStyle(fontSize: 16),
                 ),
-              );
-            }
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
           });
 
           // Save state immediately after power boost activation
           await _saveMiningState();
         },
         onAdDismissed: () {
-          // What to do when ad is closed without reward
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Watch the full ad to activate Power Boost!'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Watch the full ad to activate Power Boost!'),
+              backgroundColor: Colors.orange,
+            ),
+          );
         },
       );
 
       if (!adWatched) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ad not available. Please try again later.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      print('Power boost error: $e');
-      if (mounted) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error activating power boost: ${e.toString()}'),
-            backgroundColor: Colors.red,
+          const SnackBar(
+            content: Text('Ad not available. Please try again later.'),
+            backgroundColor: Colors.orange,
           ),
         );
       }
+    } catch (e) {
+      print('Power boost error: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error activating power boost: \\${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Restore navigation and tap handler functions
+  void _navigateToWalletScreen() {
+    Navigator.of(context).pushNamed('/wallet');
+  }
+
+  void _onSciFiObjectTapped() async {
+    setState(() {
+      _percentage = (_percentage + 1) % 100;
+      _currentColor =
+          _currentColor == Colors.blue ? Colors.purple : Colors.blue;
+    });
+    try {
+      final walletProvider = context.read<WalletProvider>();
+      await walletProvider.addEarning(
+        TAP_REWARD_RATE,
+        type: 'tap',
+        description: 'Tap reward',
+      );
+      Fluttertoast.showToast(msg: 'Magic tapped! +$TAP_REWARD_RATE BTC');
+    } catch (e) {
+      Fluttertoast.showToast(
+          msg: 'Failed to add tap reward: \\${e.toString()}');
+    }
+  }
+
+  void _navigateToRewardScreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const RewardScreen()),
+    );
+  }
+
+  void _navigateToReferralScreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const ReferralScreen()),
+    );
+  }
+
+  void _navigateToGameScreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const GameScreen()),
+    );
+  }
+
+  void _handleNavigation() {
+    FocusScope.of(context).unfocus();
+  }
+
+  // Initialize audio player settings
+  Future<void> _initializeAudio() async {
+    try {
+      await _audioPlayer.setVolume(1.0);
+      // Optionally preload a sound or set other audio settings here
+    } catch (e) {
+      print('Audio initialization error: $e');
     }
   }
 }

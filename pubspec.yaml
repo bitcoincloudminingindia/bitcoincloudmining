@@ -18,7 +18,7 @@ dependencies:
   uuid: ^4.3.3
   image_picker: ^1.0.7
   shared_preferences: ^2.2.2
-  workmanager: ^0.5.2
+  workmanager: ^0.6.0
   google_mobile_ads: ^4.0.0
   google_fonts: ^6.1.0
   audioplayers: ^5.2.1
@@ -36,7 +36,6 @@ dependencies:
   flutter_markdown: ^0.7.6+2
   qr_flutter: ^4.1.0
   share_plus: ^7.2.1
-  qr_code_scanner: ^1.0.1
   speech_to_text: ^7.0.0
   crypto: ^3.0.3
   flutter_secure_storage: ^9.0.0  # Keep current for security
@@ -52,11 +51,9 @@ dependencies:
   http: ^1.1.0
   battery_plus: ^5.0.3
   connectivity_plus: ^5.0.2  # Using connectivity_plus instead of connectivity as it's more maintained
-  web: ^1.0.0
-  battery: ^2.0.3
+
   shimmer: ^3.0.0
   app_links: ^6.4.0
-  uni_links: ^0.5.1
   decimal: ^2.3.3
   clipboard: ^0.1.3
 
@@ -65,14 +62,35 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^2.0.0
   custom_lint: ^0.7.5
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_logo.png"
+  remove_alpha_ios: true
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/app_logo.png"
+  web:
+    generate: true
+    image_path: "assets/images/app_logo.png"
+    background_color: "#FFFFFF"
+    theme_color: "#000000"
+  windows:
+    generate: true
+    image_path: "assets/images/app_logo.png"
+    icon_size: 48
 
 flutter:
   uses-material-design: true
   
   assets:
+    - assets/images/
     - assets/images/team_member1.png.webp
     - assets/images/team_member2.png.webp
     - assets/images/default_avatar.png.webp
+    - assets/images/app_logo.png
    
     - assets/audio/coin_sound.mp3
     - assets/audio/reward_sound.mp3
@@ -90,5 +108,27 @@ flutter:
           weight: 500
         - asset: assets/fonts/Poppins-Bold.ttf
           weight: 700
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/images/app_logo.png
+  branding: assets/images/app_logo.png
+  color_dark: "#000000"
+  image_dark: assets/images/app_logo.png
+  branding_dark: assets/images/app_logo.png
+  
+  android_12:
+    image: assets/images/app_logo.png
+    icon_background_color: "#FFFFFF"
+    image_dark: assets/images/app_logo.png
+    icon_background_color_dark: "#000000"
+
+  web: false
+  ios: true
+  android: true
+  
+  fullscreen: true
+  android_gravity: center
+  ios_content_mode: center
 
 

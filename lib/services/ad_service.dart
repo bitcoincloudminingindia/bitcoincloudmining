@@ -46,6 +46,7 @@ class AdService {
   bool _isInterstitialAdLoaded = false;
   bool _isRewardedAdLoaded = false;
   bool _isRewardedAdLoading = false;
+  bool _isNativeAdLoaded = false;
 
   // Ad tracking
   final Map<String, int> _adShowCounts = {};
@@ -71,6 +72,11 @@ class AdService {
         'average_load_time': _averageAdLoadTime,
         'ad_failures': _adFailures,
       };
+
+  // Public getters for ad loaded states
+  bool get isRewardedAdLoaded => _isRewardedAdLoaded;
+  bool get isBannerAdLoaded => _isBannerAdLoaded;
+  bool get isInterstitialAdLoaded => _isInterstitialAdLoaded;
 
   // Get ad unit ID based on platform and ad type
   String _getAdUnitId(String adType) {
@@ -261,6 +267,28 @@ class AdService {
     );
   }
 
+  /// Returns a Future that completes with the banner ad widget when loaded, or a placeholder if not available.
+  Future<Widget?> getBannerAdWidget() async {
+    // If already loaded, return immediately
+    if (_isBannerAdLoaded && _bannerAd != null) {
+      return getBannerAd();
+    }
+    // Try to load the banner ad
+    await loadBannerAd();
+    // Wait for the ad to be loaded, polling every 100ms, up to 3 seconds
+    const int maxTries = 30;
+    int tries = 0;
+    while ((!_isBannerAdLoaded || _bannerAd == null) && tries < maxTries) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      tries++;
+    }
+    if (_isBannerAdLoaded && _bannerAd != null) {
+      return getBannerAd();
+    } else {
+      return const SizedBox(height: 0);
+    }
+  }
+
   // Load interstitial ad
   Future<void> loadInterstitialAd() async {
     if (_isInterstitialAdLoaded && _isCachedAdValid('interstitial')) return;
@@ -297,6 +325,8 @@ class AdService {
   // Load rewarded ad
   Future<void> loadRewardedAd() async {
     if (_isRewardedAdLoaded && _isCachedAdValid('rewarded')) return;
+    if (_isRewardedAdLoading) return; // Prevent parallel loads
+    _isRewardedAdLoading = true;
 
     await _loadAdWithRetry(
       'rewarded',
@@ -311,10 +341,12 @@ class AdService {
             onAdLoaded: (ad) {
               _rewardedAd = ad;
               _isRewardedAdLoaded = true;
+              _isRewardedAdLoading = false;
               debugPrint('Rewarded ad loaded');
             },
             onAdFailedToLoad: (error) {
               _isRewardedAdLoaded = false;
+              _isRewardedAdLoading = false;
               throw error;
             },
           ),
@@ -322,7 +354,81 @@ class AdService {
       },
       (success) {
         _isRewardedAdLoaded = success;
+        _isRewardedAdLoading = false;
       },
+    );
+  }
+
+  // Load native ad
+  Future<void> loadNativeAd() async {
+    if (_isNativeAdLoaded) return;
+    final adUnitId = _getAdUnitId('native');
+    if (adUnitId.isEmpty) throw Exception('Invalid native ad unit ID');
+    _nativeAd = NativeAd(
+      adUnitId: adUnitId,
+      factoryId: 'listTile',
+      request: const AdRequest(),
+      listener: NativeAdListener(
+        onAdLoaded: (ad) {
+          _isNativeAdLoaded = true;
+          debugPrint('Native ad loaded');
+        },
+        onAdFailedToLoad: (ad, error) {
+          _isNativeAdLoaded = false;
+          ad.dispose();
+          debugPrint('Native ad failed to load: $error');
+        },
+      ),
+    );
+    try {
+      await _nativeAd!.load();
+    } catch (e) {
+      debugPrint('Error loading native ad: $e');
+      _isNativeAdLoaded = false;
+    }
+  }
+
+  // Get native ad widget
+  Widget getNativeAd() {
+    if (!_isNativeAdLoaded || _nativeAd == null) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        height: 120,
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: const Center(
+          child: Text(
+            'Loading Ad...',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      );
+    }
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(158, 158, 158, 0.3),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      height: 120,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: AdWidget(ad: _nativeAd!),
+      ),
     );
   }
 
@@ -398,13 +504,20 @@ class AdService {
   // Get banner ad widget
   Widget getBannerAd() {
     if (!_isBannerAdLoaded || _bannerAd == null) {
+      debugPrint('[AdService] getBannerAd: Banner ad not loaded or null');
       return const SizedBox(height: 50);
     }
-    return SizedBox(
-      width: _bannerAd!.size.width.toDouble(),
-      height: _bannerAd!.size.height.toDouble(),
-      child: AdWidget(ad: _bannerAd!),
-    );
+    try {
+      return SizedBox(
+        width: _bannerAd!.size.width.toDouble(),
+        height: _bannerAd!.size.height.toDouble(),
+        child: AdWidget(ad: _bannerAd!),
+      );
+    } catch (e) {
+      debugPrint('[AdService] getBannerAd: Exception building AdWidget: '
+          '[31m$e[0m');
+      return const SizedBox(height: 50);
+    }
   }
 
   // Initialize ads
@@ -419,6 +532,7 @@ class AdService {
       loadBannerAd();
       loadInterstitialAd();
       loadRewardedAd();
+      loadNativeAd();
 
       debugPrint('Ad service initialized successfully');
     } catch (e) {

@@ -396,7 +396,7 @@ class ApiService {
 
       print('📥 Token validation response: $response');
 
-      if (response['success'] == true) {
+      if (response['success'] == true || response['status'] == 'success') {
         return {
           'success': true,
           'data': response['data'] ?? response['user'] ?? {}
@@ -608,7 +608,7 @@ class ApiService {
       print('💰 Formatted balance for update (number): $formattedBalance');
 
       final response = await _makeRequest(
-        endpoint: '/api/wallet/update-balance',
+        endpoint: ApiConfig.syncBalance,
         method: 'POST',
         body: {
           'balance': formattedBalance,
@@ -617,7 +617,28 @@ class ApiService {
       );
 
       if (response['success']) {
-        final serverBalance = response['data']['balance'];
+        // Check if sync was skipped
+        if (response['message']?.toString().contains('Sync skipped') == true) {
+          print('ℹ️ ${response['message']}');
+          return {
+            'success': true,
+            'skipped': true,
+            'message': response['message'],
+            'data': {'balance': formattedBalanceStr}
+          };
+        }
+
+        // Check if we have balance data
+        final serverBalanceData = response['data'];
+        if (serverBalanceData == null || serverBalanceData['balance'] == null) {
+          // No balance data, return the local balance
+          return {
+            'success': true,
+            'data': {'balance': formattedBalanceStr}
+          };
+        }
+
+        final serverBalance = serverBalanceData['balance'];
         print('💰 Server balance after update: $serverBalance');
 
         // If server returns 0 but we sent a non-zero balance, keep our balance
@@ -627,7 +648,7 @@ class ApiService {
               '⚠️ Server returned 0 balance, keeping local balance: $balance');
           return {
             'success': true,
-            'data': {'balance': formattedBalance}
+            'data': {'balance': formattedBalanceStr}
           };
         }
 
@@ -663,19 +684,18 @@ class ApiService {
       final headers = {'Authorization': 'Bearer $token'};
       debugPrint('📤 Setting request headers: $headers');
 
-      // Get full profile to ensure we have latest wallet state
+      // Get wallet balance directly
       final response = await _makeRequest(
-        endpoint: '/api/auth/profile',
+        endpoint: '/api/wallet/balance',
         method: 'GET',
         headers: headers,
       );
 
       debugPrint('📥 Response data: $response');
 
-      if (response['status'] == 'success' &&
-          response['data']?['user']?['wallet'] != null) {
-        final balance = NumberFormatter.parseDouble(
-            response['data']['user']['wallet']['balance']);
+      if (response['success'] && response['data']?['balance'] != null) {
+        final balance =
+            NumberFormatter.parseDouble(response['data']['balance'].toString());
         debugPrint('💰 Parsed balance: $balance');
         return balance;
       }
@@ -904,17 +924,22 @@ class ApiService {
     required String userName,
     required String userEmail,
     required String password,
+    String? referredByCode,
   }) async {
     try {
+      final body = {
+        'fullName': fullName,
+        'userName': userName,
+        'userEmail': userEmail,
+        'password': password,
+      };
+      if (referredByCode != null && referredByCode.isNotEmpty) {
+        body['referredByCode'] = referredByCode;
+      }
       final response = await _makeRequest(
         method: 'POST',
         endpoint: ApiConfig.register,
-        body: {
-          'fullName': fullName,
-          'userName': userName,
-          'userEmail': userEmail,
-          'password': password,
-        },
+        body: body,
       );
 
       if (response['status'] == 'success') {
@@ -1494,6 +1519,152 @@ class ApiService {
         'success': false,
         'message': 'Failed to verify OTP: ${e.toString()}'
       };
+    }
+  }
+
+  Future<Map<String, dynamic>> getCurrencyRates() async {
+    try {
+      final response = await _makeRequest(
+        endpoint: '/api/market/rates',
+        method: 'GET',
+      );
+
+      if (response['success']) {
+        return response;
+      } else {
+        print('❌ Failed to get currency rates: ${response['message']}');
+        return {
+          'success': false,
+          'message': response['message'] ?? 'Failed to get currency rates',
+          'data': {
+            'rates': {'USD': 1.0, 'INR': 83.0, 'EUR': 0.91},
+            'btcPrice': 45000.0
+          }
+        };
+      }
+    } catch (e) {
+      print('❌ Error fetching currency rates: $e');
+      return {
+        'success': false,
+        'message': 'Error fetching currency rates',
+        'data': {
+          'rates': {'USD': 1.0, 'INR': 83.0, 'EUR': 0.91},
+          'btcPrice': 45000.0
+        }
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> createWithdrawal(
+      Map<String, dynamic> withdrawalData) async {
+    try {
+      print('🔄 Creating withdrawal request...');
+
+      final response = await _makeRequest(
+          endpoint: '/api/wallet/withdraw',
+          method: 'POST',
+          body: withdrawalData);
+
+      print('📥 Withdrawal response: $response');
+
+      if (response['success']) {
+        print('✅ Withdrawal request created successfully');
+        return response;
+      } else {
+        print('❌ Failed to create withdrawal: ${response['message']}');
+        return {
+          'success': false,
+          'message':
+              response['message'] ?? 'Failed to create withdrawal request'
+        };
+      }
+    } catch (e) {
+      print('❌ Error creating withdrawal: $e');
+      return {'success': false, 'message': 'Error creating withdrawal: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> claimTransaction(String transactionId) async {
+    try {
+      debugPrint('🔄 Claiming transaction: $transactionId');
+      final token = await StorageUtils.getToken();
+      if (token == null || token.isEmpty) {
+        throw AuthenticationError('No token found');
+      }
+
+      return _makeRequest(
+        endpoint: '/api/transactions/claim',
+        method: 'POST',
+        headers: {'Authorization': 'Bearer $token'},
+        body: {
+          'transactionId': transactionId,
+        },
+      );
+    } catch (e) {
+      debugPrint('❌ Error claiming transaction: $e');
+      return {
+        'success': false,
+        'message': e.toString(),
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> makeRequest({
+    required String endpoint,
+    required String method,
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+  }) async {
+    try {
+      final Uri url = Uri.parse(ApiConfig.baseUrl + endpoint);
+      print('🌐 Making $method request to: $url');
+
+      // Get auth token
+      final token = await _getAuthToken();
+
+      final Map<String, String> requestHeaders = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+        ...?headers,
+      };
+
+      print('📤 Request headers: $requestHeaders');
+
+      http.Response response;
+      switch (method.toUpperCase()) {
+        case 'GET':
+          response = await http.get(url, headers: requestHeaders);
+          break;
+        case 'POST':
+          response = await http.post(
+            url,
+            headers: requestHeaders,
+            body: body != null ? json.encode(body) : null,
+          );
+          break;
+        case 'PUT':
+          response = await http.put(
+            url,
+            headers: requestHeaders,
+            body: body != null ? json.encode(body) : null,
+          );
+          break;
+        case 'DELETE':
+          response = await http.delete(url, headers: requestHeaders);
+          break;
+        default:
+          throw Exception('Unsupported HTTP method: $method');
+      }
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      final responseData = json.decode(response.body) as Map<String, dynamic>;
+      return responseData;
+    } catch (e) {
+      print('❌ API request error: $e');
+      rethrow;
     }
   }
 }

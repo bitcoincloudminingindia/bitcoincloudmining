@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { registerValidation, loginValidation } = require('../middleware/validators');
 const { validateRequest } = require('../middleware/validate-request');
+const { User } = require('../models');
 const OTP = require('../models/otp.model');
-const User = require('../models/user.model');
 const jwt = require('jsonwebtoken');
 const {
   register,
@@ -15,7 +15,8 @@ const {
   resendVerification,
   requestPasswordReset,
   resetPassword,
-  checkEmail
+  checkEmail,
+  validateToken
 } = require('../controllers/auth.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 
@@ -33,6 +34,7 @@ router.post('/verify-email', verifyEmail);
 router.post('/resend-verification', resendVerification);
 router.post('/request-password-reset', requestPasswordReset);
 router.post('/reset-password', resetPassword);
+router.post('/validate-token', validateToken);
 
 // Protected routes (require authentication)
 router.get('/profile', authenticate, getProfile);

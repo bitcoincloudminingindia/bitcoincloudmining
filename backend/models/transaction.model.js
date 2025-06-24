@@ -10,10 +10,41 @@ const transactionSchema = new mongoose.Schema({
         type: String,
         required: true,
         ref: 'User'
-    },
-    type: {
+    }, type: {
         type: String,
-        enum: ['deposit', 'withdrawal', 'reward', 'referral', 'mining', 'tap'],
+        enum: [
+            'deposit',
+            'withdrawal',
+            'transfer',
+            'reward',
+            'referral',
+            'tap',
+            'mining',
+            'earning',
+            'claim',
+            'balance_sync',
+            'penalty',
+            'daily_reward',
+            'gaming_reward',
+            'game',
+            'streak_reward',
+            'youtube_reward',
+            'twitter_reward',
+            'telegram_reward',
+            'instagram_reward',
+            'facebook_reward',
+            'tiktok_reward',
+            'social_reward',
+            'ad_reward',
+            'withdrawal_bitcoin',
+            'withdrawal_paypal',
+            'withdrawal_paytm',
+            'Withdrawal - Bitcoin',
+            'Withdrawal - Paypal',
+            'Withdrawal - Paytm',
+            'Withdrawal - BTC',
+            'refund'
+        ],
         required: true
     }, amount: {
         type: String,
@@ -22,10 +53,9 @@ const transactionSchema = new mongoose.Schema({
     netAmount: {
         type: String,
         required: true
-    },
-    status: {
+    }, status: {
         type: String,
-        enum: ['pending', 'completed', 'failed', 'cancelled'],
+        enum: ['pending', 'completed', 'failed', 'cancelled', 'rejected'],
         default: 'pending'
     },
     currency: {
@@ -114,6 +144,4 @@ transactionSchema.pre('save', function (next) {
     next();
 });
 
-const Transaction = mongoose.model('Transaction', transactionSchema);
-
-module.exports = Transaction;
+module.exports = transactionSchema;

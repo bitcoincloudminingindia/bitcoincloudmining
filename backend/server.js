@@ -12,11 +12,14 @@ const config = require('./config/config');
 const logger = require('./utils/logger');
 const AppError = require('./utils/appError');
 const { scheduleDailyRewards } = require('./jobs/referralRewards');
+require('./jobs/referralEarningsJob');
 const authRoutes = require('./routes/auth.routes');
 const walletRoutes = require('./routes/wallet.routes');
 const rewardsRoutes = require('./routes/rewards');
 const referralRoutes = require('./routes/referral.routes');
 const transactionRoutes = require('./routes/transaction.routes');
+const marketRoutes = require('./routes/market.routes');
+const { authenticate } = require('./middleware/auth.middleware');
 const nodemailer = require('nodemailer'); // Add this import
 const mongoSanitize = require('express-mongo-sanitize'); // Add this import
 const xss = require('xss-clean');
@@ -71,6 +74,17 @@ app.use(compression());
 app.use(mongoSanitize()); // This will now work
 app.use(xss());
 
+// Debug middleware to log all requests
+app.use((req, res, next) => {
+  logger.info(`Incoming request: ${req.method} ${req.url}`, {
+    body: req.body,
+    query: req.query,
+    params: req.params,
+    path: req.path
+  });
+  next();
+});
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
@@ -78,23 +92,62 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('❌ Error:', err);
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err : {}
-  });
-});
-
 // Routes
 // Mount all routes under /api prefix
+logger.info('Registering routes...');
 app.use('/api/auth', authRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/rewards', rewardsRoutes);
 app.use('/api/referral', referralRoutes);
-app.use('/api/wallet/transactions', transactionRoutes);
+app.use('/api/referrals', referralRoutes);
+app.use('/api/wallet/transactions', transactionRoutes);  // Keep existing wallet transactions route
+app.use('/api/market', marketRoutes);
+
+// Handle transaction claim endpoint
+app.post('/api/transactions/claim', authenticate, (req, res) => {
+  const transactionController = require('./controllers/transaction.controller');
+  return transactionController.claimRejectedTransaction(req, res);
+});
+
+app.use('/api/transactions', transactionRoutes);  // Handle other transaction routes
+
+// 404 handler for unmatched routes
+app.use((req, res, next) => {
+  logger.info(`Route not found: ${req.method} ${req.url}`);
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.method} ${req.url} not found`
+  });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    success: false,
+    message: 'Internal Server Error',
+    error: err.message
+  });
+});
+
+// Ensure valid status codes are used
+app.get('/api/rewards', (req, res) => {
+  try {
+    // Your rewards logic here
+    res.status(200).json({
+      success: true,
+      data: {
+        // Your data here
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching rewards',
+      error: error.message
+    });
+  }
+});
 
 // Initialize daily referral rewards job
 scheduleDailyRewards();
@@ -239,6 +292,19 @@ app.post('/auth/register', async (req, res) => {
     });
   }
 });
+
+// Claimed rewards info endpoint
+const rewardsController = require('./controllers/rewardsController');
+
+// Claimed rewards info endpoint
+app.get('/api/rewards/claimed', authenticate, rewardsController.getClaimedRewardsInfo);
+
+// Referral controller
+const referralController = require('./controllers/referral.controller');
+
+// Add direct endpoints for referral list and earnings
+app.get('/api/referral/list', authenticate, referralController.getReferrals);
+app.get('/api/referral/earnings', authenticate, referralController.getReferralEarnings);
 
 // Start server
 const PORT = process.env.PORT || 5000;

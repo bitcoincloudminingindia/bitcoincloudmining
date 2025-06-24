@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
-import 'package:bitcoin_cloud_mining/services/custom_ad_service.dart';
+import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -34,7 +34,7 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
   double tapBTCValue = 0.0000000000000001;
   Timer? autoMinerTimer;
   Timer? boostTimer;
-  final CustomAdService _adService = CustomAdService();
+  final AdService _adService = AdService();
 
   List<Task> taskList = [
     Task(title: '200 Taps', target: 200),
@@ -58,7 +58,7 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
     });
 
     try {
-      await _adService.loadBannerAd();
+      _adService.loadBannerAd(); // No await, as this is a void method
       await _adService.loadRewardedAd();
 
       if (mounted) {
@@ -251,7 +251,7 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
   void handleTap() {
     tapCount++;
 
-    if (tapCount % 10 == 0) {
+    if (tapCount % 25 == 0) {
       showRewardedAd(executeTapLogic);
     } else {
       executeTapLogic();
@@ -436,66 +436,86 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
                     ),
                     Expanded(
                       child: Center(
-                        child: GestureDetector(
-                          onTap: handleTap,
-                          child: Container(
-                            height: 150,
-                            width: 150,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [Colors.amber, Colors.deepOrange],
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: handleTap,
+                              child: Container(
+                                height: 150,
+                                width: 150,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [Colors.amber, Colors.deepOrange],
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Color.fromRGBO(255, 255, 0, 0.5),
+                                      blurRadius: 12,
+                                      offset: Offset(0, 8),
+                                    )
+                                  ],
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.flash_on,
+                                    color: Colors.white,
+                                    size: 70,
+                                  ),
+                                ),
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Color.fromRGBO(255, 255, 0, 0.5),
-                                  blurRadius: 12,
-                                  offset: Offset(0, 8),
-                                )
+                            ),
+                            const SizedBox(height: 24),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                ElevatedButton(
+                                  onPressed: activateAutoMiner,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: isAutoMinerActive
+                                        ? Colors.grey
+                                        : Colors.greenAccent,
+                                  ),
+                                  child: Text(isAutoMinerActive
+                                      ? 'Auto Miner ON'
+                                      : 'Start Auto Miner'),
+                                ),
+                                const SizedBox(width: 16),
+                                ElevatedButton(
+                                  onPressed: activateBoost,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orangeAccent,
+                                  ),
+                                  child: const Text('Boost Mining'),
+                                ),
                               ],
                             ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.flash_on,
-                                color: Colors.white,
-                                size: 70,
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (!isAdLoaded && adError != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Column(
+                          children: [
+                            Text(
+                              adError!,
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: _initializeAds,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Retry Loading Ad'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orangeAccent,
                               ),
                             ),
-                          ),
+                          ],
                         ),
-                      ),
-                    ),
-                    if (isAdLoaded)
-                      Container(
-                        alignment: Alignment.center,
-                        width: MediaQuery.of(context).size.width,
-                        height: 50,
-                        child: _adService.getBannerAd(),
                       ),
                     const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        ElevatedButton(
-                          onPressed: activateAutoMiner,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isAutoMinerActive
-                                ? Colors.grey
-                                : Colors.greenAccent,
-                          ),
-                          child: Text(isAutoMinerActive
-                              ? 'Auto Miner ON'
-                              : 'Start Auto Miner'),
-                        ),
-                        ElevatedButton(
-                          onPressed: activateBoost,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orangeAccent,
-                          ),
-                          child: const Text('Boost Mining'),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),

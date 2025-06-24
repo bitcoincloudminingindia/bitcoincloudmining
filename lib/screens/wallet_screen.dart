@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:bitcoin_cloud_mining/models/transaction.dart';
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
+import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:bitcoin_cloud_mining/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -49,6 +50,7 @@ class _WalletScreenState extends State<WalletScreen>
   bool _isProcessing = false;
   String? _errorMessage;
   double _btcAmount = 0;
+  final AdService _adService = AdService();
 
   @override
   void initState() {
@@ -67,6 +69,13 @@ class _WalletScreenState extends State<WalletScreen>
     _updateLocalCurrencyRates();
     _startRefreshTimer();
     _initializeLocalNotifications();
+    _initializeAds();
+  }
+
+  Future<void> _initializeAds() async {
+    await _adService.initialize();
+    // Pre-load a rewarded ad
+    await _adService.loadRewardedAd();
   }
 
   @override
@@ -81,6 +90,7 @@ class _WalletScreenState extends State<WalletScreen>
     _currencyUpdateTimer?.cancel();
     _refreshTimer?.cancel();
     _walletProvider.stopLivePriceUpdates();
+    _adService.dispose();
     super.dispose();
   }
 
@@ -768,7 +778,7 @@ class _WalletScreenState extends State<WalletScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TabBar(
+            const TabBar(
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white70,
               indicatorColor: Colors.white,
@@ -777,27 +787,9 @@ class _WalletScreenState extends State<WalletScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.pending_actions, size: 18),
-                      const SizedBox(width: 4),
-                      const Text('Pending', style: TextStyle(fontSize: 12)),
-                      if (pendingTransactions.isNotEmpty)
-                        Container(
-                          margin: const EdgeInsets.only(left: 4),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.orange,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            pendingTransactions.length.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                      Icon(Icons.pending_actions, size: 18),
+                      SizedBox(width: 4),
+                      Text('Pending', style: TextStyle(fontSize: 12)),
                     ],
                   ),
                 ),
@@ -805,27 +797,9 @@ class _WalletScreenState extends State<WalletScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.check_circle, size: 18),
-                      const SizedBox(width: 4),
-                      const Text('Completed', style: TextStyle(fontSize: 12)),
-                      if (completedTransactions.isNotEmpty)
-                        Container(
-                          margin: const EdgeInsets.only(left: 4),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            completedTransactions.length.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                      Icon(Icons.check_circle, size: 18),
+                      SizedBox(width: 4),
+                      Text('Completed', style: TextStyle(fontSize: 12)),
                     ],
                   ),
                 ),
@@ -833,27 +807,9 @@ class _WalletScreenState extends State<WalletScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.cancel, size: 18),
-                      const SizedBox(width: 4),
-                      const Text('Rejected', style: TextStyle(fontSize: 12)),
-                      if (rejectedTransactions.isNotEmpty)
-                        Container(
-                          margin: const EdgeInsets.only(left: 4),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            rejectedTransactions.length.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                      Icon(Icons.cancel, size: 18),
+                      SizedBox(width: 4),
+                      Text('Rejected', style: TextStyle(fontSize: 12)),
                     ],
                   ),
                 ),
@@ -1537,7 +1493,8 @@ class _WalletScreenState extends State<WalletScreen>
       // Convert method to backend format
       String paymentMethod;
       if (_selectedMethod == 'Bitcoin') {
-        paymentMethod = 'BTC';
+        paymentMethod =
+            'Crypto'; // Changed from 'BTC' to 'Crypto' to match backend validation
       } else if (_selectedMethod == 'Paytm') {
         paymentMethod = 'Paytm';
       } else if (_selectedMethod == 'Paypal') {
@@ -1555,8 +1512,14 @@ class _WalletScreenState extends State<WalletScreen>
         throw Exception('Insufficient balance');
       }
 
-      // Sync balance before withdrawal
+      // Initialize and sync wallet before withdrawal
+      await _walletProvider.initializeWallet();
       await _syncWalletBalance();
+
+      // Double check balance after initialization
+      if (btcAmount > _walletProvider.btcBalance) {
+        throw Exception('Insufficient balance after wallet sync');
+      }
 
       final success = await _walletProvider.withdrawFunds(
         method: paymentMethod,
@@ -1881,20 +1844,99 @@ class _WalletScreenState extends State<WalletScreen>
 
   void _handleClaim(Transaction transaction) async {
     try {
-      await _walletProvider.claimRejectedTransaction(transaction.id);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Transaction claimed successfully'),
-          backgroundColor: Colors.green,
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) => const Center(
+          child: CircularProgressIndicator(),
         ),
       );
+
+      // Load rewarded ad if not loaded
+      await _adService.loadRewardedAd();
+
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Show rewarded ad
+      final bool adShown = await _adService.showRewardedAd(
+        onRewarded: (double rewardAmount) async {
+          try {
+            // Show claiming progress
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) => const ProcessingDialog(
+                message: 'Claiming transaction...',
+              ),
+            );
+
+            // Process the claim
+            await _walletProvider.claimRejectedTransaction(transaction.id);
+
+            // Close processing dialog
+            if (context.mounted) {
+              Navigator.of(context).pop();
+            }
+
+            // Show success message
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                      'Transaction claimed successfully! Reward added to your balance.'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+
+            // Refresh wallet data
+            await _loadData();
+          } catch (e) {
+            // Close processing dialog if open
+            if (context.mounted && Navigator.canPop(context)) {
+              Navigator.of(context).pop();
+            }
+
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to claim transaction: ${e.toString()}'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
+        },
+        onAdDismissed: _adService.loadRewardedAd,
+      );
+
+      if (!adShown && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content:
+                Text('Please watch the reward video to claim the transaction'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to claim transaction: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // Close any open dialogs
+      if (context.mounted && Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }

@@ -1,5 +1,6 @@
-const User = require('../models/user.model');
-const Transaction = require('../models/transaction.model');
+const mongoose = require('mongoose');
+const { User, Wallet, Transaction } = require('../models');
+const ClaimCheck = require('../models/claimCheck.model');
 const ApiError = require('../utils/ApiError');
 const { formatBTC, formatUSD, BigNumber, toBigNumber } = require('../utils/format');
 const { sendEmail } = require('../utils/email');
@@ -13,54 +14,30 @@ const logger = require('../utils/logger');
 
 // Create transaction with robust error handling
 exports.createTransaction = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const userId = req.user.userId;
     const { type, amount, netAmount, status, description, currency = 'BTC', destination, details = {} } = req.body;
 
     // Validate required fields
     if (!type || !amount) {
-      throw new ApiError(400, 'Type and amount are required');
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'Type and amount are required'
+      });
     }
 
-    // Get or create wallet
-    const wallet = await getOrCreateWallet(userId);
+    // Get or create wallet using the session
+    const wallet = await getOrCreateWallet(userId, session);
     logger.info('Got wallet for transaction:', { userId, walletId: wallet._id });
 
-    // Validate wallet state
-    if (!wallet || typeof wallet.balance !== 'string') {
-      throw new ApiError(500, 'Invalid wallet state');
-    }
-
-    // Ensure wallet has a balance
-    if (!wallet.balance) {
-      wallet.balance = '0.000000000000000000';
-      await wallet.save();
-    }
-
-    // Calculate balances with BigNumber for precision
-    const currentBalance = toBigNumber(wallet.balance);
-    const transactionAmount = toBigNumber(netAmount || amount);
-
-    // Format the current balance and transaction amount
-    const formattedCurrentBalance = formatBTC(currentBalance);
-    const formattedTransactionAmount = formatBTC(transactionAmount);
-
-    // Calculate new balance based on transaction type
-    let newBalance;
-    if (type === 'withdrawal') {
-      if (currentBalance.isLessThan(transactionAmount)) {
-        throw new ApiError(400, 'Insufficient balance');
-      }
-      newBalance = currentBalance.minus(transactionAmount);
-    } else {
-      newBalance = currentBalance.plus(transactionAmount);
-    }
-
-    // Format all amounts for consistency
+    // Format amounts
     const formattedAmount = formatBTC(amount);
     const formattedNetAmount = formatBTC(netAmount || amount);
-    const formattedBalanceBefore = formatBTC(currentBalance);
-    const formattedBalanceAfter = formatBTC(newBalance);
 
     // Get exchange rate with fallback
     let exchangeRate = DEFAULT_BTC_RATE;
@@ -72,13 +49,30 @@ exports.createTransaction = async (req, res) => {
       logger.warn('Using default exchange rate:', { rate: exchangeRate, error: error.message });
     }
 
-    // Generate transaction ID
-    const transactionId = generateTransactionId();
+    // Calculate localized amount for withdrawals with 10 decimal precision
+    let finalLocalAmount = localAmount;
+    let finalExchangeRate = exchangeRate;
 
-    // Create transaction with full details
-    const transaction = await Transaction.create({
-      transactionId,
-      userId,
+    if (type.includes('withdrawal')) {
+      try {
+        if (type.includes('paytm')) {
+          // For Paytm, convert BTC to INR
+          finalExchangeRate = await getExchangeRate('BTC', 'INR');
+          finalLocalAmount = new BigNumber(formattedAmount).times(finalExchangeRate).toFixed(10);
+          currency = 'INR';
+        } else if (type.includes('paypal')) {
+          // For PayPal, we already have USD rate from earlier
+          finalLocalAmount = new BigNumber(formattedAmount).times(exchangeRate).toFixed(10);
+          currency = 'USD';
+        }
+      } catch (error) {
+        logger.warn('Error calculating local amount:', { error: error.message });
+      }
+    }
+
+    // Create transaction
+    const transactionData = {
+      transactionId: generateTransactionId(),
       type,
       amount: formattedAmount,
       netAmount: formattedNetAmount,
@@ -86,79 +80,65 @@ exports.createTransaction = async (req, res) => {
       description,
       currency,
       destination,
-      exchangeRate,
-      localAmount,
+      exchangeRate: finalExchangeRate,
+      localAmount: finalLocalAmount,
       details: {
         ...details,
-        balanceBefore: formattedBalanceBefore,
-        balanceAfter: formattedBalanceAfter,
-        exchangeRate,
-        localAmount,
-        originalAmount: formattedAmount,
-        originalNetAmount: formattedNetAmount
-      },
-      timestamp: new Date()
-    });
-
-    // Update wallet balance and add transaction
-    wallet.balance = formattedBalanceAfter;
-
-    // Initialize transactions array if needed
-    if (!wallet.transactions) {
-      wallet.transactions = [];
-    }
-
-    // Add transaction to wallet's history
-    wallet.transactions.push(transaction);
-
-    // Save wallet with retry mechanism
-    let retries = 3;
-    while (retries > 0) {
-      try {
-        await wallet.save();
-        break;
-      } catch (error) {
-        retries--;
-        if (retries === 0) {
-          logger.error('Failed to save wallet after retries:', { error, userId });
-          await Transaction.findByIdAndDelete(transaction._id);
-          throw new ApiError(500, 'Failed to save wallet after retries');
-        }
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s between retries
+        exchangeRate: finalExchangeRate,
+        localAmount: finalLocalAmount,
+        originalCurrency: currency
       }
-    }
+    };
 
-    // Log success
-    logger.info('Transaction created successfully:', {
-      transactionId,
-      userId,
-      type,
-      amount: formattedAmount,
-      newBalance: formattedBalanceAfter
-    });
+    try {
+      // Add transaction to wallet with balance update
+      await wallet.addTransaction(transactionData);
 
-    // Send notification for rewards/referrals
-    if (type === 'reward' || type === 'referral') {
-      await sendNotification(userId, {
-        title: 'New Earning!',
-        message: `You earned ${formattedAmount} BTC from ${type}`,
-        type: 'earning'
-      }).catch(error => {
-        logger.warn('Failed to send notification:', { error, userId });
+      // Log success
+      logger.info('Transaction created successfully:', {
+        transactionId: transactionData.transactionId,
+        userId,
+        type,
+        amount: formattedAmount,
+        newBalance: wallet.balance
       });
+
+      // Send notification for rewards/referrals
+      if (type === 'reward' || type === 'referral') {
+        await sendNotification(userId, {
+          title: 'New Earning!',
+          message: `You earned ${formattedAmount} BTC from ${type}`,
+          type: 'earning'
+        }).catch(error => {
+          logger.warn('Failed to send notification:', { error, userId });
+        });
+      }
+
+      await session.commitTransaction();
+
+      return res.status(201).json({
+        success: true,
+        data: {
+          transaction: transactionData,
+          wallet: {
+            balance: wallet.balance,
+            pendingBalance: wallet.pendingBalance
+          }
+        }
+      });
+    } catch (error) {
+      throw error;
     }
-
-    res.status(201).json({
-      success: true,
-      data: transaction
-    });
-
   } catch (error) {
+    await session.abortTransaction();
     logger.error('Error in createTransaction:', error);
-    res.status(error.status || 500).json({
+    return res.status(500).json({
       success: false,
-      message: error.message || 'Error creating transaction'
+      message: 'Error creating transaction',
+      error: error.message
     });
+  } finally {
+    session.endSession();
   }
 };
 
@@ -167,8 +147,14 @@ exports.getUserTransactions = async (req, res) => {
   try {
     const wallet = await getOrCreateWallet(req.user.userId);
 
+    const transactions = await Transaction.find({
+      userId: req.user.userId
+      // Remove or adjust status filter if you want to include pending
+      // status: { $in: ['completed', 'pending'] }
+    }).sort({ timestamp: -1 });
+
     // Format transactions for response
-    const transactions = wallet.transactions.map(tx => {
+    const formattedTransactions = transactions.map(tx => {
       const txObj = tx.toObject();
       try {
         // Format amounts
@@ -185,6 +171,27 @@ exports.getUserTransactions = async (req, res) => {
           txObj.netAmount = formatBTC(txObj.netAmount);
         } else {
           txObj.netAmount = txObj.amount;
+        }
+
+        // Format local amount for withdrawals with 10 decimal precision
+        if (txObj.type.includes('withdrawal')) {
+          // Get local amount and exchange rate from root level or details
+          const localAmt = txObj.localAmount || txObj.details?.localAmount || '0';
+          const rate = txObj.exchangeRate || txObj.details?.exchangeRate || '1';
+
+          // Format local amount with 10 decimals and proper currency symbol
+          if (txObj.type.includes('paytm')) {
+            const formattedAmount = new BigNumber(localAmt).toFixed(10, BigNumber.ROUND_DOWN);
+            txObj.localAmount = formattedAmount !== '0.0000000000' ? `₹${formattedAmount}` : null;
+            txObj.localCurrency = 'INR';
+          } else if (txObj.type.includes('paypal')) {
+            const formattedAmount = new BigNumber(localAmt).toFixed(10, BigNumber.ROUND_DOWN);
+            txObj.localAmount = formattedAmount !== '0.0000000000' ? `$${formattedAmount}` : null;
+            txObj.localCurrency = 'USD';
+          }
+
+          // Format exchange rate with 10 decimals
+          txObj.exchangeRate = new BigNumber(rate).toFixed(10, BigNumber.ROUND_DOWN);
         }
 
         // Format balance changes if present
@@ -217,7 +224,7 @@ exports.getUserTransactions = async (req, res) => {
     res.json({
       success: true,
       data: {
-        transactions: transactions || []
+        transactions: formattedTransactions || []
       }
     });
   } catch (error) {
@@ -317,9 +324,227 @@ exports.getTransactionStats = async (req, res) => {
   }
 };
 
+// Claim rejected transaction
+exports.claimRejectedTransaction = async (req, res) => {
+  logger.info('Claim rejected transaction request received:', {
+    body: req.body,
+    path: req.path,
+    method: req.method
+  });
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { transactionId } = req.body;
+    if (!transactionId) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'TransactionId is required'
+      });
+    }
+
+    const userId = req.user.userId;
+    logger.info('Looking for transaction:', { transactionId, userId });
+
+    // Check if transaction was already claimed using ClaimCheck
+    const existingClaim = await ClaimCheck.findOne({
+      originalTransactionId: transactionId,
+      userId: req.user._id,
+      type: 'claim',
+      status: 'completed'
+    }).session(session);
+
+    if (existingClaim) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'This transaction has already been claimed'
+      });
+    }
+
+    // Find the wallet
+    const wallet = await Wallet.findOne({ userId }).session(session);
+    if (!wallet) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({
+        success: false,
+        message: 'Wallet not found'
+      });
+    }
+
+    // Find transaction in wallet's transactions array
+    const walletTransaction = wallet.transactions.find(t =>
+      t.transactionId === transactionId ||
+      t._id?.toString() === transactionId ||
+      t.id === transactionId
+    );
+
+    if (!walletTransaction) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({
+        success: false,
+        message: 'Transaction not found in wallet'
+      });
+    }
+
+    // Verify transaction is rejected/failed
+    const isRejected = ['rejected', 'REJECTED', 'failed', 'FAILED'].includes(walletTransaction.status?.toUpperCase());
+    if (!isRejected) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'Transaction is not in rejected status'
+      });
+    }
+
+    // Validate amount exists
+    if (!walletTransaction.amount) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid transaction amount'
+      });
+    }
+
+    logger.info('Processing refund for transaction:', {
+      id: walletTransaction.id,
+      amount: walletTransaction.amount,
+      type: walletTransaction.type,
+      status: walletTransaction.status
+    });
+
+    // Calculate refund amount and new balance
+    const refundAmount = toBigNumber(walletTransaction.amount);
+    const currentBalance = toBigNumber(wallet.balance || '0');
+    const newBalance = currentBalance.plus(refundAmount).toFixed(18);
+
+    // Create claim transaction
+    const claimTransaction = {
+      transactionId: generateTransactionId(),
+      userId,
+      type: 'deposit',
+      amount: walletTransaction.amount,
+      netAmount: walletTransaction.amount,
+      status: 'completed',
+      timestamp: new Date(),
+      description: 'Rejected transaction claimed',
+      currency: 'BTC',
+      details: {
+        claimType: 'transaction_claim',
+        originalTransactionId: walletTransaction.id,
+        originalType: walletTransaction.type,
+        originalAmount: walletTransaction.amount,
+        reason: 'Claimed rejected transaction'
+      }
+    };
+
+    // Create ClaimCheck record
+    const claimCheck = new ClaimCheck({
+      userId: req.user._id,
+      transactionId: claimTransaction.transactionId,
+      originalTransactionId: transactionId,
+      amount: walletTransaction.amount,
+      type: 'claim',
+      status: 'completed',
+      description: 'Rejected transaction claim',
+      details: {
+        originalType: walletTransaction.type,
+        walletTransactionId: walletTransaction.id,
+        claimTransactionId: claimTransaction.transactionId
+      }
+    });
+
+    // Save ClaimCheck
+    await claimCheck.save({ session });
+
+    // Update wallet balance and add claim transaction
+    await Wallet.updateOne(
+      { userId },
+      {
+        $set: { balance: newBalance },
+        $push: { transactions: claimTransaction }
+      },
+      { session }
+    );
+
+    // Update user balance
+    await User.updateOne(
+      { userId },
+      {
+        $set: {
+          balance: newBalance,
+          lastBalanceUpdate: new Date()
+        }
+      },
+      { session }
+    );
+
+    // Add claim transaction to Transaction collection
+    await Transaction.create([claimTransaction], { session });
+
+    // Update original transaction status
+    await Wallet.updateOne(
+      {
+        userId,
+        'transactions.id': walletTransaction.id
+      },
+      {
+        $set: {
+          'transactions.$.status': 'claimed',
+          'transactions.$.claimedAt': new Date()
+        }
+      },
+      { session }
+    );
+
+    // Commit the transaction
+    await session.commitTransaction();
+
+    logger.info('Transaction claimed successfully:', {
+      userId,
+      transactionId,
+      newBalance,
+      claimCheckId: claimCheck._id
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Transaction claimed successfully',
+      data: {
+        newBalance,
+        transaction: claimTransaction,
+        claimCheck: {
+          id: claimCheck._id,
+          status: claimCheck.status
+        }
+      }
+    });
+
+  } catch (error) {
+    await session.abortTransaction();
+    logger.error('Error claiming transaction:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error claiming transaction',
+      error: error.message
+    });
+  } finally {
+    session.endSession();
+  }
+};
+
 module.exports = {
   createTransaction: exports.createTransaction,
   getUserTransactions: exports.getUserTransactions,
   getTransactionById: exports.getTransactionById,
-  getTransactionStats: exports.getTransactionStats
+  getTransactionStats: exports.getTransactionStats,
+  claimRejectedTransaction: exports.claimRejectedTransaction
 };

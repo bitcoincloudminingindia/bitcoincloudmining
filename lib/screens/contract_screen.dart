@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
-import 'package:bitcoin_cloud_mining/services/custom_ad_service.dart';
+import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
@@ -18,7 +18,7 @@ class ContractScreen extends StatefulWidget {
 class _ContractScreenState extends State<ContractScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
-  final CustomAdService _adService = CustomAdService();
+  final AdService _adService = AdService();
   double totalEarnedBTC = 0.0;
   TextEditingController btcAddressController = TextEditingController();
   TextEditingController withdrawAmountController = TextEditingController();

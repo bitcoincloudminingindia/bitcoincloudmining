@@ -1,4 +1,4 @@
-const Wallet = require('../models/wallet.model');
+const { Wallet } = require('../models');
 const { formatBTC } = require('./format');
 const logger = require('./logger');
 
@@ -26,23 +26,41 @@ exports.initializeWallet = async (userId) => {
 };
 
 // Get or create wallet utility
-exports.getOrCreateWallet = async (userId) => {
+exports.getOrCreateWallet = async (userId, session = null) => {
     try {
-        // Find existing wallet
-        let wallet = await Wallet.findOne({ userId });
+        // Find existing wallet, optionally using session
+        const query = { userId };
+        const options = session ? { session } : {};
+
+        let wallet = await Wallet.findOne(query, null, options);
 
         // Create new wallet if not found
         if (!wallet) {
             wallet = new Wallet({
                 userId,
-                balance: '0.000000000000000000'
+                balance: '0.000000000000000000',
+                pendingBalance: '0.000000000000000000',
+                currency: 'BTC',
+                transactions: [],
+                balanceHistory: [{
+                    balance: '0.000000000000000000',
+                    timestamp: new Date(),
+                    type: 'initial'
+                }]
             });
-            await wallet.save();
+
+            if (session) {
+                await wallet.save({ session });
+            } else {
+                await wallet.save();
+            }
+
+            logger.info('Created new wallet:', { userId, walletId: wallet._id });
         }
 
         return wallet;
     } catch (error) {
-        console.error('Error in getOrCreateWallet:', error);
+        logger.error('Error in getOrCreateWallet:', error);
         throw error;
     }
 };

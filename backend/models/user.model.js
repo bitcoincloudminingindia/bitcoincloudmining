@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const { Schema } = require('mongoose');
 const BigNumber = require('bignumber.js');
 const jwt = require('jsonwebtoken');
-const Wallet = require('./wallet.model');
+// We'll get Wallet model via mongoose.model('Wallet') where needed
 const { generateReferralCode } = require('../utils/generators');
 
 // Indexes are managed in config/database.js
@@ -717,8 +717,5 @@ userSchema.post('findOne', function (doc) {
   console.log('Debug - User find result:', doc ? 'Found user with ID: ' + doc.userId : 'No user found');
 });
 
-// Create the model
-const User = mongoose.model('User', userSchema);
-
-// Export the model
-module.exports = User;
+// Export the schema
+module.exports = mongoose.model('User', userSchema);
