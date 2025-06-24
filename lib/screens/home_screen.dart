@@ -66,6 +66,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Timer? _uiUpdateTimer; // Add a timer for UI updates only
 
+  // Counter for sci-fi object taps
+  int _sciFiTapCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -1415,6 +1418,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _percentage = (_percentage + 1) % 100;
       _currentColor =
           _currentColor == Colors.blue ? Colors.purple : Colors.blue;
+      _sciFiTapCount++;
     });
     try {
       final walletProvider = context.read<WalletProvider>();
@@ -1427,6 +1431,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     } catch (e) {
       Fluttertoast.showToast(
           msg: 'Failed to add tap reward: \\${e.toString()}');
+    }
+    // Show rewarded ad every 10 taps
+    if (_sciFiTapCount >= 10) {
+      _sciFiTapCount = 0;
+      try {
+        final bool adWatched = await _adService.showRewardedAd(
+          onRewarded: (double amount) async {
+            if (!mounted) return;
+            Fluttertoast.showToast(msg: 'Thanks for watching the ad!');
+          },
+          onAdDismissed: () {
+            if (!mounted) return;
+            Fluttertoast.showToast(msg: 'Watch the full ad to get a bonus!');
+          },
+        );
+        if (!adWatched && mounted) {
+          Fluttertoast.showToast(
+              msg: 'Ad not available. Please try again later.');
+        }
+      } catch (e) {
+        if (mounted) {
+          Fluttertoast.showToast(msg: 'Error showing ad: \\${e.toString()}');
+        }
+      }
     }
   }
 

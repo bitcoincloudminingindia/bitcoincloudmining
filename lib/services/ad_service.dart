@@ -324,8 +324,14 @@ class AdService {
 
   // Load rewarded ad
   Future<void> loadRewardedAd() async {
-    if (_isRewardedAdLoaded && _isCachedAdValid('rewarded')) return;
-    if (_isRewardedAdLoading) return; // Prevent parallel loads
+    if (_isRewardedAdLoaded && _isCachedAdValid('rewarded')) {
+      debugPrint('[AdService] loadRewardedAd: Already loaded and cached.');
+      return;
+    }
+    if (_isRewardedAdLoading) {
+      debugPrint('[AdService] loadRewardedAd: Already loading.');
+      return; // Prevent parallel loads
+    }
     _isRewardedAdLoading = true;
 
     await _loadAdWithRetry(
@@ -334,17 +340,21 @@ class AdService {
         final adUnitId = _getAdUnitId('rewarded');
         if (adUnitId.isEmpty) throw Exception('Invalid rewarded ad unit ID');
 
+        debugPrint('[AdService] loadRewardedAd: Loading rewarded ad...');
         await RewardedAd.load(
           adUnitId: adUnitId,
           request: const AdRequest(),
           rewardedAdLoadCallback: RewardedAdLoadCallback(
             onAdLoaded: (ad) {
+              debugPrint(
+                  '[AdService] loadRewardedAd: Rewarded ad loaded successfully.');
               _rewardedAd = ad;
               _isRewardedAdLoaded = true;
               _isRewardedAdLoading = false;
-              debugPrint('Rewarded ad loaded');
             },
             onAdFailedToLoad: (error) {
+              debugPrint(
+                  '[AdService] loadRewardedAd: Failed to load rewarded ad: ${error.message} (${error.code})');
               _isRewardedAdLoaded = false;
               _isRewardedAdLoading = false;
               throw error;
@@ -355,6 +365,9 @@ class AdService {
       (success) {
         _isRewardedAdLoaded = success;
         _isRewardedAdLoading = false;
+        if (!success) {
+          debugPrint('[AdService] loadRewardedAd: All retry attempts failed.');
+        }
       },
     );
   }

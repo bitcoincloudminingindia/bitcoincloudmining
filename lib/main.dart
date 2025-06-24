@@ -59,6 +59,11 @@ void main() {
   if (!kIsWeb) {
     try {
       MobileAds.instance.initialize();
+      // Register native ad factory only on Android/iOS, and only if implemented natively
+      if (Platform.isAndroid || Platform.isIOS) {
+        // MobileAds.instance.registerNativeAdFactory('listTile', ...);
+        // Register your native ad factory in native code, not Dart.
+      }
     } catch (e) {
       print('Mobile Ads initialization error: $e');
     }
@@ -187,4 +192,3 @@ class _MyAppState extends State<MyApp> with WindowListener {
     );
   }
 }
-

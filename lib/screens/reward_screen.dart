@@ -138,9 +138,6 @@ class _RewardScreenState extends State<RewardScreen>
                   ),
                 ),
 
-                // Balance Card
-                const BalanceDisplay(),
-
                 // Tab Bar
                 Container(
                   margin:
@@ -373,109 +370,6 @@ class RewardClaimHandler {
     } catch (e) {
       _showErrorMessage(e.toString());
     }
-  }
-}
-
-class BalanceDisplay extends StatelessWidget {
-  const BalanceDisplay({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final rewardProvider = Provider.of<RewardProvider>(context);
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF3949AB), Color(0xFF1A237E)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(51),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const Text(
-            'Total Rewards Claimed',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.currency_bitcoin,
-                color: Colors.amber,
-                size: 32,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${rewardProvider.lifetimeRewards.toStringAsFixed(16)} BTC',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildStatItem(
-                context,
-                'Today Claimed',
-                '${rewardProvider.todayRewards.toStringAsFixed(16)} BTC',
-                Icons.today,
-              ),
-              _buildStatItem(
-                context,
-                'Streak',
-                '${rewardProvider.streakCount} days',
-                Icons.local_fire_department,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(
-      BuildContext context, String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.white70, size: 20),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
   }
 }
 

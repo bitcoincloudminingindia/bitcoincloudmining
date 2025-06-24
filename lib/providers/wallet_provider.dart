@@ -211,8 +211,10 @@ class WalletProvider extends ChangeNotifier {
       print('Type: $type');
       print('Description: $description');
 
-      // Update balance
-      final newBalance = _btcBalance + amount;
+      // Always fetch the latest balance from backend before adding
+      await loadWallet();
+      final latestBalance = _btcBalance;
+      final newBalance = latestBalance + amount;
 
       // Create transaction data
       final transactionData = {
