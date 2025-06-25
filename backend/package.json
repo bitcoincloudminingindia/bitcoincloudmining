@@ -82,6 +82,13 @@
     "mongodb-memory-server-core": "^9.0.1",
     "supertest": "^6.3.4"
   },
+
+  "overrides": {
+  "socks": "2.3.3",
+  "smart-buffer": "4.1.0",
+  "mongodb": "5.7.0"
+  },
+
   "engines": {
     "node": "20.x",
     "npm": ">=9.0.0"
