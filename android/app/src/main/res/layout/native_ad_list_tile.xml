@@ -6,14 +6,50 @@
     android:background="@android:color/white"
     android:padding="8dp">
 
-    <TextView
-        android:id="@+id/ad_headline"
-        android:layout_width="wrap_content"
+    <!-- ✅ Must have one direct child layout -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="#000"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+        android:orientation="vertical">
 
-    <!-- Add more views for other ad assets as needed (icon, callToAction, etc.) -->
+        <!-- Media (image or video) -->
+        <com.google.android.gms.ads.nativead.MediaView
+            android:id="@+id/ad_media"
+            android:layout_width="match_parent"
+            android:layout_height="180dp"
+            android:layout_marginBottom="8dp" />
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- App icon -->
+            <ImageView
+                android:id="@+id/ad_app_icon"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="8dp" />
+
+            <!-- Headline -->
+            <TextView
+                android:id="@+id/ad_headline"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="#000"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <!-- CTA button -->
+            <Button
+                android:id="@+id/ad_call_to_action"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#3F51B5"
+                android:textColor="@android:color/white"
+                android:text="Install" />
+        </LinearLayout>
+    </LinearLayout>
 </com.google.android.gms.ads.nativead.NativeAdView>
