@@ -23,7 +23,6 @@ const referralSchema = new Schema({
   },
   referralCode: {
     type: String,
-    unique: true,
     default: () => 'REF' + crypto.randomBytes(6).toString('hex').toUpperCase()
   },
   referredUserDetails: {
@@ -362,7 +361,6 @@ referralSchema.methods.updateReferredUserBalance = async function () {
 };
 
 // Create indexes
-referralSchema.index({ referrerId: 1, referredId: 1 }, { unique: true });
 referralSchema.index({ referralCode: 1 }, { unique: true });
 referralSchema.index({ status: 1 });
 referralSchema.index({ 'earnings': -1 });
