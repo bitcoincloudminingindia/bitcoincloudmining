@@ -111,6 +111,19 @@ app.post('/api/transactions/claim', authenticate, (req, res) => {
 
 app.use('/api/transactions', transactionRoutes);  // Handle other transaction routes
 
+// Root endpoint for health/status
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'Bitcoin Cloud Mining API is running',
+    version: '1.0.0'
+  });
+});
+// Optionally handle HEAD / for health checks
+app.head('/', (req, res) => {
+  res.status(200).end();
+});
+
 // 404 handler for unmatched routes
 app.use((req, res, next) => {
   logger.info(`Route not found: ${req.method} ${req.url}`);
@@ -197,19 +210,6 @@ const connectDB = require('./config/database');
 connectDB();
 
 // MongoDB connection events are handled in config/database.js
-
-// Root endpoint for health/status
-app.get('/', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    message: 'Bitcoin Cloud Mining API is running',
-    version: '1.0.0'
-  });
-});
-// Optionally handle HEAD / for health checks
-app.head('/', (req, res) => {
-  res.status(200).end();
-});
 
 // Register endpoint
 app.post('/auth/register', async (req, res) => {
