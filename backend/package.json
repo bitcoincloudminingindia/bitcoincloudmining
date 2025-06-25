@@ -30,7 +30,8 @@
     "test": "jest --detectOpenHandles --forceExit",
     "test:watch": "cross-env NODE_ENV=test jest --watch",
     "test:coverage": "cross-env NODE_ENV=test jest --coverage",
-    "preinstall": "npx npm-force-resolutions"
+    "preinstall": "npx npm-force-resolutions",
+    "prod": "cross-env NODE_ENV=production node server.js"
   },
   "dependencies": {
     "axios": "^1.9.0",
@@ -61,7 +62,7 @@
     "nodemon": "^3.1.10",
     "safe-buffer": "^5.2.1",
     "semver": "^7.5.4",
-    "socket.io": "^4.8.1",
+    "socket.io": "^4.5.4",
     "socket.io-parser": "^4.2.4",
     "uuid": "^11.1.0",
     "winston": "^3.11.0",

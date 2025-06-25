@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema({
   userId: {
     type: String,
     required: true,
-    unique: true,
+    // unique: true, // Removed to avoid duplicate index
     default: () => 'USER' + crypto.randomBytes(6).toString('hex').toUpperCase()
   },
   fullName: {
@@ -89,7 +89,7 @@ const userSchema = new mongoose.Schema({
   },
   referralCode: {
     type: String,
-    unique: true
+    // unique: true, // Removed to avoid duplicate index
   },
   referredBy: {
     type: mongoose.Schema.Types.ObjectId,

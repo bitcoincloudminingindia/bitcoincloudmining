@@ -8,13 +8,11 @@ const withdrawalSchema = new mongoose.Schema({
   withdrawalId: {
     type: String,
     required: true,
-    unique: true,
     default: () => 'WD' + crypto.randomBytes(6).toString('hex').toUpperCase()
   },
   transactionId: {
     type: String,
     required: true,
-    unique: true,
     default: () => 'TX' + crypto.randomBytes(6).toString('hex').toUpperCase()
   },
   user: {
