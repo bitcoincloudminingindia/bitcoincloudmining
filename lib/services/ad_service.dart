@@ -19,7 +19,7 @@ class AdService {
   static const Duration FREQUENCY_CAP_DURATION = Duration(hours: 1);
   static const Duration INTERSTITIAL_AD_INTERVAL = Duration(minutes: 5);
 
-  // Ad unit IDs - Replace with real IDs in production
+  // Ad unit IDs - Use Google test IDs for all ad types
   final Map<String, Map<String, String>> _adUnitIds = {
     'android': {
       'banner': 'ca-app-pub-3940256099942544/6300978111',
@@ -31,7 +31,7 @@ class AdService {
       'banner': 'ca-app-pub-3940256099942544/2934735716',
       'interstitial': 'ca-app-pub-3940256099942544/4411468910',
       'rewarded': 'ca-app-pub-3940256099942544/1712485313',
-      'native': 'ca-app-pub-3940256099942544/2247696110',
+      'native': 'ca-app-pub-3940256099942544/3986624511',
     },
   };
 
@@ -590,6 +590,8 @@ class AdService {
       'ca-app-pub-3940256099942544/5224354917'; // Test ID
   static const String interstitialAdUnitId =
       'ca-app-pub-3940256099942544/1033173712'; // Test ID
+  static const String nativeAdUnitId =
+      'ca-app-pub-3940256099942544/2247696110'; // Test ID (Android)
 
   Future<RewardedAd?> getRewardedAd() async {
     if (_rewardedAd != null) {
@@ -604,9 +606,8 @@ class AdService {
 
     try {
       await RewardedAd.load(
-        adUnitId: kDebugMode
-            ? rewardedAdUnitId // Test ad unit ID
-            : 'ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY', // Your production ad unit ID
+        adUnitId:
+            rewardedAdUnitId, // Always use test ad unit ID for development
         request: const AdRequest(),
         rewardedAdLoadCallback: RewardedAdLoadCallback(
           onAdLoaded: (ad) {
