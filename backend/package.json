@@ -82,22 +82,21 @@
     "supertest": "^6.3.4"
   },
   "overrides": {
-  "socks": {
+    "socks": {
+      "ip": "2.0.0"
+    },
+    "mongodb": {
+      "socks": "2.3.3"
+    },
+    "mongoose": {
+      "mongodb": "^5.9.2"
+    }
+  },
+  "resolutions": {
     "ip": "2.0.0"
   },
-  "mongodb": {
-    "socks": "2.3.3"
-  },
-  "mongoose": {
-    "mongodb": "^5.9.2"
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
   }
-},
-"resolutions": {
-  "ip": "2.0.0"
-},
-
- "engines": {
-  "node": ">=20.0.0",
-  "npm": ">=9.0.0"
-}
 }
