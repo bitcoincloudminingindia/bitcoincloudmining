@@ -198,12 +198,17 @@ connectDB();
 
 // MongoDB connection events are handled in config/database.js
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found'
+// Root endpoint for health/status
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'Bitcoin Cloud Mining API is running',
+    version: '1.0.0'
   });
+});
+// Optionally handle HEAD / for health checks
+app.head('/', (req, res) => {
+  res.status(200).end();
 });
 
 // Register endpoint
@@ -305,15 +310,6 @@ const referralController = require('./controllers/referral.controller');
 // Add direct endpoints for referral list and earnings
 app.get('/api/referral/list', authenticate, referralController.getReferrals);
 app.get('/api/referral/earnings', authenticate, referralController.getReferralEarnings);
-
-// Root endpoint for health/status
-app.get('/', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    message: 'Bitcoin Cloud Mining API is running',
-    version: '1.0.0'
-  });
-});
 
 // Start server
 const PORT = process.env.PORT || 5000;
