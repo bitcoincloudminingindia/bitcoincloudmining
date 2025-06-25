@@ -61,7 +61,6 @@
     "semver": "^7.5.4",
     "socket.io": "4.5.4",
     "socket.io-parser": "4.0.5",
-    "socks": "^2.7.1",
     "uuid": "^11.1.0",
     "winston": "^3.11.0",
     "xss-clean": "^0.1.4"
