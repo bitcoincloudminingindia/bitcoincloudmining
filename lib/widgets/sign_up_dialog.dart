@@ -450,6 +450,21 @@ class _SignUpDialogState extends State<SignUpDialog> {
                           focusedBorderColor: Colors.grey[400]!,
                           backgroundColor: Colors.grey[900]!.withAlpha(26),
                         ),
+                        // Username format hint
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding:
+                                EdgeInsets.only(left: 8.0, top: 2, bottom: 8),
+                            child: Text(
+                              'Format: steve98',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         CustomTextField(
                           controller: _emailController,
@@ -516,6 +531,21 @@ class _SignUpDialogState extends State<SignUpDialog> {
                           borderColor: Colors.grey[300]!,
                           focusedBorderColor: Colors.grey[400]!,
                           backgroundColor: Colors.grey[900]!.withAlpha(26),
+                        ),
+                        // Password format hint
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding:
+                                EdgeInsets.only(left: 8.0, top: 2, bottom: 8),
+                            child: Text(
+                              'Format: Steve@9876',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 12),
                         CustomTextField(

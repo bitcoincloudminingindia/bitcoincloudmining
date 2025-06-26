@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:bitcoin_cloud_mining/config/api_config.dart';
+import 'package:bitcoin_cloud_mining/models/notification.dart' as model;
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/notification_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/reward_provider.dart';
@@ -12,7 +13,9 @@ import 'package:bitcoin_cloud_mining/screens/notification_screen.dart';
 import 'package:bitcoin_cloud_mining/screens/wallet_screen.dart';
 import 'package:bitcoin_cloud_mining/services/api_service.dart';
 import 'package:bitcoin_cloud_mining/services/notification_service.dart';
+import 'package:bitcoin_cloud_mining/utils/enums.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -119,6 +122,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
     super.initState();
     windowManager.addListener(this);
     _setupFCM();
+    _setupNotificationListeners();
   }
 
   Future<void> _setupFCM() async {
@@ -128,6 +132,47 @@ class _MyAppState extends State<MyApp> with WindowListener {
       await sendTokenToBackend(token);
     }
     FcmService.listenFCM();
+  }
+
+  void _setupNotificationListeners() {
+    // Listen for local notification taps
+    widget.notificationService.selectNotificationSubject.listen((payload) {
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        final provider =
+            Provider.of<NotificationProvider>(context, listen: false);
+        final notification = model.Notification(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          title: 'Local Notification',
+          body: payload ?? '',
+          status: 'unread',
+          timestamp: DateTime.now(),
+          category: NotificationCategory.system,
+          payload: payload,
+        );
+        provider.addNotificationFromLocal(notification);
+      }
+    });
+
+    // Listen for FCM foreground messages
+    FirebaseMessaging.onMessage.listen((message) {
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        final provider =
+            Provider.of<NotificationProvider>(context, listen: false);
+        final notification = model.Notification(
+          id: message.messageId ??
+              DateTime.now().millisecondsSinceEpoch.toString(),
+          title: message.notification?.title ?? 'Push Notification',
+          body: message.notification?.body ?? '',
+          status: 'unread',
+          timestamp: DateTime.now(),
+          category: NotificationCategory.system,
+          payload: message.data['payload'],
+        );
+        provider.addNotificationFromLocal(notification);
+      }
+    });
   }
 
   Future<void> sendTokenToBackend(String token) async {

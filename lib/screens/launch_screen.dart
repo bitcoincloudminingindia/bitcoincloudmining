@@ -98,13 +98,15 @@ class _LaunchScreenState extends State<LaunchScreen>
     _rotationController = AnimationController(
       duration: Duration(seconds: duration),
       vsync: this,
-    )..repeat();
+    );
+    _rotationController.repeat();
 
     // Pulse controller (continuous)
     _pulseController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
-    )..repeat(reverse: true);
+    );
+    _pulseController.repeat(reverse: true);
 
     // Fade animation
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -149,12 +151,13 @@ class _LaunchScreenState extends State<LaunchScreen>
 
   void _showLoginDialog() {
     if (!mounted) return;
-    // Stop animations before showing login dialog
     _stopAnimations();
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const LoginDialog(),
+    // Remove the launch screen from the stack and show login as a full screen route
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => const LoginDialog(),
+        fullscreenDialog: true,
+      ),
     );
   }
 

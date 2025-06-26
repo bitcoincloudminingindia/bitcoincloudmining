@@ -657,10 +657,35 @@ class _ContractScreenState extends State<ContractScreen>
           itemBuilder: (context, index) {
             // If index is odd, show ad
             if (index.isOdd) {
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 8.0),
+              // Add 'Sponsored Ad' label in the corner of the native ad
+              return SizedBox(
                 height: 100,
-                child: _adService.getNativeAd(),
+                child: Stack(
+                  children: [
+                    Positioned.fill(child: _adService.getNativeAd()),
+                    Positioned(
+                      top: 4,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'Sponsored Ad',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               );
             }
 
