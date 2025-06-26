@@ -36,6 +36,8 @@ router.get('/total-earnings', authenticate, userController.getTotalEarnings);
 router.post('/change-password', authenticate, userController.changePassword);
 router.get('/wallet', authenticate, userController.getWallet);
 router.post('/wallet/update', authenticate, userController.updateWallet);
+router.post('/fcm-token', authenticate, userController.updateFcmToken);
+router.post('/send-test-notification', authenticate, userController.sendTestNotification);
 
 router.get('/transactions', authenticate, (req, res) => userController.getTransactions(req, res));
 router.get('/mining-stats', authenticate, (req, res) => userController.getMiningStats(req, res));
@@ -57,4 +59,4 @@ router.get('/wallet/transactions/:transactionId', authenticate, walletController
 router.post('/wallet/sync-balance', authenticate, walletController.syncBalance);
 router.post('/wallet/withdraw', authenticate, walletController.requestWithdrawal);
 
-module.exports = router; 
+module.exports = router;

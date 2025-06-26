@@ -354,7 +354,8 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
                 Navigator.of(context).pop();
                 _onDialogClose();
                 resumeGame();
-                _showRewardedAd(startGame);
+                startGame();
+                _showRewardedAd(() {}); // Show ad, but don't block game start
               },
               child: const Text('Play Again',
                   style: TextStyle(color: Colors.white)),
@@ -399,7 +400,8 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
                 Navigator.of(context).pop();
                 _onDialogClose();
                 resumeGame();
-                _showRewardedAd(startGame);
+                startGame();
+                _showRewardedAd(() {}); // Show ad, but don't block game start
               },
               child: const Text('Play Again',
                   style: TextStyle(color: Colors.white)),

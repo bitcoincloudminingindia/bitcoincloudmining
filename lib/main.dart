@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:bitcoin_cloud_mining/config/api_config.dart';
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/notification_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/reward_provider.dart';
@@ -11,27 +12,30 @@ import 'package:bitcoin_cloud_mining/screens/notification_screen.dart';
 import 'package:bitcoin_cloud_mining/screens/wallet_screen.dart';
 import 'package:bitcoin_cloud_mining/services/api_service.dart';
 import 'package:bitcoin_cloud_mining/services/notification_service.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:workmanager/workmanager.dart';
 
+import 'fcm_service.dart';
+import 'utils/storage_utils.dart';
+
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-void main() {
+void main() async {
   // Set zone error handling to non-fatal
   BindingBase.debugZoneErrorsAreFatal = false;
 
   // Ensure Flutter bindings are initialized first
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize services
-  final apiService = ApiService();
-  final notificationService = NotificationService(
-      baseUrl: kIsWeb ? 'http://localhost:5000' : 'http://10.0.2.2:5000',
-      apiService: apiService);
+  // Initialize Firebase and FCM (Android only)
+  await Firebase.initializeApp();
+  await FcmService.initializeFCM();
 
   // Only initialize window_manager on desktop platforms
   if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
@@ -82,6 +86,12 @@ void main() {
     }
   }
 
+  // Initialize services
+  final apiService = ApiService();
+  final notificationService = NotificationService(
+      baseUrl: kIsWeb ? 'http://localhost:5000' : 'http://10.0.2.2:5000',
+      apiService: apiService);
+
   // Run the app
   runApp(MyApp(
     apiService: apiService,
@@ -108,6 +118,36 @@ class _MyAppState extends State<MyApp> with WindowListener {
   void initState() {
     super.initState();
     windowManager.addListener(this);
+    _setupFCM();
+  }
+
+  Future<void> _setupFCM() async {
+    await FcmService.requestPermission();
+    final token = await FcmService.getFcmToken();
+    if (token != null) {
+      await sendTokenToBackend(token);
+    }
+    FcmService.listenFCM();
+  }
+
+  Future<void> sendTokenToBackend(String token) async {
+    try {
+      final jwtToken = await StorageUtils.getToken();
+      final url = Uri.parse(ApiConfig.fcmTokenUrl);
+      final headers = ApiConfig.getHeaders(token: jwtToken);
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: '{"token": "$token"}',
+      );
+      if (response.statusCode == 200) {
+        print('FCM token sent to backend successfully');
+      } else {
+        print('Failed to send FCM token to backend: \\${response.body}');
+      }
+    } catch (e) {
+      print('Error sending FCM token to backend: $e');
+    }
   }
 
   @override

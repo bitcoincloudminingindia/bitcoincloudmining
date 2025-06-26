@@ -24,8 +24,17 @@ const fallbackRates = {
   CAD: 1.33
 };
 
+// Simple in-memory cache for CoinGecko rates
+let cachedRates = null;
+let cacheTimestamp = 0;
+const CACHE_DURATION_MS = 2 * 60 * 1000; // 2 minutes
+
 exports.getRates = async (req, res) => {
   try {
+    const now = Date.now();
+    if (cachedRates && (now - cacheTimestamp) < CACHE_DURATION_MS) {
+      return res.json({ success: true, data: cachedRates });
+    }
     const url = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,inr,eur,gbp,jpy,aud,cad,sgd,chf,cny,rub,brl,zar';
     const response = await fetch(url);
     const data = await response.json();
@@ -45,8 +54,9 @@ exports.getRates = async (req, res) => {
       BRL: data.bitcoin.brl,
       ZAR: data.bitcoin.zar
     };
-
-    res.json({ success: true, data: { rates, btcPrice: rates.USD } });
+    cachedRates = { rates, btcPrice: rates.USD };
+    cacheTimestamp = now;
+    res.json({ success: true, data: cachedRates });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to fetch rates' });
   }

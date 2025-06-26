@@ -238,6 +238,10 @@ class ApiConfig {
     return false;
   }
 
+  // FCM Token endpoint
+  static const String fcmTokenEndpoint = '/api/user/fcm-token';
+  static String get fcmTokenUrl => '$baseUrl$fcmTokenEndpoint';
+
   // Error Messages
   static const Map<String, String> errorMessages = {
     'network_error':

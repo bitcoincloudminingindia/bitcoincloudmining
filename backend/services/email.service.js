@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 const logger = require('../utils/logger');
 const {
   getOTPTemplate,
+  getOTPPlainText,
   getPromotionalTemplate,
   getNotificationTemplate
 } = require('../utils/emailTemplates');
@@ -42,7 +43,9 @@ const sendVerificationEmail = async (email, otp) => {
       from: `"Bitcoin Cloud Mining" <${process.env.GMAIL_USER}>`,
       to: email,
       subject: 'Verify Your Email',
-      html: getOTPTemplate(otp, 'verification', 10)
+      html: getOTPTemplate(otp, 'verification', 10) + '<p style="color:#888;font-size:12px;margin-top:20px;">If you find this email in your spam folder, please mark it as "Not Spam" to receive future emails in your inbox.</p>',
+      text: require('../utils/emailTemplates').getOTPPlainText(otp, 'verification', 10),
+      replyTo: process.env.GMAIL_USER
     };
 
     const info = await transporter.sendMail(mailOptions);

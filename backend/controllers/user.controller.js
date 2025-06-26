@@ -8,6 +8,7 @@ const { generateReferralCode } = require('../utils/generators');
 const crypto = require('crypto');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
+const { sendPushToUser } = require('../utils/fcm');
 
 // Register user
 exports.register = async (req, res) => {
@@ -282,7 +283,7 @@ exports.getWallet = catchAsync(async (req, res) => {
   if (!wallet) {
     throw new AppError('Wallet not found', 404);
   }
-  
+
   res.status(200).json({
     status: 'success',
     data: { wallet }
@@ -317,7 +318,7 @@ exports.getTransactions = async (req, res) => {
 exports.getReferralInfo = catchAsync(async (req, res) => {
   const user = await User.findById(req.user._id);
   const referral = await Referral.findOne({ referred: req.user._id });
-  
+
   res.status(200).json({
     status: 'success',
     data: {
@@ -342,9 +343,9 @@ exports.getReferredUsers = catchAsync(async (req, res) => {
 exports.getTotalEarnings = catchAsync(async (req, res) => {
   const referrals = await Referral.find({ referrer: req.user._id });
   const totalEarnings = referrals.reduce((sum, ref) => sum + ref.earnings, 0);
-  
+
   const wallet = await Wallet.findOne({ user: req.user._id });
-  
+
   res.status(200).json({
     status: 'success',
     data: {
@@ -412,15 +413,15 @@ exports.claimReward = async (req, res) => {
 exports.changePassword = catchAsync(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   const user = await User.findById(req.user._id).select('+password');
-  
+
   const isPasswordValid = await user.comparePassword(currentPassword);
   if (!isPasswordValid) {
     throw new AppError('Current password is incorrect', 401);
   }
-  
+
   user.password = newPassword;
   await user.save();
-  
+
   res.status(200).json({
     status: 'success',
     message: 'Password updated successfully'
@@ -435,9 +436,42 @@ exports.updateWallet = catchAsync(async (req, res) => {
     { currency, address },
     { new: true, runValidators: true }
   );
-  
+
   res.status(200).json({
     status: 'success',
     data: { wallet }
   });
-}); 
+});
+
+// Update FCM token for the authenticated user
+exports.updateFcmToken = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { fcmToken } = req.body;
+    if (!fcmToken) {
+      return res.status(400).json({ message: 'FCM token is required' });
+    }
+    const user = await User.findByIdAndUpdate(userId, { fcmToken }, { new: true });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    return res.status(200).json({ message: 'FCM token updated successfully' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to update FCM token', error: error.message });
+  }
+};
+
+// Example: Send a test push notification to the authenticated user
+exports.sendTestNotification = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    await sendPushToUser(userId, {
+      title: 'Test Notification',
+      body: 'This is a test push notification!',
+      data: { customKey: 'customValue' }
+    });
+    res.status(200).json({ message: 'Notification sent' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to send notification', error: error.message });
+  }
+};

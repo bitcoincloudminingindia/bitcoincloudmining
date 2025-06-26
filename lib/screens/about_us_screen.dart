@@ -161,17 +161,17 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                         ),
                         SizedBox(height: 12),
                         _TeamMember(
-                          name: 'Alexander Wright',
+                          name: 'Sundar Sah',
                           role: 'CEO & Founder',
                           description:
-                              'Blockchain pioneer with 15+ years in cryptocurrency mining operations. Expert in large-scale mining infrastructure.',
+                              'Visionary entrepreneur and blockchain expert with 10+ years in cryptocurrency mining and fintech innovation.',
                         ),
                         SizedBox(height: 16),
                         _TeamMember(
-                          name: 'Dr. Sarah Chen',
+                          name: 'Update This',
                           role: 'CTO',
                           description:
-                              'Ph.D. in Distributed Systems. Former lead engineer at major cryptocurrency exchanges. Expert in mining optimization.',
+                              'Expert in distributed systems and mining optimization. Leading the development of next-gen mining technology.',
                         ),
                       ],
                     ),
