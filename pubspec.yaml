@@ -32,7 +32,7 @@ dependencies:
   local_auth: ^2.1.7
   confetti: ^0.8.0
   dio: ^5.4.0  # Using dio as primary HTTP client
-  flutter_local_notifications: ^16.3.0
+  flutter_local_notifications: ^16.3.2
   flutter_markdown: ^0.7.6+2
   qr_flutter: ^4.1.0
   share_plus: ^7.2.1
@@ -51,6 +51,8 @@ dependencies:
   http: ^1.1.0
   battery_plus: ^5.0.3
   connectivity_plus: ^5.0.2  # Using connectivity_plus instead of connectivity as it's more maintained
+  firebase_core: ^3.14.0
+  firebase_messaging: ^15.2.7
 
   shimmer: ^3.0.0
   app_links: ^6.4.0

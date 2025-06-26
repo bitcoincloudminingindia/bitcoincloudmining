@@ -1,10 +1,12 @@
 import 'dart:async'; // For Timer
+import 'dart:io' show exit, Platform;
 
 import 'package:audioplayers/audioplayers.dart'; // For AudioPlayer
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart'; // For Flutter Toast
 import 'package:font_awesome_flutter/font_awesome_flutter.dart'; // For FontAwesomeIcons
 import 'package:percent_indicator/percent_indicator.dart';
@@ -68,6 +70,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // Counter for sci-fi object taps
   int _sciFiTapCount = 0;
+  bool _isSciFiLoading = false;
 
   @override
   void initState() {
@@ -559,455 +562,489 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      child: Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          toolbarHeight: _isScrolled ? 70 : 140,
-          flexibleSpace: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color.fromRGBO(26, 35, 126, 0.95),
-                  Color.fromRGBO(13, 71, 161, 0.95),
-                  Color.fromRGBO(2, 119, 189, 0.95),
-                ],
-              ),
-            ),
-          ),
-          title: Center(
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              padding: EdgeInsets.all(_isScrolled ? 12 : 20),
-              decoration: BoxDecoration(
-                color: Colors.white.withAlpha(26),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white.withAlpha(51),
-                  width: 2,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop) {
+          final shouldExit = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Exit App'),
+              content: const Text('Are you sure you want to exit the app?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('No'),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(51),
-                    blurRadius: 20,
-                    spreadRadius: 5,
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.currency_bitcoin,
-                size: _isScrolled ? 35 : 64,
-                color: Colors.amber[400],
-              ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Yes'),
+                ),
+              ],
+            ),
+          );
+          if (shouldExit == true) {
+            if (Platform.isAndroid || Platform.isIOS) {
+              SystemNavigator.pop();
+            } else {
+              exit(0);
+            }
+          }
+        }
+      },
+      child: _buildHomeScaffold(),
+    );
+  }
+
+  Widget _buildHomeScaffold() {
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        toolbarHeight: _isScrolled ? 70 : 140,
+        flexibleSpace: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color.fromRGBO(26, 35, 126, 0.95),
+                Color.fromRGBO(13, 71, 161, 0.95),
+                Color.fromRGBO(2, 119, 189, 0.95),
+              ],
             ),
           ),
-          actions: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                GestureDetector(
-                  onTap: _navigateToWalletScreen,
-                  child: Row(
-                    children: [
-                      const Icon(Icons.account_balance_wallet, size: 35),
-                      const SizedBox(width: 4),
-                      Consumer<WalletProvider>(
-                        builder: (context, walletProvider, _) {
-                          return Text(
-                            '${walletProvider.btcBalance.toStringAsFixed(18)} BTC',
-                            style: const TextStyle(fontSize: 16),
-                          );
-                        },
+        ),
+        title: Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: EdgeInsets.all(_isScrolled ? 12 : 20),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(26),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withAlpha(51),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(51),
+                  blurRadius: 20,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.currency_bitcoin,
+              size: _isScrolled ? 35 : 64,
+              color: Colors.amber[400],
+            ),
+          ),
+        ),
+        actions: [
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: _navigateToWalletScreen,
+                child: Row(
+                  children: [
+                    const Icon(Icons.account_balance_wallet, size: 35),
+                    const SizedBox(width: 4),
+                    Consumer<WalletProvider>(
+                      builder: (context, walletProvider, _) {
+                        return Text(
+                          '${walletProvider.btcBalance.toStringAsFixed(18)} BTC',
+                          style: const TextStyle(fontSize: 16),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 16),
+                  ],
+                ),
+              ),
+              if (!_isScrolled) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2D2D3A),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(102),
+                        offset: const Offset(3, 3),
+                        blurRadius: 6,
                       ),
-                      const SizedBox(width: 16),
+                      BoxShadow(
+                        color: Colors.white.withAlpha(26),
+                        offset: const Offset(-1, -1),
+                        blurRadius: 6,
+                      ),
                     ],
                   ),
-                ),
-                if (!_isScrolled) ...[
-                  const SizedBox(height: 4),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2D2D3A),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(102),
-                          offset: const Offset(3, 3),
-                          blurRadius: 6,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ShaderMask(
+                        shaderCallback: (bounds) => const LinearGradient(
+                          colors: [
+                            Color(0xFF00F5A0),
+                            Color(0xFF00D9F5),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ).createShader(bounds),
+                        child: const Text(
+                          'HAVE A NICE DAY',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.2,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black26,
+                                offset: Offset(1, 1),
+                                blurRadius: 2,
+                              ),
+                            ],
+                          ),
                         ),
-                        BoxShadow(
-                          color: Colors.white.withAlpha(26),
-                          offset: const Offset(-1, -1),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ShaderMask(
-                          shaderCallback: (bounds) => const LinearGradient(
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
                             colors: [
                               Color(0xFF00F5A0),
                               Color(0xFF00D9F5),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                          ).createShader(bounds),
-                          child: const Text(
-                            'HAVE A NICE DAY',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1.2,
-                              color: Colors.white,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black26,
-                                  offset: Offset(1, 1),
-                                  blurRadius: 2,
-                                ),
-                              ],
+                          ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF00F5A0).withAlpha(102),
+                              blurRadius: 8,
+                              spreadRadius: 1,
                             ),
-                          ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFF00F5A0),
-                                Color(0xFF00D9F5),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF00F5A0).withAlpha(102),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: const Text(
-                            '🌟',
-                            style: TextStyle(fontSize: 20),
-                          ),
+                        child: const Text(
+                          '🌟',
+                          style: TextStyle(fontSize: 20),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ],
-            ),
-          ],
-        ),
-        body: SingleChildScrollView(
-          controller: _scrollController,
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
-              Consumer<AuthProvider>(
-                builder: (context, authProvider, child) {
-                  if (_errorMessage != null) {
-                    return const Text(
-                      'Welcome Back!',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    );
-                  }
-
-                  final fullName = authProvider.fullName;
-                  if (fullName == null || fullName.isEmpty) {
-                    return const Text(
-                      'Welcome Back!',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    );
-                  }
-
-                  return Text(
-                    'Welcome Back, $fullName!',
-                    style: const TextStyle(
+            ],
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        controller: _scrollController,
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 16),
+            Consumer<AuthProvider>(
+              builder: (context, authProvider, child) {
+                if (_errorMessage != null) {
+                  return const Text(
+                    'Welcome Back!',
+                    style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
                   );
-                },
+                }
+
+                final fullName = authProvider.fullName;
+                if (fullName == null || fullName.isEmpty) {
+                  return const Text(
+                    'Welcome Back!',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  );
+                }
+
+                return Text(
+                  'Welcome Back, $fullName!',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                );
+              },
+            ),
+            if (_errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  _errorMessage!,
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 12,
+                  ),
+                ),
               ),
-              if (_errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(
-                      color: Colors.red,
-                      fontSize: 12,
+            const SizedBox(height: 16),
+            buildGameSection(),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                buildStatCard(
+                  title: 'Hash Rate',
+                  value: '${_hashRate.toStringAsFixed(1)} GH/s',
+                  icon: Icons.speed,
+                ),
+                const SizedBox(width: 16),
+                buildStatCard(
+                  title: 'Mining Earnings',
+                  value: '${_miningEarnings.toStringAsFixed(18)} BTC',
+                  icon: Icons.attach_money,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _isMining ? _startPowerBoost : null,
+                    icon: Icon(
+                      Icons.power,
+                      color: _isMining ? Colors.white : Colors.grey,
+                    ),
+                    label: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _isPowerBoostActive
+                              ? 'Power Boost Active'
+                              : 'Power Boost',
+                          style: TextStyle(
+                            color: _isMining ? Colors.white : Colors.grey,
+                          ),
+                        ),
+                        if (_isPowerBoostActive) ...[
+                          Text(
+                            '+${(_currentPowerBoostMultiplier * 100).toStringAsFixed(0)}% Rate',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          Text(
+                            _getPowerBoostRemainingTime(),
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ],
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          _isPowerBoostActive ? Colors.green : Colors.red,
+                      disabledBackgroundColor: Colors.grey.shade300,
                     ),
                   ),
                 ),
-              const SizedBox(height: 16),
-              buildGameSection(),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  buildStatCard(
-                    title: 'Hash Rate',
-                    value: '${_hashRate.toStringAsFixed(1)} GH/s',
-                    icon: Icons.speed,
-                  ),
-                  const SizedBox(width: 16),
-                  buildStatCard(
-                    title: 'Mining Earnings',
-                    value: '${_miningEarnings.toStringAsFixed(18)} BTC',
-                    icon: Icons.attach_money,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _isMining ? _startPowerBoost : null,
-                      icon: Icon(
-                        Icons.power,
-                        color: _isMining ? Colors.white : Colors.grey,
-                      ),
-                      label: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _isMining ? null : _startMiningProcess,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Start Mining'),
+                        // Only show remaining if mining is active and not completed
+                        if (_isMining &&
+                            _miningStatus != 'Completed' &&
+                            _miningStartTime != null)
                           Text(
-                            _isPowerBoostActive
-                                ? 'Power Boost Active'
-                                : 'Power Boost',
-                            style: TextStyle(
-                              color: _isMining ? Colors.white : Colors.grey,
-                            ),
+                            'Remaining: ${_getRemainingTime()}',
+                            style: const TextStyle(fontSize: 12),
                           ),
-                          if (_isPowerBoostActive) ...[
-                            Text(
-                              '+${(_currentPowerBoostMultiplier * 100).toStringAsFixed(0)}% Rate',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            Text(
-                              _getPowerBoostRemainingTime(),
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ],
-                        ],
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            _isPowerBoostActive ? Colors.green : Colors.red,
-                        disabledBackgroundColor: Colors.grey.shade300,
-                      ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isMining ? null : _startMiningProcess,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('Start Mining'),
-                          // Only show remaining if mining is active and not completed
-                          if (_isMining &&
-                              _miningStatus != 'Completed' &&
-                              _miningStartTime != null)
-                            Text(
-                              'Remaining: ${_getRemainingTime()}',
-                              style: const TextStyle(fontSize: 12),
-                            ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: _onSciFiObjectTapped,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      width: 120 + _percentage.toDouble(),
+                      height: 120 + _percentage.toDouble(),
+                      decoration: BoxDecoration(
+                        color: _currentColor == Colors.blue
+                            ? Colors.blueAccent
+                            : Colors.purple,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: _currentColor == Colors.blue
+                                ? const Color.fromRGBO(0, 122, 255, 0.7)
+                                : const Color.fromRGBO(128, 0, 128, 0.7),
+                            blurRadius: 20,
+                            spreadRadius: 5,
+                          ),
                         ],
                       ),
+                      child: _isSciFiLoading
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                  color: Colors.white))
+                          : const Center(
+                              child: Icon(
+                                Icons.memory,
+                                size: 60,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Click for Magic & Reward',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xff055366),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                buildInfoCard(
+                  title: 'Reward Program',
+                  icon: Icons.card_giftcard,
+                  description: 'Complete tasks to earn rewards!',
+                  color: Colors.orange,
+                  onTap: _navigateToRewardScreen,
+                ),
+                const SizedBox(width: 16),
+                buildInfoCard(
+                  title: 'Referral Program',
+                  icon: Icons.group_add,
+                  description: 'Invite friends to earn extra rewards!',
+                  color: Colors.purple,
+                  onTap: _navigateToReferralScreen,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                IconButton(
+                  icon: const FaIcon(FontAwesomeIcons.telegram,
+                      color: Colors.blue, size: 36),
+                  onPressed: () async {
+                    const telegramUrl = 'https://t.me/+v6K5Agkb5r8wMjhl';
+                    final Uri telegramUri = Uri.parse(telegramUrl);
+                    if (await launchUrl(telegramUri)) {
+                      await launchUrl(telegramUri);
+                    } else {
+                      Fluttertoast.showToast(msg: 'Could not open Telegram.');
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const FaIcon(FontAwesomeIcons.instagram,
+                      color: Colors.pink, size: 36),
+                  onPressed: () async {
+                    const instagramUrl =
+                        'https://www.instagram.com/bitcoincloudmining/';
+                    final Uri instagramUri = Uri.parse(instagramUrl);
+                    if (await launchUrl(instagramUri)) {
+                      await launchUrl(instagramUri);
+                    } else {
+                      Fluttertoast.showToast(msg: 'Could not open Instagram.');
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const FaIcon(FontAwesomeIcons.whatsapp,
+                      color: Colors.green, size: 36),
+                  onPressed: () async {
+                    const whatsappUrl =
+                        'https://chat.whatsapp.com/InL9NrT9gtuKpXRJ3Gu5A5';
+                    final Uri whatsappUri = Uri.parse(whatsappUrl);
+                    if (await launchUrl(whatsappUri)) {
+                      await launchUrl(whatsappUri);
+                    } else {
+                      Fluttertoast.showToast(msg: 'Could not open WhatsApp.');
+                    }
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Center(
+              child: Text(
+                'Contact Us After Withdraw, We Are on Duty',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xdde12a2a),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            if (_isMining || _lastError != null)
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _lastError != null
+                      ? Colors.red.shade100
+                      : Colors.blue.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
                   children: [
-                    GestureDetector(
-                      onTap: _onSciFiObjectTapped,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        width: 120 + _percentage.toDouble(),
-                        height: 120 + _percentage.toDouble(),
-                        decoration: BoxDecoration(
-                          color: _currentColor == Colors.blue
-                              ? Colors.blueAccent
-                              : Colors.purple,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: _currentColor == Colors.blue
-                                  ? const Color.fromRGBO(0, 122, 255, 0.7)
-                                  : const Color.fromRGBO(128, 0, 128, 0.7),
-                              blurRadius: 20,
-                              spreadRadius: 5,
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.memory,
-                            size: 60,
-                            color: Colors.white,
-                          ),
+                    Icon(
+                      _lastError != null ? Icons.error : Icons.info,
+                      color: _lastError != null ? Colors.red : Colors.blue,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _lastError ?? 'Mining Status: $_miningStatus',
+                        style: TextStyle(
+                          color: _lastError != null ? Colors.red : Colors.blue,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Click for Magic & Reward',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xff055366),
+                    if (_lastError != null)
+                      IconButton(
+                        icon: const Icon(Icons.refresh),
+                        onPressed: _retryLastOperation,
                       ),
-                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  buildInfoCard(
-                    title: 'Reward Program',
-                    icon: Icons.card_giftcard,
-                    description: 'Complete tasks to earn rewards!',
-                    color: Colors.orange,
-                    onTap: _navigateToRewardScreen,
-                  ),
-                  const SizedBox(width: 16),
-                  buildInfoCard(
-                    title: 'Referral Program',
-                    icon: Icons.group_add,
-                    description: 'Invite friends to earn extra rewards!',
-                    color: Colors.purple,
-                    onTap: _navigateToReferralScreen,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  IconButton(
-                    icon: const FaIcon(FontAwesomeIcons.telegram,
-                        color: Colors.blue, size: 36),
-                    onPressed: () async {
-                      const telegramUrl = 'https://t.me/+v6K5Agkb5r8wMjhl';
-                      final Uri telegramUri = Uri.parse(telegramUrl);
-                      if (await launchUrl(telegramUri)) {
-                        await launchUrl(telegramUri);
-                      } else {
-                        Fluttertoast.showToast(msg: 'Could not open Telegram.');
-                      }
-                    },
-                  ),
-                  IconButton(
-                    icon: const FaIcon(FontAwesomeIcons.instagram,
-                        color: Colors.pink, size: 36),
-                    onPressed: () async {
-                      const instagramUrl =
-                          'https://www.instagram.com/bitcoincloudmining/';
-                      final Uri instagramUri = Uri.parse(instagramUrl);
-                      if (await launchUrl(instagramUri)) {
-                        await launchUrl(instagramUri);
-                      } else {
-                        Fluttertoast.showToast(
-                            msg: 'Could not open Instagram.');
-                      }
-                    },
-                  ),
-                  IconButton(
-                    icon: const FaIcon(FontAwesomeIcons.whatsapp,
-                        color: Colors.green, size: 36),
-                    onPressed: () async {
-                      const whatsappUrl =
-                          'https://chat.whatsapp.com/InL9NrT9gtuKpXRJ3Gu5A5';
-                      final Uri whatsappUri = Uri.parse(whatsappUrl);
-                      if (await launchUrl(whatsappUri)) {
-                        await launchUrl(whatsappUri);
-                      } else {
-                        Fluttertoast.showToast(msg: 'Could not open WhatsApp.');
-                      }
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              const Center(
-                child: Text(
-                  'Contact Us After Withdraw, We Are on Duty',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xdde12a2a),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              if (_isMining || _lastError != null)
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _lastError != null
-                        ? Colors.red.shade100
-                        : Colors.blue.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _lastError != null ? Icons.error : Icons.info,
-                        color: _lastError != null ? Colors.red : Colors.blue,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _lastError ?? 'Mining Status: $_miningStatus',
-                          style: TextStyle(
-                            color:
-                                _lastError != null ? Colors.red : Colors.blue,
-                          ),
-                        ),
-                      ),
-                      if (_lastError != null)
-                        IconButton(
-                          icon: const Icon(Icons.refresh),
-                          onPressed: _retryLastOperation,
-                        ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -1414,7 +1451,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _onSciFiObjectTapped() async {
+    if (_isSciFiLoading) return;
     setState(() {
+      _isSciFiLoading = true;
       _percentage = (_percentage + 1) % 100;
       _currentColor =
           _currentColor == Colors.blue ? Colors.purple : Colors.blue;
@@ -1455,6 +1494,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           Fluttertoast.showToast(msg: 'Error showing ad: \\${e.toString()}');
         }
       }
+    }
+    if (mounted) {
+      setState(() {
+        _isSciFiLoading = false;
+      });
     }
   }
 

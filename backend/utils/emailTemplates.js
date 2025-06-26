@@ -14,7 +14,16 @@ const getBaseTemplate = (content) => `
           <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-              <img src="https://your-domain.com/logo.png" alt="Bitcoin Cloud Mining" style="width: 150px; height: auto;">
+              <img src="https://i.imgur.com/BX6a4RA.png" alt="Bitcoin Cloud Mining Logo" style="width: 120px; height: auto; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto;">
+              <div style="margin-top: 10px; color: #fff; font-size: 14px; font-weight: bold;">If you find this email in your spam folder, please mark it as 'Not Spam' to receive future emails in your inbox.</div>
+            </td>
+          </tr>
+          <!-- Not Spam Note -->
+          <tr>
+            <td style="padding: 10px 30px 0 30px; text-align: center;">
+              <div style="background-color: #fffbe6; color: #b26a00; border: 1px solid #ffe082; border-radius: 6px; padding: 10px 15px; font-size: 14px; margin-bottom: 10px;">
+                If you find this email in your spam or junk folder, please mark it as <b>Not Spam</b> to ensure you receive future updates in your inbox.
+              </div>
             </td>
           </tr>
           <!-- Content -->
@@ -22,7 +31,8 @@ const getBaseTemplate = (content) => `
             <td style="padding: 40px 30px;">
               ${content}
             </td>
-          </tr>          <!-- Footer -->
+          </tr>
+          <!-- Footer -->
           <tr>
             <td style="background-color: #f8f9fa; padding: 20px 30px; text-align: center; border-radius: 0 0 8px 8px;">
               <div style="margin-bottom: 20px;">
@@ -34,9 +44,13 @@ const getBaseTemplate = (content) => `
                 </p>
               </div>
               <div style="margin-bottom: 15px;">
-                <a href="https://t.me/your_telegram" style="color: #1a237e; text-decoration: none; margin: 0 10px; font-size: 14px;">Telegram</a>
+                <a href="https://t.me/+v6K5Agkb5r8wMjhl" style="color: #1a237e; text-decoration: none; margin: 0 10px; font-size: 14px;">Telegram</a>
                 <span style="color: #666;">|</span>
-                <a href="https://discord.gg/your_discord" style="color: #1a237e; text-decoration: none; margin: 0 10px; font-size: 14px;">Discord</a>
+                <a href="https://x.com/bitcoinclmining" style="color: #1a237e; text-decoration: none; margin: 0 10px; font-size: 14px;">X (Twitter)</a>
+                <span style="color: #666;">|</span>
+                <a href="https://www.instagram.com/bitcoincloudmining/" style="color: #1a237e; text-decoration: none; margin: 0 10px; font-size: 14px;">Instagram</a>
+                <span style="color: #666;">|</span>
+                <a href="https://www.youtube.com/channel/UC1V43aMm3KYUJu_J9Lx2DAw" style="color: #1a237e; text-decoration: none; margin: 0 10px; font-size: 14px;">YouTube</a>
                 <span style="color: #666;">|</span>
                 <a href="mailto:support@your-domain.com" style="color: #1a237e; text-decoration: none; margin: 0 10px; font-size: 14px;">Support</a>
               </div>
@@ -55,8 +69,8 @@ const getBaseTemplate = (content) => `
 `;
 
 const getOTPTemplate = (otp, type = 'verification', expiryMinutes = 10) => {
-    const title = type === 'verification' ? 'Email Verification' : 'Password Reset';
-    return getBaseTemplate(`
+  const title = type === 'verification' ? 'Email Verification' : 'Password Reset';
+  return getBaseTemplate(`
     <h2 style="color: #1a237e; margin: 0 0 20px; font-size: 24px;">${title}</h2>
     <p style="color: #333; font-size: 16px; line-height: 24px;">Your ${type} code is:</p>
     <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
@@ -74,8 +88,13 @@ const getOTPTemplate = (otp, type = 'verification', expiryMinutes = 10) => {
   `);
 };
 
+const getOTPPlainText = (otp, type = 'verification', expiryMinutes = 10) => {
+  const title = type === 'verification' ? 'Email Verification' : 'Password Reset';
+  return `${title}\n\nYour ${type} code is: ${otp}\n\nThis code will expire in ${expiryMinutes} minutes.\nIf you didn't request this code, please ignore this email.\n\nFor security reasons, never share this code with anyone.\n\nIf you find this email in your spam folder, please mark it as \'Not Spam\' to receive future emails in your inbox.\n\n-- Bitcoin Cloud Mining`;
+};
+
 const getPromotionalTemplate = (title, content, ctaText, ctaUrl) => {
-    return getBaseTemplate(`
+  return getBaseTemplate(`
     <h2 style="color: #1a237e; margin: 0 0 20px; font-size: 24px;">${title}</h2>
     <div style="color: #333; font-size: 16px; line-height: 24px;">
       ${content}
@@ -89,38 +108,39 @@ const getPromotionalTemplate = (title, content, ctaText, ctaUrl) => {
 };
 
 const getNotificationTemplate = (title, message, additionalInfo = null, actionUrl = null) => {
-    let content = `
+  let content = `
     <h2 style="color: #1a237e; margin: 0 0 20px; font-size: 24px;">${title}</h2>
     <div style="color: #333; font-size: 16px; line-height: 24px; margin-bottom: 20px;">
       ${message}
     </div>
   `;
 
-    if (additionalInfo) {
-        content += `
+  if (additionalInfo) {
+    content += `
       <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0;">
         <div style="color: #666; font-size: 14px; line-height: 20px;">
           ${additionalInfo}
         </div>
       </div>
     `;
-    }
+  }
 
-    if (actionUrl) {
-        content += `
+  if (actionUrl) {
+    content += `
       <div style="text-align: center; margin: 30px 0;">
         <a href="${actionUrl}" style="display: inline-block; background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%); color: white; text-decoration: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; font-size: 14px;">
           View Details
         </a>
       </div>
     `;
-    }
+  }
 
-    return getBaseTemplate(content);
+  return getBaseTemplate(content);
 };
 
 module.exports = {
-    getOTPTemplate,
-    getPromotionalTemplate,
-    getNotificationTemplate
+  getOTPTemplate,
+  getOTPPlainText,
+  getPromotionalTemplate,
+  getNotificationTemplate
 };
