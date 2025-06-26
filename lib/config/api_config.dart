@@ -5,21 +5,36 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiConfig {
-  // Base URL for API
-  static String get baseUrl => kReleaseMode
-      ? 'https://bitcoincloudmining.onrender.com'
-      : (kIsWeb
-          ? 'http://localhost:5000'
-          : (Platform.isAndroid
-              ? 'http://10.0.2.2:5000'
-              : 'http://localhost:5000'));
+  /// ✅ Auto-switching base URL based on environment
+  static String get baseUrl {
+    if (kReleaseMode) {
+      // 🎯 For Play Store / App Store builds
+      return 'https://bitcoincloudmining.onrender.com';
+    }
 
-  // API Version
-  static const String apiVersion =
-      ''; // Empty string as we don't need version prefix
+    if (kIsWeb) {
+      // 🧪 Local Web testing
+      return 'http://localhost:5000';
+    }
 
-  // Debug mode
-  static bool get isDebugMode => true;
+    if (Platform.isAndroid) {
+      // 🧪 Android Emulator on PC
+      return 'http://10.0.2.2:5000';
+    }
+
+    if (Platform.isIOS) {
+      // 🧪 iOS Simulator (Mac)
+      return 'http://localhost:5000';
+    }
+
+    // 🧪 Fallback (desktop)
+    return 'http://localhost:5000';
+  }
+
+  /// ⚙️ API Endpoints
+
+  static const String apiVersion = ''; // No prefix
+  static bool get isDebugMode => !kReleaseMode;
 
   // API Timeout Configuration
   static const int connectionTimeout = 30000; // 30 seconds
