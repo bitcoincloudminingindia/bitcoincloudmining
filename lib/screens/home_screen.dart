@@ -558,6 +558,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _savePercentage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('percentage', _percentage);
+    } catch (e) {
+      // Optionally log error
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -1002,7 +1011,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             const SizedBox(height: 20),
             const Center(
               child: Text(
-                'Contact Us After Withdraw, We Are on Duty',
+                'Follow us for daily coupon! Catch up to 10,000\u0024 Bitcoin.\nWe share daily deposit coupons.',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -1459,6 +1469,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _currentColor == Colors.blue ? Colors.purple : Colors.blue;
       _sciFiTapCount++;
     });
+    await _savePercentage();
     try {
       final walletProvider = context.read<WalletProvider>();
       await walletProvider.addEarning(

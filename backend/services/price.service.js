@@ -1,14 +1,10 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
+const { getExchangeRate } = require('../utils/exchange');
 
+// Deprecated: Use getExchangeRate('BTC', 'USD') instead
 const getBTCPrice = async () => {
-  try {
-    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
-    return response.data.bitcoin.usd;
-  } catch (error) {
-    logger.error('Error fetching BTC price:', error);
-    throw new Error('Failed to fetch BTC price');
-  }
+  return getExchangeRate('BTC', 'USD');
 };
 
 const getETHPrice = async () => {
@@ -35,4 +31,4 @@ module.exports = {
   getBTCPrice,
   getETHPrice,
   getUSDTPrice
-}; 
+};

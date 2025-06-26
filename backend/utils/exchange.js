@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { getBTCUSDRate } = require('./rates');
 
 // Cache exchange rates for 5 minutes
 const exchangeRates = new Map();
@@ -32,10 +33,11 @@ exports.getExchangeRate = async (fromCurrency, toCurrency = 'USD') => {
       rate = 1;
     } else if (fromCurrency === 'BTC' && toCurrency === 'USD') {
       try {
-        const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
-        rate = response.data.bitcoin.usd;
+        // Use robust multi-source rate from rates.js
+        rate = await getBTCUSDRate();
+        rate = Number(rate);
       } catch (error) {
-        console.warn('Failed to fetch BTC rate from CoinGecko, using default:', error.message);
+        console.warn('Failed to fetch BTC rate from rates.js, using default:', error.message);
         rate = DEFAULT_BTC_RATE;
       }
     } else {
@@ -75,10 +77,10 @@ exports.convertAmount = async (amount, fromCurrency, toCurrency) => {
   const toRate = await exports.getExchangeRate(toCurrency);
 
   if (fromCurrency === 'BTC') {
-    // Convert from BTC to INR
-    return amount * fromRate;
+    // Convert from BTC to target currency
+    return amount * toRate;
   } else {
-    // Convert from INR to BTC
+    // Convert from source currency to BTC
     return amount / fromRate;
   }
 };

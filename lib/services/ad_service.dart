@@ -404,45 +404,17 @@ class AdService {
   // Get native ad widget
   Widget getNativeAd() {
     if (!_isNativeAdLoaded || _nativeAd == null) {
-      return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        height: 120,
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[300]!),
-        ),
-        child: const Center(
-          child: Text(
-            'Loading Ad...',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 14,
-            ),
+      return const Center(
+        child: Text(
+          'Loading Ad...',
+          style: TextStyle(
+            color: Colors.grey,
+            fontSize: 14,
           ),
         ),
       );
     }
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Color.fromRGBO(158, 158, 158, 0.3),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      height: 120,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: AdWidget(ad: _nativeAd!),
-      ),
-    );
+    return AdWidget(ad: _nativeAd!);
   }
 
   // Show rewarded ad with frequency capping
@@ -460,12 +432,16 @@ class AdService {
       return false;
     }
 
+    bool rewardGranted = false;
+
     _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
         _isRewardedAdLoaded = false;
         loadRewardedAd(); // Preload next ad
-        onAdDismissed();
+        if (!rewardGranted) {
+          onAdDismissed();
+        }
         _updateAdMetrics('rewarded', true, null);
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
@@ -479,7 +455,8 @@ class AdService {
 
     try {
       await _rewardedAd!.show(
-        onUserEarnedReward: (_, reward) {
+        onUserEarnedReward: (ad, reward) {
+          rewardGranted = true;
           onRewarded(reward.amount.toDouble());
         },
       );

@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' hide Notification;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:workmanager/workmanager.dart';
-import 'package:flutter/material.dart' hide Notification;
 
 import '../models/notification.dart';
 import '../services/notification_service.dart';
 import '../utils/enums.dart' show NotificationCategory;
 
-const String walletUpdateTask = "walletUpdateTask";
+const String walletUpdateTask = 'walletUpdateTask';
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -26,8 +26,8 @@ void callbackDispatcher() {
       if (task == walletUpdateTask) {
         await notificationsPlugin.show(
           0,
-          "Wallet Update",
-          "Your wallet balance was refreshed.",
+          'Wallet Update',
+          'Your wallet balance was refreshed.',
           const NotificationDetails(android: walletDetails),
         );
       }
@@ -66,8 +66,7 @@ class NotificationProvider with ChangeNotifier {
       notifyListeners();
 
       final notificationsData = await _notificationService.getNotifications();
-      _notifications =
-          notificationsData.map((data) => Notification.fromJson(data)).toList();
+      _notifications = notificationsData.map(Notification.fromJson).toList();
       _unreadCount = _notifications.where((n) => !n.isRead).length;
 
       _isLoading = false;
@@ -112,6 +111,13 @@ class NotificationProvider with ChangeNotifier {
     } catch (e) {
       print('Error adding notification: $e');
     }
+  }
+
+  // Add a notification from a local event (e.g., local notification callback)
+  void addNotificationFromLocal(Notification notification) {
+    _notifications.insert(0, notification);
+    _unreadCount++;
+    notifyListeners();
   }
 
   // Mark notification as read
