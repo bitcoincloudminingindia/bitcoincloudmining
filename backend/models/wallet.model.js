@@ -157,17 +157,9 @@ walletSchema.methods.safeSave = async function (session = null) {
         await this.save();
       }
 
-      // Get database connection
-      const db = mongoose.connection.db;
-      if (!db) {
-        throw new Error('Database connection not available');
-      }
-
-      // Update user's wallet data directly in MongoDB
-      const userCollection = db.collection('users');
-      const updateOptions = session ? { session } : {};
-
-      const updateResult = await userCollection.updateOne(
+      // Update user's wallet data using mongoose model instead of direct collection access
+      const User = mongoose.model('User');
+      const updateResult = await User.updateOne(
         { userId: this.userId },
         {
           $set: {
@@ -177,7 +169,7 @@ walletSchema.methods.safeSave = async function (session = null) {
             'wallet.lastUpdated': new Date()
           }
         },
-        updateOptions
+        session ? { session } : {}
       );
 
       // Check if user was found and updated
@@ -280,14 +272,9 @@ walletSchema.methods.addTransaction = async function (transactionData) {
     // Save wallet changes
     await this.save({ session });
 
-    // Update user's wallet data using direct MongoDB collection
-    const db = mongoose.connection.db;
-    if (!db) {
-      throw new Error('Database connection not available');
-    }
-
-    const userCollection = db.collection('users');
-    const updateResult = await userCollection.updateOne(
+    // Update user's wallet data using mongoose model instead of direct collection access
+    const User = mongoose.model('User');
+    const updateResult = await User.updateOne(
       { userId: this.userId },
       {
         $set: {

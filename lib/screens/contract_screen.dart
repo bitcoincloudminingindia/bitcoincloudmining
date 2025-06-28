@@ -658,11 +658,40 @@ class _ContractScreenState extends State<ContractScreen>
             // If index is odd, show ad
             if (index.isOdd) {
               // Add 'Sponsored Ad' label in the corner of the native ad
-              return SizedBox(
+              return Container(
                 height: 100,
+                margin: const EdgeInsets.symmetric(vertical: 8),
                 child: Stack(
                   children: [
-                    Positioned.fill(child: _adService.getNativeAd()),
+                    Positioned.fill(
+                      child: _adService.isNativeAdLoaded
+                          ? _adService.getNativeAd()
+                          : Container(
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey[300]!),
+                              ),
+                              child: const Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.ads_click,
+                                        color: Colors.grey, size: 24),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      'Ad Loading...',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                    ),
                     Positioned(
                       top: 4,
                       right: 8,

@@ -34,6 +34,7 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
   double tapBTCValue = 0.0000000000000001;
   Timer? autoMinerTimer;
   Timer? boostTimer;
+  Timer? periodicSaveTimer;
   final AdService _adService = AdService();
 
   List<Task> taskList = [
@@ -49,6 +50,7 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
     super.initState();
     _initializeAds();
     loadTaskData();
+    _startPeriodicSaveTimer();
   }
 
   Future<void> _initializeAds() async {
@@ -58,16 +60,31 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
     });
 
     try {
-      _adService.loadBannerAd(); // No await, as this is a void method
+      print('🔄 Initializing ads for Hash Rush...');
+
+      // Load banner ad (async)
+      await _adService.loadBannerAd();
+      print('✅ Banner ad loaded');
+
+      // Load rewarded ad (async)
       await _adService.loadRewardedAd();
+      print('✅ Rewarded ad loaded');
 
       if (mounted) {
         setState(() {
-          isAdLoaded = _adService.isBannerAdLoaded;
+          isAdLoaded =
+              _adService.isBannerAdLoaded || _adService.isRewardedAdLoaded;
           isAdLoading = false;
         });
+
+        if (isAdLoaded) {
+          print('✅ Ads initialized successfully');
+        } else {
+          print('⚠️ Some ads failed to load');
+        }
       }
     } catch (e) {
+      print('❌ Error initializing ads: $e');
       if (mounted) {
         setState(() {
           isAdLoaded = false;
@@ -100,8 +117,27 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
 
   @override
   void dispose() {
+    // Save any pending earnings before disposing
+    if (earnedBTC > 0) {
+      try {
+        Provider.of<WalletProvider>(context, listen: false).addEarning(
+          earnedBTC,
+          type: 'game',
+          description: 'Hash Rush - Game Earnings (Auto-saved)',
+        );
+        print(
+            '💾 Auto-saved Hash Rush earnings on dispose: ${earnedBTC.toStringAsFixed(18)} BTC');
+      } catch (e) {
+        print('❌ Error auto-saving Hash Rush earnings: $e');
+      }
+    }
+
+    // Save task data
+    saveTaskData();
+
     autoMinerTimer?.cancel();
     boostTimer?.cancel();
+    periodicSaveTimer?.cancel();
     _adService.dispose();
     super.dispose();
   }
@@ -373,197 +409,419 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
   }
 
   Future<void> exitGame() async {
+    if (isLoading) return; // Prevent multiple calls
+
     setState(() {
       isLoading = true;
     });
 
-    // Transfer game earnings to main wallet before exiting
-    if (earnedBTC > 0) {
-      try {
-        await Provider.of<WalletProvider>(context, listen: false).addEarning(
+    try {
+      // Transfer game earnings to main wallet before exiting
+      if (earnedBTC > 0) {
+        print(
+            '💾 Saving Hash Rush earnings: ${earnedBTC.toStringAsFixed(18)} BTC');
+
+        final walletProvider =
+            Provider.of<WalletProvider>(context, listen: false);
+        await walletProvider.addEarning(
           earnedBTC,
           type: 'game',
           description: 'Hash Rush - Game Earnings',
         );
-      } catch (e) {
-        print('Error adding earnings to wallet: $e');
+
+        print('✅ Hash Rush earnings saved successfully');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '🎉 ${earnedBTC.toStringAsFixed(18)} BTC added to wallet!',
+                style: const TextStyle(fontSize: 16),
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        print('ℹ️ No earnings to save');
+      }
+
+      // Save task data before exit
+      await saveTaskData();
+      print('✅ Task data saved');
+    } catch (e) {
+      print('❌ Error saving Hash Rush earnings: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error saving earnings: ${e.toString()}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+
+        // Navigate back after a short delay to show the success message
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          Navigator.pop(context, earnedBTC);
+        }
       }
     }
+  }
 
-    if (mounted) {
-      Navigator.pop(context, earnedBTC);
+  // Periodic save timer to save earnings every 30 seconds
+  void _startPeriodicSaveTimer() {
+    periodicSaveTimer?.cancel();
+    periodicSaveTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted && earnedBTC > 0) {
+        _saveEarningsPeriodically();
+      }
+    });
+  }
+
+  // Save earnings periodically without showing loading
+  Future<void> _saveEarningsPeriodically() async {
+    try {
+      final walletProvider =
+          Provider.of<WalletProvider>(context, listen: false);
+      await walletProvider.addEarning(
+        earnedBTC,
+        type: 'game',
+        description: 'Hash Rush - Periodic Save',
+      );
+
+      // Reset earned BTC after saving
+      setState(() {
+        earnedBTC = 0.0;
+      });
+
+      print('💾 Periodically saved Hash Rush earnings');
+    } catch (e) {
+      print('❌ Error in periodic save: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: AppBar(
-            title: Text(
-              widget.gameTitle,
-              style: GoogleFonts.poppins(
-                  fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            backgroundColor: Colors.purple,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: isLoading ? null : exitGame,
-            ),
-          ),
-          body: Stack(
-            children: [
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.deepPurple, Colors.black],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: Column(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop) {
+          // Show confirmation dialog if there are earnings
+          if (earnedBTC > 0) {
+            final shouldExit = await showDialog<bool>(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AlertDialog(
+                title: const Row(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        'Total Earned: ${earnedBTC.toStringAsFixed(18)} BTC',
-                        style: GoogleFonts.poppins(
-                          color: Colors.yellowAccent,
-                          fontSize: 20,
+                    Icon(Icons.exit_to_app, color: Colors.orange),
+                    SizedBox(width: 8),
+                    Text('Exit Game'),
+                  ],
+                ),
+                content: Text(
+                  'You have ${earnedBTC.toStringAsFixed(18)} BTC earnings!\n\nDo you want to save and exit?',
+                  style: const TextStyle(fontSize: 16),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Save & Exit'),
+                  ),
+                ],
+              ),
+            );
+
+            if (shouldExit == true) {
+              await exitGame();
+            }
+          } else {
+            // No earnings, just exit
+            Navigator.pop(context);
+          }
+        }
+      },
+      child: Stack(
+        children: [
+          Scaffold(
+            appBar: AppBar(
+              title: Text(
+                widget.gameTitle,
+                style: GoogleFonts.poppins(
+                    fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              backgroundColor: Colors.purple,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: isLoading ? null : exitGame,
+              ),
+            ),
+            body: Stack(
+              children: [
+                Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.deepPurple, Colors.black],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(
+                          'Total Earned: ${earnedBTC.toStringAsFixed(18)} BTC',
+                          style: GoogleFonts.poppins(
+                            color: Colors.yellowAccent,
+                            fontSize: 20,
+                          ),
                         ),
                       ),
-                    ),
-                    Expanded(
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            GestureDetector(
-                              onTap: handleTap,
-                              child: Container(
-                                height: 150,
-                                width: 150,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    colors: [Colors.amber, Colors.deepOrange],
+                      Expanded(
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              GestureDetector(
+                                onTap: handleTap,
+                                child: Container(
+                                  height: 150,
+                                  width: 150,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: LinearGradient(
+                                      colors: [Colors.amber, Colors.deepOrange],
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Color.fromRGBO(255, 255, 0, 0.5),
+                                        blurRadius: 12,
+                                        offset: Offset(0, 8),
+                                      )
+                                    ],
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Color.fromRGBO(255, 255, 0, 0.5),
-                                      blurRadius: 12,
-                                      offset: Offset(0, 8),
-                                    )
-                                  ],
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.flash_on,
-                                    color: Colors.white,
-                                    size: 70,
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.flash_on,
+                                      color: Colors.white,
+                                      size: 70,
+                                    ),
                                   ),
                                 ),
                               ),
+                              const SizedBox(height: 24),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: activateAutoMiner,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: isAutoMinerActive
+                                          ? Colors.grey
+                                          : Colors.greenAccent,
+                                    ),
+                                    child: Text(isAutoMinerActive
+                                        ? 'Auto Miner ON'
+                                        : 'Start Auto Miner'),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  ElevatedButton(
+                                    onPressed: activateBoost,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orangeAccent,
+                                    ),
+                                    child: const Text('Boost Mining'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (!isAdLoaded && adError != null)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Column(
+                            children: [
+                              Text(
+                                adError!,
+                                style: const TextStyle(color: Colors.red),
+                              ),
+                              ElevatedButton.icon(
+                                onPressed: _initializeAds,
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Retry Loading Ad'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orangeAccent,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // Banner Ad Section
+                      if (isAdLoaded)
+                        Container(
+                          width: double.infinity,
+                          height: 60,
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 8.0, vertical: 4.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withAlpha(26),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.white.withAlpha(51),
+                              width: 1,
                             ),
-                            const SizedBox(height: 24),
-                            Row(
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withAlpha(51),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: _adService.getBannerAd(),
+                          ),
+                        )
+                      else if (isAdLoading)
+                        Container(
+                          width: double.infinity,
+                          height: 60,
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 8.0, vertical: 4.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withAlpha(26),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.white.withAlpha(51),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Center(
+                            child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                ElevatedButton(
-                                  onPressed: activateAutoMiner,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: isAutoMinerActive
-                                        ? Colors.grey
-                                        : Colors.greenAccent,
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
                                   ),
-                                  child: Text(isAutoMinerActive
-                                      ? 'Auto Miner ON'
-                                      : 'Start Auto Miner'),
                                 ),
-                                const SizedBox(width: 16),
-                                ElevatedButton(
-                                  onPressed: activateBoost,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.orangeAccent,
+                                SizedBox(height: 4),
+                                Text(
+                                  'Loading Ad...',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
                                   ),
-                                  child: const Text('Boost Mining'),
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    if (!isAdLoaded && adError != null)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: Column(
-                          children: [
-                            Text(
-                              adError!,
-                              style: const TextStyle(color: Colors.red),
+                          ),
+                        )
+                      else
+                        Container(
+                          width: double.infinity,
+                          height: 60,
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 8.0, vertical: 4.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withAlpha(13),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.white.withAlpha(26),
+                              width: 1,
                             ),
-                            ElevatedButton.icon(
-                              onPressed: _initializeAds,
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('Retry Loading Ad'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orangeAccent,
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'Ad Space',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 14,
+                                fontStyle: FontStyle.italic,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              ),
-              if (isLoading)
-                Container(
-                  color: Colors.black.withAlpha(179),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const CircularProgressIndicator(
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.purple),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'Adding ${earnedBTC.toStringAsFixed(18)} BTC to wallet...',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 16,
                           ),
                         ),
-                      ],
-                    ),
+
+                      const SizedBox(height: 16),
+                    ],
                   ),
                 ),
-            ],
-          ),
-        ),
-        Positioned(
-          top: 16,
-          right: 16,
-          child: FloatingActionButton(
-            backgroundColor: Colors.pinkAccent,
-            onPressed: () => showTaskPopup(context),
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.task_alt, color: Colors.white),
-                Text(
-                  'Tasks',
-                  style: TextStyle(color: Colors.white, fontSize: 10),
-                ),
+                if (isLoading)
+                  Container(
+                    color: Colors.black.withAlpha(179),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const CircularProgressIndicator(
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.purple),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            'Adding ${earnedBTC.toStringAsFixed(18)} BTC to wallet...',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
-        ),
-      ],
+          Positioned(
+            top: 16,
+            right: 16,
+            child: FloatingActionButton(
+              backgroundColor: Colors.pinkAccent,
+              onPressed: () => showTaskPopup(context),
+              child: const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.task_alt, color: Colors.white),
+                  Text(
+                    'Tasks',
+                    style: TextStyle(color: Colors.white, fontSize: 10),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

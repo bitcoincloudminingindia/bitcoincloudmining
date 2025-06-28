@@ -54,12 +54,16 @@ class ApiService {
 
   static Future<bool> checkConnectivity() async {
     int attempts = 0;
-    const maxAttempts = 2;
+    const maxAttempts = 3;
 
     while (attempts < maxAttempts) {
       try {
         debugPrint(
             'Checking connectivity (attempt ${attempts + 1}/$maxAttempts)');
+
+        // Try to get working URL first
+        final workingUrl = await ApiConfig.getWorkingUrl();
+        debugPrint('Using working URL: $workingUrl');
 
         final isAvailable = await ApiConfig.isServerAvailable();
         if (isAvailable) {
@@ -125,13 +129,31 @@ class ApiService {
     final String cleanEndpoint =
         endpoint.startsWith('/') ? endpoint : '/$endpoint';
 
-    // Build the URL
+    // Build the URL with base URL
     final String finalUrl = ApiConfig.baseUrl + cleanEndpoint;
 
     // Remove any double slashes except after protocol (http:// or https://)
     final String cleanUrl = finalUrl.replaceAll(RegExp(r'(?<!:)\/\/+'), '/');
 
     debugPrint('🌐 Built URL: $cleanUrl');
+    return cleanUrl;
+  }
+
+  static Future<String> buildUrlWithFallback(String endpoint) async {
+    // Ensure endpoint starts with '/'
+    final String cleanEndpoint =
+        endpoint.startsWith('/') ? endpoint : '/$endpoint';
+
+    // Get working URL with fallback
+    final String workingUrl = await ApiConfig.getWorkingUrl();
+
+    // Build the URL with working URL
+    final String finalUrl = workingUrl + cleanEndpoint;
+
+    // Remove any double slashes except after protocol (http:// or https://)
+    final String cleanUrl = finalUrl.replaceAll(RegExp(r'(?<!:)\/\/+'), '/');
+
+    debugPrint('🌐 Built URL with fallback: $cleanUrl');
     return cleanUrl;
   }
 
@@ -154,88 +176,130 @@ class ApiService {
     Map<String, dynamic>? body,
     Map<String, String>? headers,
   }) async {
-    try {
-      final url = Uri.parse(buildUrl(endpoint));
-      debugPrint('🌐 Making $method request to: $url');
+    int retryCount = 0;
+    const maxRetries = 2;
 
-      final isPublicEndpoint = publicEndpoints.any((e) => endpoint.endsWith(e));
-      final Map<String, String> finalHeaders = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...?headers,
-      };
+    while (retryCount <= maxRetries) {
+      try {
+        // Use fallback URL for DNS resolution issues
+        final urlString = retryCount == 0
+            ? buildUrl(endpoint)
+            : await buildUrlWithFallback(endpoint);
 
-      if (!isPublicEndpoint) {
-        final token = await _getAuthToken();
-        if (token != null) {
-          finalHeaders['Authorization'] = 'Bearer $token';
+        final url = Uri.parse(urlString);
+        debugPrint(
+            '🌐 Making $method request to: $url (attempt ${retryCount + 1})');
+
+        final isPublicEndpoint =
+            publicEndpoints.any((e) => endpoint.endsWith(e));
+        final Map<String, String> finalHeaders = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          ...?headers,
+        };
+
+        if (!isPublicEndpoint) {
+          final token = await _getAuthToken();
+          if (token != null) {
+            finalHeaders['Authorization'] = 'Bearer $token';
+          }
         }
-      }
 
-      print('📤 Final request headers: $finalHeaders');
+        print('📤 Final request headers: $finalHeaders');
 
-      // Debug headers
-      final headersDebug = Map<String, String>.from(finalHeaders);
-      if (headersDebug.containsKey('Authorization')) {
-        final authHeader = headersDebug['Authorization'] ?? '';
-        if (authHeader.startsWith('Bearer ')) {
-          final token = authHeader.substring(7);
-          headersDebug['Authorization'] = 'Bearer ${token.substring(0, 10)}...';
-          print(
-              '🔐 Token length: ${token.length}, parts: ${token.split('.').length}');
+        // Debug headers
+        final headersDebug = Map<String, String>.from(finalHeaders);
+        if (headersDebug.containsKey('Authorization')) {
+          final authHeader = headersDebug['Authorization'] ?? '';
+          if (authHeader.startsWith('Bearer ')) {
+            final token = authHeader.substring(7);
+            headersDebug['Authorization'] =
+                'Bearer ${token.substring(0, 10)}...';
+            print(
+                '🔐 Token length: ${token.length}, parts: ${token.split('.').length}');
+          }
         }
-      }
-      print('📤 Request headers: $headersDebug');
+        print('📤 Request headers: $headersDebug');
 
-      late http.Response response;
+        late http.Response response;
 
-      switch (method.toUpperCase()) {
-        case 'GET':
-          response = await http.get(url, headers: finalHeaders);
-          break;
-        case 'POST':
-          response = await http.post(
-            url,
-            headers: finalHeaders,
-            body: body != null ? jsonEncode(body) : null,
-          );
-          break;
-        case 'PUT':
-          response = await http.put(
-            url,
-            headers: finalHeaders,
-            body: body != null ? jsonEncode(body) : null,
-          );
-          break;
-        case 'DELETE':
-          response = await http.delete(url, headers: finalHeaders);
-          break;
-        default:
-          throw Exception('Unsupported HTTP method: $method');
-      }
+        switch (method.toUpperCase()) {
+          case 'GET':
+            response =
+                await http.get(url, headers: finalHeaders).timeout(_timeout);
+            break;
+          case 'POST':
+            response = await http
+                .post(
+                  url,
+                  headers: finalHeaders,
+                  body: body != null ? jsonEncode(body) : null,
+                )
+                .timeout(_timeout);
+            break;
+          case 'PUT':
+            response = await http
+                .put(
+                  url,
+                  headers: finalHeaders,
+                  body: body != null ? jsonEncode(body) : null,
+                )
+                .timeout(_timeout);
+            break;
+          case 'DELETE':
+            response =
+                await http.delete(url, headers: finalHeaders).timeout(_timeout);
+            break;
+          default:
+            throw Exception('Unsupported HTTP method: $method');
+        }
 
-      print('📥 Response status: ${response.statusCode}');
-      print('📥 Response body: ${response.body}');
+        print('📥 Response status: ${response.statusCode}');
+        print('📥 Response body: ${response.body}');
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final data = jsonDecode(response.body);
-        return data;
-      } else {
-        final errorData = jsonDecode(response.body);
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          final data = jsonDecode(response.body);
+          return data;
+        } else {
+          final errorData = jsonDecode(response.body);
+          return {
+            'success': false,
+            'message': errorData['message'] ?? 'Request failed',
+            'error': errorData['error'] ?? 'UNKNOWN_ERROR'
+          };
+        }
+      } catch (e) {
+        print('❌ Request error (attempt ${retryCount + 1}): $e');
+
+        // Check if it's a DNS resolution error
+        if (e.toString().contains('Failed host lookup') ||
+            e.toString().contains('no address associated with hostname') ||
+            e.toString().contains('SocketException')) {
+          if (retryCount < maxRetries) {
+            retryCount++;
+            print('🔄 DNS error detected, retrying with fallback URL...');
+            await Future.delayed(
+                Duration(seconds: retryCount * 2)); // Exponential backoff
+            continue;
+          }
+        }
+
+        // If it's not a DNS error or we've exhausted retries, return error
         return {
           'success': false,
-          'message': errorData['message'] ?? 'Request failed',
-          'error': errorData['error'] ?? 'UNKNOWN_ERROR'
+          'message': 'Network error: ${e.toString()}',
+          'error': 'NETWORK_ERROR',
+          'details': e.toString(),
         };
       }
-    } catch (e) {
-      print('❌ Request error: $e');
-      return {
-        'success': false,
-        'message': 'Request failed',
-        'error': e.toString(),
-      };
     }
+
+    // This should never be reached, but just in case
+    return {
+      'success': false,
+      'message': 'All retry attempts failed',
+      'error': 'MAX_RETRIES_EXCEEDED',
+    };
   }
 
   // Update static methods to use static _makeRequest

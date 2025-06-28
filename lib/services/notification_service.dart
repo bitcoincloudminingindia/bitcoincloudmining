@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:rxdart/subjects.dart';
 
 // Conditional web import
@@ -27,7 +29,11 @@ class NotificationService {
   Future<void> initialize() async {
     const initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initializationSettingsIOS = DarwinInitializationSettings();
+    const initializationSettingsIOS = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
 
     const initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
@@ -40,6 +46,85 @@ class NotificationService {
         selectNotificationSubject.add(response.payload);
       },
     );
+
+    // Create notification channels for Android 8.0+
+    await _createNotificationChannels();
+
+    // Request permissions
+    await _requestPermissions();
+  }
+
+  Future<void> _createNotificationChannels() async {
+    if (Platform.isAndroid) {
+      // Wallet notifications channel
+      const walletChannel = AndroidNotificationChannel(
+        'wallet_channel',
+        'Wallet Notifications',
+        description: 'Notifications for wallet updates and transactions',
+        importance: Importance.high,
+        enableVibration: true,
+        enableLights: true,
+        playSound: true,
+      );
+
+      // Game notifications channel
+      const gameChannel = AndroidNotificationChannel(
+        'game_channel',
+        'Game Notifications',
+        description: 'Notifications for game rewards and updates',
+        importance: Importance.defaultImportance,
+        enableVibration: true,
+        enableLights: true,
+        playSound: true,
+      );
+
+      // System notifications channel
+      const systemChannel = AndroidNotificationChannel(
+        'system_channel',
+        'System Notifications',
+        description: 'General system notifications',
+        importance: Importance.low,
+        enableVibration: false,
+        enableLights: false,
+        playSound: false,
+      );
+
+      // Create channels
+      await _notifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(walletChannel);
+
+      await _notifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(gameChannel);
+
+      await _notifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(systemChannel);
+    }
+  }
+
+  Future<void> _requestPermissions() async {
+    if (Platform.isAndroid) {
+      // Request notification permission for Android 13+
+      if (await Permission.notification.request().isGranted) {
+        print('Notification permission granted');
+      } else {
+        print('Notification permission denied');
+      }
+    } else if (Platform.isIOS) {
+      await _notifications
+          .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
+          );
+    }
   }
 
   Future<void> showNotification({
@@ -49,18 +134,59 @@ class NotificationService {
     required String id,
     required String status,
     required DateTime timestamp,
+    String channelId = 'wallet_channel',
   }) async {
-    const androidDetails = AndroidNotificationDetails(
-      'wallet_channel',
-      'Wallet Notifications',
-      channelDescription: 'Notifications for wallet updates',
-      importance: Importance.high,
-      priority: Priority.high,
+    AndroidNotificationDetails androidDetails;
+
+    switch (channelId) {
+      case 'wallet_channel':
+        androidDetails = const AndroidNotificationDetails(
+          'wallet_channel',
+          'Wallet Notifications',
+          channelDescription: 'Notifications for wallet updates',
+          importance: Importance.high,
+          priority: Priority.high,
+          enableVibration: true,
+          enableLights: true,
+          playSound: true,
+          color: Color(0xFF2196F3),
+          largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+          styleInformation: BigTextStyleInformation(''),
+        );
+        break;
+      case 'game_channel':
+        androidDetails = const AndroidNotificationDetails(
+          'game_channel',
+          'Game Notifications',
+          channelDescription: 'Notifications for game rewards',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          enableVibration: true,
+          enableLights: true,
+          playSound: true,
+          color: Color(0xFF9C27B0),
+        );
+        break;
+      default:
+        androidDetails = const AndroidNotificationDetails(
+          'system_channel',
+          'System Notifications',
+          channelDescription: 'General system notifications',
+          importance: Importance.low,
+          priority: Priority.low,
+          enableVibration: false,
+          enableLights: false,
+          playSound: false,
+        );
+    }
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
     );
 
-    const iosDetails = DarwinNotificationDetails();
-
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );

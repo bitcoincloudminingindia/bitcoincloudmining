@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:bitcoin_cloud_mining/config/api_config.dart';
 import 'package:bitcoin_cloud_mining/models/notification.dart' as model;
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
+import 'package:bitcoin_cloud_mining/providers/network_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/notification_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/reward_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
@@ -251,6 +252,9 @@ class _MyAppState extends State<MyApp> with WindowListener {
         ChangeNotifierProvider(
           create: (_) => NotificationProvider(
               notificationService: widget.notificationService),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => NetworkProvider(),
         ),
         Provider.value(value: widget.apiService),
         Provider.value(value: widget.notificationService),

@@ -19,17 +19,40 @@ const transporter = nodemailer.createTransport({
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD
+  },
+  // Add timeout and connection settings
+  connectionTimeout: 30000, // 30 seconds
+  greetingTimeout: 30000,   // 30 seconds
+  socketTimeout: 30000,     // 30 seconds
+  pool: true,               // Use pooled connections
+  maxConnections: 5,        // Maximum connections in pool
+  maxMessages: 100,         // Maximum messages per connection
+  rateLimit: 14,            // Messages per second
+  rateDelta: 1000,          // Time window for rate limiting
+  // Retry settings
+  retry: {
+    retries: 3,
+    factor: 2,
+    minTimeout: 1000,
+    maxTimeout: 5000
   }
 });
 
-// Verify connection on startup
-transporter.verify()
-  .then(() => logger.info('✅ Email service connected successfully'))
-  .catch(error => {
-    logger.error('❌ Email service connection failed:', error);
+// Verify connection on startup with timeout
+const verifyEmailConnection = async () => {
+  try {
+    await transporter.verify();
+    logger.info('✅ Email service connected successfully');
+    emailServiceAvailable = true;
+  } catch (error) {
+    logger.error('❌ Email service connection failed:', error.message);
     emailServiceAvailable = false;
-    // Do not exit, just log the error and set flag
-  });
+    // Don't exit, just log the error and set flag
+  }
+};
+
+// Verify connection on startup
+verifyEmailConnection();
 
 const sendVerificationEmail = async (email, otp) => {
   if (!emailServiceAvailable) {
@@ -52,8 +75,9 @@ const sendVerificationEmail = async (email, otp) => {
     logger.info('✅ Verification email sent:', info.messageId);
     return true;
   } catch (error) {
-    logger.error('❌ Error sending verification email:', error);
-    throw error;
+    logger.error('❌ Error sending verification email:', error.message);
+    // Don't throw error, just return false
+    return false;
   }
 };
 
@@ -76,8 +100,8 @@ const sendPasswordResetEmail = async (email, otp) => {
     logger.info('✅ Password reset email sent:', info.messageId);
     return true;
   } catch (error) {
-    logger.error('❌ Error sending password reset email:', error);
-    throw error;
+    logger.error('❌ Error sending password reset email:', error.message);
+    return false;
   }
 };
 
@@ -111,8 +135,8 @@ const sendTransactionNotification = async (user, transaction) => {
     logger.info('✅ Transaction notification sent:', info.messageId);
     return true;
   } catch (error) {
-    logger.error('❌ Error sending transaction notification:', error);
-    throw error;
+    logger.error('❌ Error sending transaction notification:', error.message);
+    return false;
   }
 };
 
@@ -136,8 +160,8 @@ const sendPromotionalEmail = async (email, promotion) => {
     logger.info('✅ Promotional email sent:', info.messageId);
     return true;
   } catch (error) {
-    logger.error('❌ Error sending promotional email:', error);
-    throw error;
+    logger.error('❌ Error sending promotional email:', error.message);
+    return false;
   }
 };
 
@@ -169,8 +193,8 @@ const sendRewardNotification = async (user, reward) => {
     logger.info('✅ Reward notification sent:', info.messageId);
     return true;
   } catch (error) {
-    logger.error('❌ Error sending reward notification:', error);
-    throw error;
+    logger.error('❌ Error sending reward notification:', error.message);
+    return false;
   }
 };
 

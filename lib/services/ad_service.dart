@@ -62,6 +62,14 @@ class AdService {
   int _failedAdShows = 0;
   double _averageAdLoadTime = 0.0;
 
+  // Native ad performance metrics
+  int _nativeAdLoadCount = 0;
+  int _nativeAdFailCount = 0;
+  int _nativeAdClickCount = 0;
+  int _nativeAdImpressionCount = 0;
+  DateTime? _nativeAdFirstLoadTime;
+  double _nativeAdAverageLoadTime = 0.0;
+
   // Getters for metrics
   Map<String, dynamic> get adMetrics => {
         'total_shows': _totalAdShows,
@@ -73,10 +81,26 @@ class AdService {
         'ad_failures': _adFailures,
       };
 
+  // Get native ad performance metrics
+  Map<String, dynamic> get nativeAdMetrics => {
+        'load_count': _nativeAdLoadCount,
+        'fail_count': _nativeAdFailCount,
+        'click_count': _nativeAdClickCount,
+        'impression_count': _nativeAdImpressionCount,
+        'success_rate': _nativeAdLoadCount > 0
+            ? ((_nativeAdLoadCount - _nativeAdFailCount) / _nativeAdLoadCount) *
+                100
+            : 0,
+        'average_load_time': _nativeAdAverageLoadTime,
+        'first_load_time': _nativeAdFirstLoadTime?.toIso8601String(),
+        'is_loaded': _isNativeAdLoaded,
+      };
+
   // Public getters for ad loaded states
   bool get isRewardedAdLoaded => _isRewardedAdLoaded;
   bool get isBannerAdLoaded => _isBannerAdLoaded;
   bool get isInterstitialAdLoaded => _isInterstitialAdLoaded;
+  bool get isNativeAdLoaded => _isNativeAdLoaded;
 
   // Get ad unit ID based on platform and ad type
   String _getAdUnitId(String adType) {
@@ -322,147 +346,409 @@ class AdService {
     );
   }
 
-  // Load rewarded ad
+  // Load rewarded ad with better error handling
   Future<void> loadRewardedAd() async {
-    if (_isRewardedAdLoaded && _isCachedAdValid('rewarded')) {
-      debugPrint('[AdService] loadRewardedAd: Already loaded and cached.');
+    if (kIsWeb) return;
+
+    if (_isRewardedAdLoading) {
+      debugPrint('Rewarded ad already loading');
       return;
     }
-    if (_isRewardedAdLoading) {
-      debugPrint('[AdService] loadRewardedAd: Already loading.');
-      return; // Prevent parallel loads
-    }
+
     _isRewardedAdLoading = true;
+    debugPrint('🔄 Loading rewarded ad...');
+
+    try {
+      final adUnitId = _getAdUnitId('rewarded');
+      if (adUnitId.isEmpty) {
+        debugPrint('❌ No rewarded ad unit ID available');
+        _isRewardedAdLoading = false;
+        return;
+      }
+
+      await RewardedAd.load(
+        adUnitId: adUnitId,
+        request: const AdRequest(),
+        rewardedAdLoadCallback: RewardedAdLoadCallback(
+          onAdLoaded: (ad) {
+            debugPrint('✅ Rewarded ad loaded successfully');
+            _rewardedAd = ad;
+            _isRewardedAdLoaded = true;
+            _isRewardedAdLoading = false;
+            _adCacheTimes['rewarded'] = DateTime.now();
+
+            // Set up ad event listeners
+            ad.fullScreenContentCallback = FullScreenContentCallback(
+              onAdDismissedFullScreenContent: (ad) {
+                debugPrint('Rewarded ad dismissed');
+                _isRewardedAdLoaded = false;
+                ad.dispose();
+              },
+              onAdFailedToShowFullScreenContent: (ad, error) {
+                debugPrint('❌ Rewarded ad failed to show: $error');
+                _isRewardedAdLoaded = false;
+                ad.dispose();
+              },
+              onAdShowedFullScreenContent: (ad) {
+                debugPrint('Rewarded ad showed full screen');
+              },
+            );
+          },
+          onAdFailedToLoad: (error) {
+            debugPrint('❌ Rewarded ad failed to load: $error');
+            _isRewardedAdLoaded = false;
+            _isRewardedAdLoading = false;
+            _adFailures['rewarded'] = (_adFailures['rewarded'] ?? 0) + 1;
+          },
+        ),
+      );
+    } catch (e) {
+      debugPrint('❌ Error loading rewarded ad: $e');
+      _isRewardedAdLoaded = false;
+      _isRewardedAdLoading = false;
+    }
+  }
+
+  // Auto-refresh native ad periodically
+  Timer? _nativeAdRefreshTimer;
+
+  // Load native ad with retry mechanism and auto-refresh
+  Future<void> loadNativeAd() async {
+    if (_isNativeAdLoaded) return;
+
+    final adUnitId = _getAdUnitId('native');
+    if (adUnitId.isEmpty) {
+      debugPrint('Invalid native ad unit ID');
+      return;
+    }
+
+    final startTime = DateTime.now();
 
     await _loadAdWithRetry(
-      'rewarded',
+      'native',
       () async {
-        final adUnitId = _getAdUnitId('rewarded');
-        if (adUnitId.isEmpty) throw Exception('Invalid rewarded ad unit ID');
+        // Dispose existing ad if any
+        _nativeAd?.dispose();
+        _nativeAd = null;
+        _isNativeAdLoaded = false;
 
-        debugPrint('[AdService] loadRewardedAd: Loading rewarded ad...');
-        await RewardedAd.load(
+        _nativeAd = NativeAd(
           adUnitId: adUnitId,
+          factoryId: 'listTile',
           request: const AdRequest(),
-          rewardedAdLoadCallback: RewardedAdLoadCallback(
+          listener: NativeAdListener(
             onAdLoaded: (ad) {
+              _isNativeAdLoaded = true;
+              _nativeAdLoadCount++;
+              _nativeAdFirstLoadTime ??= DateTime.now();
+
+              final loadTime = DateTime.now().difference(startTime);
+              _nativeAdAverageLoadTime =
+                  (_nativeAdAverageLoadTime * (_nativeAdLoadCount - 1) +
+                          loadTime.inMilliseconds) /
+                      _nativeAdLoadCount;
+
               debugPrint(
-                  '[AdService] loadRewardedAd: Rewarded ad loaded successfully.');
-              _rewardedAd = ad;
-              _isRewardedAdLoaded = true;
-              _isRewardedAdLoading = false;
+                  '✅ Native ad loaded successfully in ${loadTime.inMilliseconds}ms');
+              // Start auto-refresh timer
+              _startNativeAdAutoRefresh();
             },
-            onAdFailedToLoad: (error) {
-              debugPrint(
-                  '[AdService] loadRewardedAd: Failed to load rewarded ad: ${error.message} (${error.code})');
-              _isRewardedAdLoaded = false;
-              _isRewardedAdLoading = false;
+            onAdFailedToLoad: (ad, error) {
+              _isNativeAdLoaded = false;
+              _nativeAdFailCount++;
+              ad.dispose();
+              debugPrint('❌ Native ad failed to load: $error');
+              _adFailures['native'] = (_adFailures['native'] ?? 0) + 1;
               throw error;
+            },
+            onAdOpened: (ad) {
+              debugPrint('Native ad opened');
+            },
+            onAdClosed: (ad) {
+              debugPrint('Native ad closed');
+            },
+            onAdImpression: (ad) {
+              _nativeAdImpressionCount++;
+              debugPrint(
+                  'Native ad impression (total: $_nativeAdImpressionCount)');
+            },
+            onAdClicked: (ad) {
+              _nativeAdClickCount++;
+              debugPrint('Native ad clicked (total: $_nativeAdClickCount)');
             },
           ),
         );
+
+        await _nativeAd!.load();
+        _adCacheTimes['native'] = DateTime.now();
       },
       (success) {
-        _isRewardedAdLoaded = success;
-        _isRewardedAdLoading = false;
-        if (!success) {
-          debugPrint('[AdService] loadRewardedAd: All retry attempts failed.');
-        }
+        _isNativeAdLoaded = success;
       },
     );
   }
 
-  // Load native ad
-  Future<void> loadNativeAd() async {
-    if (_isNativeAdLoaded) return;
-    final adUnitId = _getAdUnitId('native');
-    if (adUnitId.isEmpty) throw Exception('Invalid native ad unit ID');
-    _nativeAd = NativeAd(
-      adUnitId: adUnitId,
-      factoryId: 'listTile',
-      request: const AdRequest(),
-      listener: NativeAdListener(
-        onAdLoaded: (ad) {
-          _isNativeAdLoaded = true;
-          debugPrint('Native ad loaded');
-        },
-        onAdFailedToLoad: (ad, error) {
-          _isNativeAdLoaded = false;
-          ad.dispose();
-          debugPrint('Native ad failed to load: $error');
-        },
-      ),
-    );
-    try {
-      await _nativeAd!.load();
-    } catch (e) {
-      debugPrint('Error loading native ad: $e');
+  // Start auto-refresh timer for native ads
+  void _startNativeAdAutoRefresh() {
+    _nativeAdRefreshTimer?.cancel();
+    // Refresh native ad every 5 minutes
+    _nativeAdRefreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      debugPrint('🔄 Auto-refreshing native ad...');
       _isNativeAdLoaded = false;
-    }
+      _nativeAd?.dispose();
+      _nativeAd = null;
+      loadNativeAd();
+    });
   }
 
-  // Get native ad widget
+  // Force refresh native ad
+  Future<void> refreshNativeAd() async {
+    debugPrint('🔄 Force refreshing native ad...');
+    _isNativeAdLoaded = false;
+    _nativeAd?.dispose();
+    _nativeAd = null;
+    await loadNativeAd();
+  }
+
+  // Get native ad widget with improved error handling and refresh capability
   Widget getNativeAd() {
     if (!_isNativeAdLoaded || _nativeAd == null) {
-      return const Center(
-        child: Text(
-          'Loading Ad...',
-          style: TextStyle(
-            color: Colors.grey,
-            fontSize: 14,
-          ),
+      return Container(
+        height: 100,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.ads_click, color: Colors.grey, size: 24),
+            const SizedBox(height: 4),
+            const Text(
+              'Ad Loading...',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Add refresh button for failed ads
+            GestureDetector(
+              onTap: () {
+                debugPrint('🔄 Manually refreshing native ad...');
+                _isNativeAdLoaded = false;
+                _nativeAd?.dispose();
+                _nativeAd = null;
+                loadNativeAd();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withAlpha(51),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'Refresh',
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
-    return AdWidget(ad: _nativeAd!);
+
+    return Container(
+      height: 100,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(26),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Stack(
+          children: [
+            // Native ad content with error boundary
+            Positioned.fill(
+              child: Builder(
+                builder: (context) {
+                  try {
+                    return AdWidget(ad: _nativeAd!);
+                  } catch (e) {
+                    debugPrint('❌ Error rendering native ad: $e');
+                    // Return fallback UI if ad rendering fails
+                    return Container(
+                      color: Colors.grey[100],
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline,
+                                color: Colors.grey, size: 20),
+                            SizedBox(height: 4),
+                            Text(
+                              'Ad Unavailable',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ),
+            // Ad label overlay with better positioning
+            Positioned(
+              top: 4,
+              left: 4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withAlpha(179),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'Ad',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            // Close button for better UX
+            Positioned(
+              top: 4,
+              right: 4,
+              child: GestureDetector(
+                onTap: () {
+                  debugPrint('User dismissed native ad');
+                  // Optionally track ad dismissal
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha(179),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 12,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  // Show rewarded ad with frequency capping
+  // Show rewarded ad with better error handling
   Future<bool> showRewardedAd({
     required Function(double) onRewarded,
     required VoidCallback onAdDismissed,
   }) async {
+    if (kIsWeb) {
+      // Simulate ad for web testing
+      await Future.delayed(const Duration(seconds: 2));
+      onRewarded(5.0); // Give 5x reward for web
+      return true;
+    }
+
     if (!_canShowAd('rewarded')) {
       debugPrint('Rewarded ad frequency cap reached');
       return false;
     }
 
     if (!_isRewardedAdLoaded || _rewardedAd == null) {
-      debugPrint('Rewarded ad not loaded');
-      return false;
+      debugPrint('Rewarded ad not loaded, attempting to load...');
+      await loadRewardedAd();
+      if (!_isRewardedAdLoaded || _rewardedAd == null) {
+        debugPrint('Failed to load rewarded ad');
+        return false;
+      }
     }
 
     bool rewardGranted = false;
-
-    _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
-      onAdDismissedFullScreenContent: (ad) {
-        ad.dispose();
-        _isRewardedAdLoaded = false;
-        loadRewardedAd(); // Preload next ad
-        if (!rewardGranted) {
-          onAdDismissed();
-        }
-        _updateAdMetrics('rewarded', true, null);
-      },
-      onAdFailedToShowFullScreenContent: (ad, error) {
-        ad.dispose();
-        _isRewardedAdLoaded = false;
-        loadRewardedAd();
-        debugPrint('Rewarded ad show error: $error');
-        _updateAdMetrics('rewarded', false, null);
-      },
-    );
+    bool adShown = false;
 
     try {
+      _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
+        onAdDismissedFullScreenContent: (ad) {
+          debugPrint('Rewarded ad dismissed');
+          ad.dispose();
+          _isRewardedAdLoaded = false;
+
+          // Preload next ad
+          loadRewardedAd();
+
+          // Call onAdDismissed if no reward was granted
+          if (!rewardGranted) {
+            onAdDismissed();
+          }
+
+          _updateAdMetrics('rewarded', adShown, null);
+        },
+        onAdFailedToShowFullScreenContent: (ad, error) {
+          debugPrint('❌ Rewarded ad failed to show: $error');
+          ad.dispose();
+          _isRewardedAdLoaded = false;
+
+          // Preload next ad
+          loadRewardedAd();
+
+          // Call onAdDismissed if ad failed to show
+          onAdDismissed();
+
+          _updateAdMetrics('rewarded', false, null);
+        },
+        onAdShowedFullScreenContent: (ad) {
+          debugPrint('Rewarded ad showed full screen');
+          adShown = true;
+        },
+      );
+
       await _rewardedAd!.show(
         onUserEarnedReward: (ad, reward) {
+          debugPrint('✅ User earned reward: ${reward.amount}');
           rewardGranted = true;
           onRewarded(reward.amount.toDouble());
         },
       );
+
       return true;
     } catch (e) {
-      debugPrint('Error showing rewarded ad: $e');
+      debugPrint('❌ Error showing rewarded ad: $e');
+      _isRewardedAdLoaded = false;
+      _rewardedAd?.dispose();
+
+      // Preload next ad
+      loadRewardedAd();
+
+      // Call onAdDismissed on error
+      onAdDismissed();
+
       _updateAdMetrics('rewarded', false, null);
       return false;
     }
@@ -536,11 +822,13 @@ class AdService {
     _interstitialAd?.dispose();
     _rewardedAd?.dispose();
     _nativeAd?.dispose();
+    _nativeAdRefreshTimer?.cancel();
 
     _isBannerAdLoaded = false;
     _isInterstitialAdLoaded = false;
     _isRewardedAdLoaded = false;
     _isRewardedAdLoading = false;
+    _isNativeAdLoaded = false;
 
     _saveMetrics();
   }
