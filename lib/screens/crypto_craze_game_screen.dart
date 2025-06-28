@@ -384,31 +384,62 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     });
 
     try {
+      print('🎬 Showing rewarded ad for Crypto Craze...');
+
       if (!_adService.isRewardedAdLoaded) {
         await _adService.loadRewardedAd();
       }
 
       if (mounted) {
         await _adService.showRewardedAd(
-          onRewarded: (amount) {
-            setState(() {
-              _isDoubleMiningActive = true;
-            });
-            _startDoubleMiningTimer();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Double mining activated! ⚡'),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 2),
-              ),
-            );
+          onRewarded: (amount) async {
+            if (!mounted) return;
+
+            try {
+              // Add BTC reward (5x normal reward)
+              const double adReward = 0.000000000000000050; // 5x normal reward
+
+              setState(() {
+                _isDoubleMiningActive = true;
+                _btcScore += adReward;
+                _sessionEarnings += adReward;
+              });
+
+              _startDoubleMiningTimer();
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '🎉 +${adReward.toStringAsFixed(18)} BTC earned! Double mining activated! ⚡',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+
+              print(
+                  '✅ Crypto Craze ad reward earned: ${adReward.toStringAsFixed(18)} BTC');
+            } catch (e) {
+              print('❌ Error adding ad reward: $e');
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error adding reward: ${e.toString()}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
           },
           onAdDismissed: () {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text(
-                      'Please watch the full ad to activate double mining.'),
+                      'Please watch the full ad to earn BTC and activate double mining.'),
                   backgroundColor: Colors.orange,
                   duration: Duration(seconds: 2),
                 ),
@@ -418,6 +449,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
         );
       }
     } catch (e) {
+      print('❌ Error showing rewarded ad: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -454,195 +486,307 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     });
   }
 
+  Future<void> _saveEarningsAndExit() async {
+    // Show confirmation dialog if there are earnings
+    if (_sessionEarnings > 0) {
+      final shouldExit = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.exit_to_app, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Exit Game'),
+            ],
+          ),
+          content: Text(
+            'You have ${_sessionEarnings.toStringAsFixed(18)} BTC earnings!\n\nDo you want to save and exit?',
+            style: const TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Save & Exit'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldExit != true) {
+        return; // User cancelled
+      }
+    }
+
+    // Save earnings to wallet
+    if (_sessionEarnings > 0) {
+      try {
+        print(
+            '💾 Saving Crypto Craze earnings: ${_sessionEarnings.toStringAsFixed(18)} BTC');
+
+        await _walletProvider.addEarning(
+          _sessionEarnings,
+          type: 'game',
+          description: 'Crypto Craze Game Earnings - Level $_currentLevel',
+        );
+
+        print('✅ Crypto Craze earnings saved successfully');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '🎉 ${_sessionEarnings.toStringAsFixed(18)} BTC added to wallet!',
+                style: const TextStyle(fontSize: 16),
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } catch (e) {
+        print('❌ Error saving Crypto Craze earnings: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error saving earnings: ${e.toString()}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    }
+
+    // Save game data
+    _saveGameData();
+    print('✅ Game data saved');
+
+    // Navigate back
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.gameTitle,
-          style: GoogleFonts.poppins(fontSize: 26, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.teal,
-      ),
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.teal, Colors.black],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Stack(
-              children: [
-                for (int i = 0; i < _cryptoPositions.length; i++)
-                  Positioned(
-                    left: _cryptoPositions[i].dx,
-                    top: _cryptoPositions[i].dy,
-                    child: GestureDetector(
-                      onTap: () => _tapCrypto(i),
-                      child: const Icon(
-                        Icons.currency_bitcoin,
-                        size: 50,
-                        color: Colors.yellowAccent,
-                      ),
-                    ),
-                  ),
-                Positioned(
-                  top: 20,
-                  left: 20,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Current Level: $_currentLevel',
-                        style: GoogleFonts.poppins(
-                            color: Colors.greenAccent, fontSize: 18),
-                      ),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  top: 20,
-                  right: 20,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color.fromRGBO(0, 0, 0, 0.7),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Taps: $_tapCount',
-                      style: GoogleFonts.poppins(
-                          color: Colors.white, fontSize: 18),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 20,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color.fromRGBO(0, 0, 0, 0.7),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'BTC: ${_btcScore.toStringAsFixed(18)}',
-                        style: GoogleFonts.poppins(
-                            color: Colors.yellowAccent, fontSize: 18),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 100,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: ElevatedButton.icon(
-                      onPressed: _showDoubleMiningAd,
-                      icon: const Icon(Icons.play_circle_fill,
-                          color: Colors.white),
-                      label: const Text(
-                        'Watch Ad for BTC',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orangeAccent,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 20,
-                  left: 20,
-                  child: FloatingActionButton(
-                    onPressed: _showLevelProgress,
-                    backgroundColor: Colors.tealAccent,
-                    child: const Icon(Icons.list),
-                  ),
-                ),
-                if (_isAdLoaded)
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: SizedBox(
-                      height: 50,
-                      child: _adService.getBannerAd(),
-                    ),
-                  ),
-                if (_isAdLoading)
-                  Container(
-                    color: Colors.black.withAlpha(179),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const CircularProgressIndicator(
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.orange),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Loading ad...',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                if (_adError != null)
-                  Positioned(
-                    top: 100,
-                    left: 20,
-                    right: 20,
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withAlpha(200),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.error_outline, color: Colors.white),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _adError!,
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close, color: Colors.white),
-                            onPressed: () {
-                              setState(() {
-                                _adError = null;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop) {
+          await _saveEarningsAndExit();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            widget.gameTitle,
+            style:
+                GoogleFonts.poppins(fontSize: 26, fontWeight: FontWeight.bold),
           ),
-        ],
+          backgroundColor: Colors.teal,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: _saveEarningsAndExit,
+          ),
+        ),
+        body: SafeArea(
+          bottom: true,
+          child: Stack(
+            children: [
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.teal, Colors.black],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    for (int i = 0; i < _cryptoPositions.length; i++)
+                      Positioned(
+                        left: _cryptoPositions[i].dx,
+                        top: _cryptoPositions[i].dy,
+                        child: GestureDetector(
+                          onTap: () => _tapCrypto(i),
+                          child: const Icon(
+                            Icons.currency_bitcoin,
+                            size: 50,
+                            color: Colors.yellowAccent,
+                          ),
+                        ),
+                      ),
+                    Positioned(
+                      top: 20,
+                      left: 20,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Current Level: $_currentLevel',
+                            style: GoogleFonts.poppins(
+                                color: Colors.greenAccent, fontSize: 18),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      top: 20,
+                      right: 20,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color.fromRGBO(0, 0, 0, 0.7),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Taps: $_tapCount',
+                          style: GoogleFonts.poppins(
+                              color: Colors.white, fontSize: 18),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 80,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color.fromRGBO(0, 0, 0, 0.7),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'BTC: ${_btcScore.toStringAsFixed(18)}',
+                            style: GoogleFonts.poppins(
+                                color: Colors.yellowAccent, fontSize: 18),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 160,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: ElevatedButton.icon(
+                          onPressed: _showDoubleMiningAd,
+                          icon: const Icon(Icons.play_circle_fill,
+                              color: Colors.white),
+                          label: const Text(
+                            'Watch Ad for BTC + Double Mining',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orangeAccent,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            elevation: 8,
+                            shadowColor: Colors.orange.withAlpha(100),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 80,
+                      left: 20,
+                      child: FloatingActionButton(
+                        onPressed: _showLevelProgress,
+                        backgroundColor: Colors.tealAccent,
+                        child: const Icon(Icons.list),
+                      ),
+                    ),
+                    if (_isAdLoaded)
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          height: 60,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: _adService.getBannerAd(),
+                        ),
+                      ),
+                    if (_isAdLoading)
+                      Container(
+                        color: Colors.black.withAlpha(179),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.orange),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Loading ad...',
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    if (_adError != null)
+                      Positioned(
+                        top: 100,
+                        left: 20,
+                        right: 20,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withAlpha(200),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  color: Colors.white),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _adError!,
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close,
+                                    color: Colors.white),
+                                onPressed: () {
+                                  setState(() {
+                                    _adError = null;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

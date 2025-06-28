@@ -34,7 +34,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       0.5; // Initial boost multiplier
   static const double POWER_BOOST_INCREMENT = 0.1; // Increment per click
   static const int POWER_BOOST_DURATION_MINUTES = 5; // 5 minutes duration
-  static const double TAP_REWARD_RATE = 0.000000000000001000;
+  static const double TAP_REWARD_RATE =
+      0.000000000000005000; // 5x increased reward
 
   // Variables
   final AdService _adService = AdService();
@@ -72,6 +73,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _sciFiTapCount = 0;
   bool _isSciFiLoading = false;
 
+  // Periodic save timer to save earnings every 30 seconds
+  Timer? _periodicSaveTimer;
+
   @override
   void initState() {
     super.initState();
@@ -101,6 +105,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _startMiningUiTimer();
       }
     });
+
+    // Start periodic save timer
+    _startPeriodicSaveTimer();
   }
 
   void _startMiningUiTimer() {
@@ -156,8 +163,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    // Save any pending earnings before disposing
+    _savePendingEarnings();
+
     _cancelAllTimers();
     _uiUpdateTimer?.cancel();
+    _periodicSaveTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _audioPlayer.dispose();
     _scrollController.dispose();
@@ -198,11 +209,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       print('✅ Wallet balance loaded successfully');
     } catch (e) {
       print('Error initializing app: $e');
+
+      // Check if it's a DNS error and provide better message
+      String errorMessage = 'Error initializing app: ${e.toString()}';
+      if (e.toString().contains('Failed host lookup') ||
+          e.toString().contains('no address associated with hostname')) {
+        errorMessage =
+            'Network connection issue. Please check your internet connection and try again.';
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error initializing app: $e'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: _initializeApp,
+            ),
           ),
         );
       }
@@ -573,23 +598,42 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
+          // Save any pending earnings before exit
+          await _savePendingEarnings();
+
+          // Show confirmation dialog
           final shouldExit = await showDialog<bool>(
             context: context,
+            barrierDismissible: false,
             builder: (context) => AlertDialog(
-              title: const Text('Exit App'),
-              content: const Text('Are you sure you want to exit the app?'),
+              title: const Row(
+                children: [
+                  Icon(Icons.exit_to_app, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text('Exit App'),
+                ],
+              ),
+              content: const Text(
+                'Are you sure you want to exit the app?\n\nYour earnings have been saved.',
+                style: TextStyle(fontSize: 16),
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('No'),
+                  child: const Text('Cancel'),
                 ),
-                TextButton(
+                ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Yes'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Exit'),
                 ),
               ],
             ),
           );
+
           if (shouldExit == true) {
             if (Platform.isAndroid || Platform.isIOS) {
               SystemNavigator.pop();
@@ -1462,6 +1506,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _onSciFiObjectTapped() async {
     if (_isSciFiLoading) return;
+
     setState(() {
       _isSciFiLoading = true;
       _percentage = (_percentage + 1) % 100;
@@ -1469,7 +1514,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _currentColor == Colors.blue ? Colors.purple : Colors.blue;
       _sciFiTapCount++;
     });
-    await _savePercentage();
+
+    // तुरंत reward add करें
     try {
       final walletProvider = context.read<WalletProvider>();
       await walletProvider.addEarning(
@@ -1477,35 +1523,92 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         type: 'tap',
         description: 'Tap reward',
       );
-      Fluttertoast.showToast(msg: 'Magic tapped! +$TAP_REWARD_RATE BTC');
+
+      if (mounted) {
+        Fluttertoast.showToast(
+          msg: 'Magic tapped! +${TAP_REWARD_RATE.toStringAsFixed(18)} BTC',
+          backgroundColor: Colors.green,
+          textColor: Colors.white,
+        );
+      }
     } catch (e) {
-      Fluttertoast.showToast(
-          msg: 'Failed to add tap reward: \\${e.toString()}');
+      print('❌ Error adding tap reward: $e');
+      if (mounted) {
+        Fluttertoast.showToast(
+          msg: 'Failed to add tap reward: ${e.toString()}',
+          backgroundColor: Colors.red,
+        );
+      }
     }
-    // Show rewarded ad every 10 taps
-    if (_sciFiTapCount >= 10) {
+
+    // Percentage save करें
+    _savePercentage();
+
+    // Show rewarded ad every 5 taps with proper reward
+    if (_sciFiTapCount >= 5) {
       _sciFiTapCount = 0;
+
       try {
+        print('🎬 Showing rewarded ad for sci-fi tap...');
         final bool adWatched = await _adService.showRewardedAd(
           onRewarded: (double amount) async {
             if (!mounted) return;
-            Fluttertoast.showToast(msg: 'Thanks for watching the ad!');
+
+            try {
+              // Ad reward add करें (5x normal reward)
+              const double adReward = 0.000000000000000500;
+              final walletProvider = context.read<WalletProvider>();
+              await walletProvider.addEarning(
+                adReward,
+                type: 'ad_reward',
+                description: 'Sci-Fi Ad Reward (5x Bonus)',
+              );
+
+              if (mounted) {
+                Fluttertoast.showToast(
+                  msg:
+                      '🎉 Ad reward earned! +${adReward.toStringAsFixed(18)} BTC',
+                  backgroundColor: Colors.green,
+                  textColor: Colors.white,
+                );
+              }
+            } catch (e) {
+              print('❌ Error adding ad reward: $e');
+              if (mounted) {
+                Fluttertoast.showToast(
+                  msg: 'Failed to add ad reward: ${e.toString()}',
+                  backgroundColor: Colors.red,
+                );
+              }
+            }
           },
           onAdDismissed: () {
             if (!mounted) return;
-            Fluttertoast.showToast(msg: 'Watch the full ad to get a bonus!');
+            Fluttertoast.showToast(
+              msg: 'Watch the full ad to get a bonus!',
+              backgroundColor: Colors.orange,
+            );
           },
         );
+
         if (!adWatched && mounted) {
           Fluttertoast.showToast(
-              msg: 'Ad not available. Please try again later.');
+            msg: 'Ad not available. Please try again later.',
+            backgroundColor: Colors.orange,
+          );
         }
       } catch (e) {
+        print('❌ Error showing rewarded ad: $e');
         if (mounted) {
-          Fluttertoast.showToast(msg: 'Error showing ad: \\${e.toString()}');
+          Fluttertoast.showToast(
+            msg: 'Error showing ad: ${e.toString()}',
+            backgroundColor: Colors.red,
+          );
         }
       }
     }
+
+    // Loading को बंद करें
     if (mounted) {
       setState(() {
         _isSciFiLoading = false;
@@ -1543,5 +1646,46 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     } catch (e) {
       print('Audio initialization error: $e');
     }
+  }
+
+  Future<void> _savePendingEarnings() async {
+    try {
+      // Save any pending earnings to wallet
+      if (_miningEarnings > 0 && _isMining) {
+        print('💾 Saving pending mining earnings: $_miningEarnings BTC');
+        final walletProvider =
+            Provider.of<WalletProvider>(context, listen: false);
+        await walletProvider.addEarning(
+          _miningEarnings,
+          type: 'mining',
+          description: 'Mining earnings (saved on exit)',
+        );
+        print('✅ Pending earnings saved successfully');
+      }
+
+      // Save any pending tap earnings
+      if (_sciFiTapCount > 0) {
+        print('💾 Saving pending tap earnings');
+        final walletProvider =
+            Provider.of<WalletProvider>(context, listen: false);
+        await walletProvider.addEarning(
+          TAP_REWARD_RATE * _sciFiTapCount,
+          type: 'tap',
+          description: 'Tap earnings (saved on exit)',
+        );
+        print('✅ Tap earnings saved successfully');
+      }
+    } catch (e) {
+      print('❌ Error saving pending earnings: $e');
+    }
+  }
+
+  void _startPeriodicSaveTimer() {
+    _periodicSaveTimer?.cancel();
+    _periodicSaveTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted) {
+        _savePendingEarnings();
+      }
+    });
   }
 }

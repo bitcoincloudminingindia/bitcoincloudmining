@@ -8,6 +8,9 @@ const morgan = require('morgan');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('./models/user.model');
 const config = require('./config/config');
 const logger = require('./utils/logger');
 const AppError = require('./utils/appError');
@@ -20,9 +23,10 @@ const referralRoutes = require('./routes/referral.routes');
 const transactionRoutes = require('./routes/transaction.routes');
 const marketRoutes = require('./routes/market.routes');
 const { authenticate } = require('./middleware/auth.middleware');
-const nodemailer = require('nodemailer'); // Add this import
-const mongoSanitize = require('express-mongo-sanitize'); // Add this import
+const nodemailer = require('nodemailer');
+const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
+const { connectDB } = require('./config/database');
 
 const app = express();
 const server = http.createServer(app);
@@ -59,12 +63,13 @@ io.on('connection', (socket) => {
 
 // Middleware
 app.use(cors({
-  origin: '*',  // Allow all origins in development
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  origin: ['*', 'https://bitcoincloudmining.onrender.com', 'http://localhost:3000', 'http://localhost:5000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'Origin'],
   credentials: true,
   preflightContinue: false,
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 204,
+  maxAge: 86400 // 24 hours
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -80,17 +85,51 @@ app.use((req, res, next) => {
     body: req.body,
     query: req.query,
     params: req.params,
-    path: req.path
+    path: req.path,
+    userAgent: req.get('User-Agent'),
+    origin: req.get('Origin'),
+    ip: req.ip || req.connection.remoteAddress
   });
   next();
 });
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+// Add request timeout middleware
+app.use((req, res, next) => {
+  req.setTimeout(30000, () => {
+    logger.error('Request timeout');
+    res.status(408).json({
+      success: false,
+      message: 'Request timeout'
+    });
+  });
+  next();
 });
-app.use('/api', limiter);
+
+// Rate limiting with different limits for different endpoints
+const generalLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    success: false,
+    message: 'Too many requests, please try again later'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 auth requests per windowMs
+  message: {
+    success: false,
+    message: 'Too many authentication attempts, please try again later'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api', generalLimiter);
+app.use('/api/auth', authLimiter);
 
 // Routes
 // Mount all routes under /api prefix
@@ -135,11 +174,27 @@ app.use((req, res, next) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
+  console.error('Error details:', {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    body: req.body,
+    userAgent: req.get('User-Agent'),
+    ip: req.ip || req.connection.remoteAddress
+  });
+
+  // Log error to logger
+  logger.error('Unhandled error:', err);
+
+  // Don't expose internal errors in production
+  const isDevelopment = process.env.NODE_ENV === 'development';
+
+  res.status(err.status || 500).json({
     success: false,
-    message: 'Internal Server Error',
-    error: err.message
+    message: isDevelopment ? err.message : 'Internal Server Error',
+    error: isDevelopment ? err.stack : 'Something went wrong',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -167,7 +222,15 @@ scheduleDailyRewards();
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running' });
+  const { getDBStatus } = require('./config/database');
+  const dbStatus = getDBStatus();
+
+  res.json({
+    status: 'ok',
+    message: 'Server is running',
+    database: dbStatus,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Get all users endpoint (for debugging)
@@ -206,7 +269,6 @@ const transporter = nodemailer.createTransport({
 });
 
 // Connect to MongoDB
-const connectDB = require('./config/database');
 connectDB();
 
 // MongoDB connection events are handled in config/database.js
@@ -317,13 +379,38 @@ server.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
   console.log('\n\x1b[32m%s\x1b[0m', '🚀 Server is running on port:', PORT);
   console.log('\x1b[36m%s\x1b[0m', '🌐 Environment:', process.env.NODE_ENV || 'development');
+  console.log('\x1b[33m%s\x1b[0m', '🔗 Base URL:', `https://bitcoincloudmining.onrender.com`);
+  console.log('\x1b[35m%s\x1b[0m', '📊 Health Check:', `https://bitcoincloudmining.onrender.com/health`);
   console.log('----------------------------------------\n');
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
   logger.error('Unhandled Rejection:', err);
-  process.exit(1);
+  console.error('❌ Unhandled Promise Rejection:', err);
+  // Don't exit in production, just log the error
+  if (process.env.NODE_ENV === 'development') {
+    process.exit(1);
+  }
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught Exception:', err);
+  console.error('❌ Uncaught Exception:', err);
+  // Don't exit in production, just log the error
+  if (process.env.NODE_ENV === 'development') {
+    process.exit(1);
+  }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    logger.info('Process terminated');
+    process.exit(0);
+  });
 });
 
 module.exports = { app, server };

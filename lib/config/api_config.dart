@@ -5,10 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiConfig {
-  /// ✅ Auto-switching base URL based on environment
+  /// ✅ Auto-switching base URL based on environment with DNS fallbacks
   static String get baseUrl {
     if (kReleaseMode) {
-      // 🎯 For Play Store / App Store builds
+      // 🎯 For Play Store / App Store builds with multiple fallbacks
       return 'https://bitcoincloudmining.onrender.com';
     }
 
@@ -29,6 +29,43 @@ class ApiConfig {
 
     // 🧪 Fallback (desktop)
     return 'http://localhost:5000';
+  }
+
+  /// 🔄 Fallback URLs for DNS resolution issues
+  static List<String> get fallbackUrls {
+    if (kReleaseMode) {
+      return [
+        'https://bitcoincloudmining.onrender.com',
+        'https://bitcoin-cloud-mining-api.onrender.com',
+        'https://bitcoin-mining-api.onrender.com',
+        'https://bitcoincloudmining-backend.onrender.com',
+      ];
+    }
+    return [baseUrl];
+  }
+
+  /// 🌐 Get working URL with DNS fallback
+  static Future<String> getWorkingUrl() async {
+    for (String url in fallbackUrls) {
+      try {
+        print('🔍 Testing URL: $url');
+        final response = await http.get(
+          Uri.parse('$url/health'),
+          headers: {'Accept': 'application/json'},
+        ).timeout(const Duration(seconds: 5));
+
+        if (response.statusCode == 200) {
+          print('✅ Working URL found: $url');
+          return url;
+        }
+      } catch (e) {
+        print('❌ URL failed: $url - $e');
+        continue;
+      }
+    }
+
+    print('⚠️ All URLs failed, using primary URL');
+    return baseUrl;
   }
 
   /// ⚙️ API Endpoints

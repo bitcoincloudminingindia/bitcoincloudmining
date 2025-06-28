@@ -183,6 +183,9 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
     });
 
     try {
+      print(
+          '💾 Transferring Flip Coin earnings: ${_gameWalletBalance.toString()} BTC');
+
       final walletProvider =
           Provider.of<WalletProvider>(context, listen: false);
       await walletProvider.addEarning(
@@ -191,12 +194,14 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
         description: 'Flip Coin Game Earnings',
       );
 
+      print('✅ Flip Coin earnings transferred successfully');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Successfully transferred ${_gameWalletBalance.toString()} BTC to your wallet!',
-              style: const TextStyle(color: Colors.white),
+              '🎉 ${_gameWalletBalance.toString()} BTC added to wallet!',
+              style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
             backgroundColor: ColorConstants.successColor,
             duration: const Duration(seconds: 3),
@@ -204,14 +209,16 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
         );
       }
     } catch (e) {
+      print('❌ Error transferring Flip Coin earnings: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Error transferring earnings. Please try again.',
-              style: TextStyle(color: Colors.white),
+              'Error transferring earnings: ${e.toString()}',
+              style: const TextStyle(color: Colors.white),
             ),
-            backgroundColor: Color(0xFFE53935), // Error color
+            backgroundColor: const Color(0xFFE53935), // Error color
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -249,189 +256,189 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
   int get _winRate =>
       _totalFlips > 0 ? ((_wins / _totalFlips) * 100).round() : 0;
 
+  Future<void> _handleBackButton() async {
+    if (_isTransferring) return;
+
+    // Show confirmation dialog if there are earnings
+    if (_gameWalletBalance > Decimal.zero) {
+      final shouldExit = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.exit_to_app, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Exit Game'),
+            ],
+          ),
+          content: Text(
+            'You have ${_gameWalletBalance.toString()} BTC earnings!\n\nDo you want to save and exit?',
+            style: const TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Save & Exit'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldExit != true) {
+        return; // User cancelled
+      }
+    }
+
+    // Transfer earnings to main wallet
+    await _transferToMainWallet();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Flip the Coin',
-        titleTextStyle: const TextStyle(
-          fontFamily: 'Poppins',
-          fontSize: 24,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop) {
+          await _handleBackButton();
+        }
+      },
+      child: Scaffold(
+        appBar: CustomAppBar(
+          title: 'Flip the Coin',
+          titleTextStyle: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: _handleBackButton,
+          ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () async {
-            if (!_isTransferring) {
-              await _transferToMainWallet();
-            }
-          },
-        ),
-      ),
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  ColorConstants.primaryColor,
-                  ColorConstants.secondaryColor,
-                ],
+        body: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    ColorConstants.primaryColor,
+                    ColorConstants.secondaryColor,
+                  ],
+                ),
               ),
-            ),
-            child: SafeArea(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 10),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(25),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withAlpha(50),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildStatItem('Total Flips', '$_totalFlips'),
-                        _buildStatItem('Wins', '$_wins'),
-                        _buildStatItem('Win Rate', '$_winRate%'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(25),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withAlpha(50),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.account_balance_wallet,
-                          color: Colors.white,
-                          size: 20,
+              child: SafeArea(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 10),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(25),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withAlpha(50),
+                          width: 1,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Game Wallet: ${_gameWalletBalance.toString()} BTC',
-                          style: const TextStyle(
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildStatItem('Total Flips', '$_totalFlips'),
+                          _buildStatItem('Wins', '$_wins'),
+                          _buildStatItem('Win Rate', '$_winRate%'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(25),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withAlpha(50),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.account_balance_wallet,
                             color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            size: 20,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          Text(
+                            'Game Wallet: ${_gameWalletBalance.toString()} BTC',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  AnimatedBuilder(
-                    animation: _animation,
-                    builder: (context, child) {
-                      final transform = Matrix4.identity()
-                        ..setEntry(3, 2, 0.001)
-                        ..rotateX(_animation.value * pi);
-                      return Transform(
-                        transform: transform,
-                        alignment: Alignment.center,
-                        child: Container(
-                          width: 160,
-                          height: 160,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Colors.amber.shade300,
-                                Colors.amber.shade700,
+                    const SizedBox(height: 20),
+                    AnimatedBuilder(
+                      animation: _animation,
+                      builder: (context, child) {
+                        final transform = Matrix4.identity()
+                          ..setEntry(3, 2, 0.001)
+                          ..rotateX(_animation.value * pi);
+                        return Transform(
+                          transform: transform,
+                          alignment: Alignment.center,
+                          child: Container(
+                            width: 160,
+                            height: 160,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.amber.shade300,
+                                  Colors.amber.shade700,
+                                ],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.amber.withAlpha(77),
+                                  blurRadius: 15,
+                                  spreadRadius: 3,
+                                ),
+                                BoxShadow(
+                                  color: Colors.black.withAlpha(77),
+                                  blurRadius: 8,
+                                  spreadRadius: -3,
+                                  offset: const Offset(0, 3),
+                                ),
                               ],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.amber.withAlpha(77),
-                                blurRadius: 15,
-                                spreadRadius: 3,
+                              border: Border.all(
+                                color: Colors.amber.shade200,
+                                width: 2,
                               ),
-                              BoxShadow(
-                                color: Colors.black.withAlpha(77),
-                                blurRadius: 8,
-                                spreadRadius: -3,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                            border: Border.all(
-                              color: Colors.amber.shade200,
-                              width: 2,
                             ),
-                          ),
-                          child: Center(
-                            child: _result == null || _animation.value < 0.5
-                                ? Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: Colors.amber.shade200
-                                              .withAlpha(77),
-                                        ),
-                                        child: const Icon(
-                                          Icons.currency_bitcoin,
-                                          size: 40,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.amber.shade200
-                                              .withAlpha(77),
-                                          borderRadius:
-                                              BorderRadius.circular(16),
-                                        ),
-                                        child: const Text(
-                                          'HEADS',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                            shadows: [
-                                              Shadow(
-                                                color: Colors.black26,
-                                                offset: Offset(1, 1),
-                                                blurRadius: 2,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : Transform(
-                                    transform: Matrix4.identity()..rotateX(pi),
-                                    alignment: Alignment.center,
-                                    child: Column(
+                            child: Center(
+                              child: _result == null || _animation.value < 0.5
+                                  ? Column(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
@@ -460,9 +467,9 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
                                             borderRadius:
                                                 BorderRadius.circular(16),
                                           ),
-                                          child: Text(
-                                            _result! ? 'HEADS' : 'TAILS',
-                                            style: const TextStyle(
+                                          child: const Text(
+                                            'HEADS',
+                                            style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 20,
                                               fontWeight: FontWeight.bold,
@@ -477,190 +484,242 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
                                           ),
                                         ),
                                       ],
+                                    )
+                                  : Transform(
+                                      transform: Matrix4.identity()
+                                        ..rotateX(pi),
+                                      alignment: Alignment.center,
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: Colors.amber.shade200
+                                                  .withAlpha(77),
+                                            ),
+                                            child: const Icon(
+                                              Icons.currency_bitcoin,
+                                              size: 40,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.amber.shade200
+                                                  .withAlpha(77),
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                            ),
+                                            child: Text(
+                                              _result! ? 'HEADS' : 'TAILS',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                                shadows: [
+                                                  Shadow(
+                                                    color: Colors.black26,
+                                                    offset: Offset(1, 1),
+                                                    blurRadius: 2,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildChoiceButton(true),
-                        _buildChoiceButton(false),
-                      ],
+                        );
+                      },
                     ),
-                  ),
-                  if (_showResult && _userChoice != null && _result != null)
+                    const SizedBox(height: 20),
                     Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: _userChoice == _result
-                              ? ColorConstants.successColor.withAlpha(77)
-                              : ColorConstants.errorColor.withAlpha(77),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildChoiceButton(true),
+                          _buildChoiceButton(false),
+                        ],
+                      ),
+                    ),
+                    if (_showResult && _userChoice != null && _result != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
                             color: _userChoice == _result
-                                ? ColorConstants.successColor
-                                : ColorConstants.errorColor,
-                            width: 2,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              _userChoice == _result
-                                  ? Icons.check_circle
-                                  : Icons.cancel,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _userChoice == _result
-                                    ? 'Correct! You earned ${_winAmount.toString()} BTC'
-                                    : 'Wrong! Penalty: ${_penaltyAmount.toString()} BTC',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  const Spacer(),
-                  if (_bannerAd != null)
-                    Container(
-                      width: _bannerAd!.size.width.toDouble(),
-                      height: _bannerAd!.size.height.toDouble(),
-                      alignment: Alignment.center,
-                      child: AdWidget(ad: _bannerAd!),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          if (_showCongratulations)
-            Container(
-              color: Colors.black.withAlpha(128),
-              child: Center(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 32),
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: ColorConstants.primaryColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withAlpha(50),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(77),
-                        blurRadius: 15,
-                        spreadRadius: 3,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.celebration,
-                        color: Colors.amber,
-                        size: 48,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Congratulations!',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'You won ${_pendingReward.toString()} BTC!',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: _isAdLoading ? null : _collectReward,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: ColorConstants.accentColor,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 32,
-                            vertical: 16,
-                          ),
-                          shape: RoundedRectangleBorder(
+                                ? ColorConstants.successColor.withAlpha(77)
+                                : ColorConstants.errorColor.withAlpha(77),
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _userChoice == _result
+                                  ? ColorConstants.successColor
+                                  : ColorConstants.errorColor,
+                              width: 2,
+                            ),
                           ),
-                        ),
-                        child: _isAdLoading
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _userChoice == _result
+                                    ? Icons.check_circle
+                                    : Icons.cancel,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _userChoice == _result
+                                      ? 'Correct! You earned ${_winAmount.toString()} BTC'
+                                      : 'Wrong! Penalty: ${_penaltyAmount.toString()} BTC',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                ),
-                              )
-                            : const Text(
-                                'Collect Reward',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          if (_isTransferring)
-            Container(
-              color: Colors.black.withAlpha(128),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Transferring earnings to your wallet...',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                    const Spacer(),
+                    if (_bannerAd != null)
+                      Container(
+                        width: _bannerAd!.size.width.toDouble(),
+                        height: _bannerAd!.size.height.toDouble(),
+                        alignment: Alignment.center,
+                        child: AdWidget(ad: _bannerAd!),
                       ),
-                    ),
                   ],
                 ),
               ),
             ),
-        ],
+            if (_showCongratulations)
+              Container(
+                color: Colors.black.withAlpha(128),
+                child: Center(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 32),
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: ColorConstants.primaryColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.white.withAlpha(50),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(77),
+                          blurRadius: 15,
+                          spreadRadius: 3,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.celebration,
+                          color: Colors.amber,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Congratulations!',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'You won ${_pendingReward.toString()} BTC!',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: _isAdLoading ? null : _collectReward,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: ColorConstants.accentColor,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32,
+                              vertical: 16,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: _isAdLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : const Text(
+                                  'Collect Reward',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            if (_isTransferring)
+              Container(
+                color: Colors.black.withAlpha(128),
+                child: const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Transferring earnings to your wallet...',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -712,6 +771,21 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
 
   @override
   void dispose() {
+    // Save any pending earnings before disposing
+    if (_gameWalletBalance > Decimal.zero) {
+      try {
+        Provider.of<WalletProvider>(context, listen: false).addEarning(
+          _gameWalletBalance.toDouble(),
+          type: 'game',
+          description: 'Flip Coin Game Earnings (Auto-saved)',
+        );
+        print(
+            '💾 Auto-saved Flip Coin earnings on dispose: ${_gameWalletBalance.toString()} BTC');
+      } catch (e) {
+        print('❌ Error auto-saving Flip Coin earnings: $e');
+      }
+    }
+
     _controller.dispose();
     _rewardedAd?.dispose();
     _interstitialAd?.dispose();

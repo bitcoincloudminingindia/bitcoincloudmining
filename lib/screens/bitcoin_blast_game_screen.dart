@@ -165,6 +165,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
             const double rewardAmount = 0.000000000000000100;
             setState(() {
               score += rewardAmount;
+              gameEarnings += rewardAmount;
             });
             Provider.of<WalletProvider>(context, listen: false).addEarning(
               rewardAmount,
@@ -235,7 +236,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
                 Navigator.of(context).pop();
                 _onDialogClose();
                 resumeGame();
-                startGame();
+                startNewGame();
               },
               child: const Text('Start Game',
                   style: TextStyle(color: Colors.white)),
@@ -287,7 +288,6 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
       score = 0.0;
       timeLeft = 60;
       fallingItems.clear();
-      fallingSpeed = 3.5;
     });
 
     gameTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -310,6 +310,47 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
     animationTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
       updateItemPositions();
     });
+  }
+
+  void startNewGame() {
+    setState(() {
+      gameStarted = true;
+      gameOver = false;
+      score = 0.0;
+      timeLeft = 60;
+      fallingItems.clear();
+      fallingSpeed = 3.5; // पहली बार गेम शुरू करने पर स्पीड रीसेट करें
+    });
+
+    gameTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (timeLeft > 0) {
+        setState(() {
+          timeLeft--;
+          if (timeLeft % 10 == 0) {
+            fallingSpeed += 1.0;
+          }
+        });
+      } else {
+        showWinScreen();
+      }
+    });
+
+    itemTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      spawnItem();
+    });
+
+    animationTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
+      updateItemPositions();
+    });
+  }
+
+  void playAgain() {
+    // Play Again के लिए कॉमन फंक्शन
+    Navigator.of(context).pop();
+    _onDialogClose();
+    resumeGame();
+    startGame(); // स्पीड रीसेट नहीं होगी
+    _showRewardedAd(() {}); // Play Again पर rewarded ad दिखाएं
   }
 
   void updateItemPositions() {
@@ -350,13 +391,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
               style: GoogleFonts.roboto(fontSize: 18, color: Colors.white)),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _onDialogClose();
-                resumeGame();
-                startGame();
-                _showRewardedAd(() {}); // Show ad, but don't block game start
-              },
+              onPressed: playAgain,
               child: const Text('Play Again',
                   style: TextStyle(color: Colors.white)),
             ),
@@ -396,13 +431,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
               style: GoogleFonts.roboto(fontSize: 18, color: Colors.white)),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _onDialogClose();
-                resumeGame();
-                startGame();
-                _showRewardedAd(() {}); // Show ad, but don't block game start
-              },
+              onPressed: playAgain,
               child: const Text('Play Again',
                   style: TextStyle(color: Colors.white)),
             ),
@@ -448,7 +477,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
   void spawnItem() {
     if (!mounted) return;
     final Random random = Random();
-    final int itemType = random.nextInt(7);
+    final int itemType = random.nextInt(6) + 1; // 1 से 6 तक (type 0 हटा दिया)
     final double position =
         random.nextDouble() * (MediaQuery.of(context).size.width - 50);
     setState(() {
@@ -458,62 +487,50 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
 
   void collectItem(FallingItem item) {
     if (!mounted) return;
-    if (item.type == 0) {
-      _showRewardedAd(() {
-        if (!mounted) return;
-        const double collectedBTC = 0.000000000000001000;
-        setState(() {
-          score += collectedBTC;
-          gameEarnings += collectedBTC;
-          fallingItems.remove(item);
-        });
-        _playCollectSound();
-      });
-    } else {
-      double collectedBTC = 0.0;
 
-      if (item.type == 1) {
-        collectedBTC =
-            doubleBTCActive ? 0.000000000000000040 : 0.000000000000000020;
-      } else if (item.type == 2) {
-        collectedBTC =
-            doubleBTCActive ? 0.000000000000001000 : 0.000000000000000500;
-      } else if (item.type == 3) {
-        collectedBTC = -0.000000000000000010;
-      } else if (item.type == 4) {
-        if (!shieldActive) {
-          endGame();
+    double collectedBTC = 0.0;
+
+    if (item.type == 1) {
+      collectedBTC =
+          doubleBTCActive ? 0.000000000000000040 : 0.000000000000000020;
+    } else if (item.type == 2) {
+      collectedBTC =
+          doubleBTCActive ? 0.000000000000001000 : 0.000000000000000500;
+    } else if (item.type == 3) {
+      collectedBTC = -0.000000000000000010;
+    } else if (item.type == 4) {
+      if (!shieldActive) {
+        endGame();
+      }
+    } else if (item.type == 5) {
+      shieldActive = true;
+      Timer(const Duration(seconds: 5), () {
+        if (mounted) {
+          setState(() {
+            shieldActive = false;
+          });
         }
-      } else if (item.type == 5) {
-        shieldActive = true;
-        Timer(const Duration(seconds: 5), () {
-          if (mounted) {
-            setState(() {
-              shieldActive = false;
-            });
-          }
-        });
-      } else if (item.type == 6) {
-        doubleBTCActive = true;
-        Timer(const Duration(seconds: 10), () {
-          if (mounted) {
-            setState(() {
-              doubleBTCActive = false;
-            });
-          }
-        });
-      }
-
-      if (collectedBTC != 0.0) {
-        setState(() {
-          score += collectedBTC;
-          gameEarnings += collectedBTC;
-          fallingItems.remove(item);
-        });
-      }
-
-      _playCollectSound();
+      });
+    } else if (item.type == 6) {
+      doubleBTCActive = true;
+      Timer(const Duration(seconds: 10), () {
+        if (mounted) {
+          setState(() {
+            doubleBTCActive = false;
+          });
+        }
+      });
     }
+
+    if (collectedBTC != 0.0) {
+      setState(() {
+        score += collectedBTC;
+        gameEarnings += collectedBTC;
+        fallingItems.remove(item);
+      });
+    }
+
+    _playCollectSound();
   }
 
   Future<void> _playCollectSound() async {
@@ -538,36 +555,32 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: item.type == 0
-                    ? Colors.yellow
-                    : item.type == 1
-                        ? Colors.amber
-                        : item.type == 2
-                            ? Colors.green
-                            : item.type == 3
-                                ? Colors.red
-                                : item.type == 4
-                                    ? Colors.black
-                                    : item.type == 5
-                                        ? Colors.blue
-                                        : Colors.purple,
+                color: item.type == 1
+                    ? Colors.amber
+                    : item.type == 2
+                        ? Colors.green
+                        : item.type == 3
+                            ? Colors.red
+                            : item.type == 4
+                                ? Colors.black
+                                : item.type == 5
+                                    ? Colors.blue
+                                    : Colors.purple,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Text(
-                  item.type == 0
-                      ? '₿'
-                      : item.type == 1
-                          ? '💰'
-                          : item.type == 2
-                              ? '⚡'
-                              : item.type == 3
-                                  ? '🔥'
-                                  : item.type == 4
-                                      ? '💣'
-                                      : item.type == 5
-                                          ? '🛡️'
-                                          : '🔄',
+                  item.type == 1
+                      ? '💰'
+                      : item.type == 2
+                          ? '⚡'
+                          : item.type == 3
+                              ? '🔥'
+                              : item.type == 4
+                                  ? '💣'
+                                  : item.type == 5
+                                      ? '🛡️'
+                                      : '🔄',
                   style: GoogleFonts.roboto(
                     fontSize: 24, // Adjust the size as needed
                     color: Colors.white,

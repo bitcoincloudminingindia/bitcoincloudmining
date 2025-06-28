@@ -213,16 +213,11 @@ userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
 
   try {
-    console.log('🔐 Hashing password in pre-save middleware');
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(this.password, salt);
-    console.log('Original password:', this.password);
-    console.log('Hashed password:', hashedPassword);
     this.password = hashedPassword;
-    console.log('✅ Password hashed successfully in pre-save middleware');
     next();
   } catch (error) {
-    console.error('❌ Error hashing password in pre-save middleware:', error);
     next(error);
   }
 });
@@ -235,55 +230,38 @@ userSchema.pre('save', function (next) {
   next();
 });
 
-// Add debug logging for pre-save operations
+// Pre-save middleware for data formatting
 userSchema.pre('save', function (next) {
-  console.log('🔄 Pre-save middleware triggered');
-  console.log('📝 Document before save:', this.toObject());
-
   // Convert userName field for database storage
   if (this.userName) {
     this.userName = this.userName.toLowerCase();
   }
-
   next();
-});
-
-// Add debug logging for post-save operations
-userSchema.post('save', function (doc) {
-  console.log('✅ Document saved successfully');
-  console.log('📝 Saved document:', doc.toObject());
 });
 
 // Update comparePassword method to be more reliable
 userSchema.methods.comparePassword = async function (candidatePassword) {
   try {
     if (!candidatePassword || !this.password) {
-      console.log('❌ Missing password or hash');
       return false;
     }
 
     const isMatch = await bcrypt.compare(candidatePassword, this.password);
-    console.log('Password comparison:', {
-      candidatePassword: candidatePassword ? '****' : 'missing',
-      hashedPassword: this.password ? '****' : 'missing',
-      isMatch
-    });
     return isMatch;
   } catch (error) {
-    console.error('❌ Error comparing passwords:', error);
     return false;
   }
 };
 
 // Drop indexes before creating new ones
-mongoose.connection.on('connected', async () => {
-  try {
-    await mongoose.connection.db.collection('users').dropIndexes();
-    console.log('✅ Dropped all indexes from users collection');
-  } catch (error) {
-    console.log('No indexes to drop');
-  }
-});
+// mongoose.connection.on('connected', async () => {
+//   try {
+//     await mongoose.connection.db.collection('users').dropIndexes();
+//     console.log('✅ Dropped all indexes from users collection');
+//   } catch (error) {
+//     console.log('No indexes to drop');
+//   }
+// });
 
 // Create indexes
 userSchema.index({ username: 1 }, { unique: true });

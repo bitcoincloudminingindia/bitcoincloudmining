@@ -25,6 +25,14 @@ class WalletService {
       return data;
     } catch (e) {
       print('❌ Error initializing wallet: $e');
+
+      // Check if it's a DNS error and provide better message
+      if (e.toString().contains('Failed host lookup') ||
+          e.toString().contains('no address associated with hostname')) {
+        throw Exception(
+            'Network connection issue. Please check your internet connection and try again.');
+      }
+
       rethrow;
     }
   }
@@ -44,6 +52,14 @@ class WalletService {
       return double.tryParse(balance) ?? 0.0;
     } catch (e) {
       print('❌ Error getting wallet balance: $e');
+
+      // Check if it's a DNS error and provide better message
+      if (e.toString().contains('Failed host lookup') ||
+          e.toString().contains('no address associated with hostname')) {
+        throw Exception(
+            'Network connection issue. Please check your internet connection and try again.');
+      }
+
       rethrow;
     }
   }

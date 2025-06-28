@@ -46,6 +46,12 @@ class _SignUpDialogState extends State<SignUpDialog> {
   String? _errorMessage;
   String? _referrerName;
 
+  // Password validation states
+  bool _hasCapitalLetter = false;
+  bool _hasSpecialChar = false;
+  bool _hasNumber = false;
+  bool _hasMinLength = false;
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +59,8 @@ class _SignUpDialogState extends State<SignUpDialog> {
         .addListener(() => _onUsernameChanged(_usernameController.text));
     _referralCodeController.addListener(
         () => _onReferralCodeChanged(_referralCodeController.text));
+    _passwordController
+        .addListener(() => _validatePassword(_passwordController.text));
 
     // Set initial referral code if provided
     if (widget.initialReferralCode != null &&
@@ -79,7 +87,41 @@ class _SignUpDialogState extends State<SignUpDialog> {
         .removeListener(() => _onUsernameChanged(_usernameController.text));
     _referralCodeController.removeListener(
         () => _onReferralCodeChanged(_referralCodeController.text));
+    _passwordController
+        .removeListener(() => _validatePassword(_passwordController.text));
     super.dispose();
+  }
+
+  void _validatePassword(String password) {
+    setState(() {
+      _hasCapitalLetter = password.contains(RegExp(r'[A-Z]'));
+      _hasSpecialChar = password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
+      _hasNumber = password.contains(RegExp(r'[0-9]'));
+      _hasMinLength = password.length >= 8;
+    });
+  }
+
+  Widget _buildPasswordRequirement(String text, bool isValid) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        children: [
+          Icon(
+            isValid ? Icons.check_circle : Icons.cancel,
+            color: isValid ? Colors.green[400] : Colors.red[400],
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              color: isValid ? Colors.green[400] : Colors.red[400],
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _onUsernameChanged(String value) async {
@@ -500,19 +542,43 @@ class _SignUpDialogState extends State<SignUpDialog> {
                               form_validators.Validators.validatePassword,
                           prefixIcon: Icons.lock,
                           prefixIconColor: Colors.grey[300],
-                          suffix: IconButton(
-                            icon: Icon(
-                              _isPasswordVisible
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              color: Colors.grey[300],
-                              size: 20,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _isPasswordVisible = !_isPasswordVisible;
-                              });
-                            },
+                          suffix: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Password validation indicator
+                              if (_passwordController.text.isNotEmpty)
+                                Icon(
+                                  (_hasCapitalLetter &&
+                                          _hasSpecialChar &&
+                                          _hasNumber &&
+                                          _hasMinLength)
+                                      ? Icons.check_circle
+                                      : Icons.cancel,
+                                  color: (_hasCapitalLetter &&
+                                          _hasSpecialChar &&
+                                          _hasNumber &&
+                                          _hasMinLength)
+                                      ? Colors.green[400]
+                                      : Colors.red[400],
+                                  size: 20,
+                                ),
+                              const SizedBox(width: 4),
+                              // Visibility toggle
+                              IconButton(
+                                icon: Icon(
+                                  _isPasswordVisible
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                  color: Colors.grey[300],
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _isPasswordVisible = !_isPasswordVisible;
+                                  });
+                                },
+                              ),
+                            ],
                           ),
                           textStyle: const TextStyle(
                             color: Colors.white,
@@ -532,6 +598,51 @@ class _SignUpDialogState extends State<SignUpDialog> {
                           focusedBorderColor: Colors.grey[400]!,
                           backgroundColor: Colors.grey[900]!.withAlpha(26),
                         ),
+                        // Password requirements
+                        if (_passwordController.text.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withAlpha(77),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.grey[600]!,
+                                width: 1,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Password Requirements:',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                _buildPasswordRequirement(
+                                  'At least 8 characters',
+                                  _hasMinLength,
+                                ),
+                                _buildPasswordRequirement(
+                                  'At least 1 capital letter (A-Z)',
+                                  _hasCapitalLetter,
+                                ),
+                                _buildPasswordRequirement(
+                                  'At least 1 number (0-9)',
+                                  _hasNumber,
+                                ),
+                                _buildPasswordRequirement(
+                                  'At least 1 special character (!@#\$%^&*)',
+                                  _hasSpecialChar,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         // Password format hint
                         const Align(
                           alignment: Alignment.centerLeft,

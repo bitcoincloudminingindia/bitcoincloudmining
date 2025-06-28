@@ -36,13 +36,8 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useCreateIndex: true
-}).then(() => console.log('MongoDB connected'))
-    .catch(err => console.log(err));
+// MongoDB connection is handled in server.js
+// Removed duplicate connection to prevent conflicts
 
 // Routes
 logger.info('Registering routes...');

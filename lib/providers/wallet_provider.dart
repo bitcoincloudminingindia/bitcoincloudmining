@@ -121,11 +121,26 @@ class WalletProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print('❌ Error loading wallet: $e');
+
+      // Check if it's a DNS error and provide better message
+      if (e.toString().contains('Failed host lookup') ||
+          e.toString().contains('no address associated with hostname')) {
+        _error =
+            'Network connection issue. Please check your internet connection and try again.';
+        notifyListeners();
+        return;
+      }
+
       // Try to load from local storage as fallback
       final String? localBalanceStr = await StorageUtils.getWalletBalance();
       if (localBalanceStr != null) {
         _btcBalance = double.parse(localBalanceStr);
         _balance = _btcBalance;
+        _error =
+            'Using cached balance due to network issues. Please check your connection.';
+        notifyListeners();
+      } else {
+        _error = 'Failed to load wallet: ${e.toString()}';
         notifyListeners();
       }
       rethrow;
