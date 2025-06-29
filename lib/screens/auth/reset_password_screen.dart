@@ -55,7 +55,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         });
       }
     } catch (e) {
-      print('❌ Error requesting OTP: $e');
+      debugPrint('❌ Error requesting OTP: $e');
       setState(() {
         _errorMessage = e.toString().contains('404')
             ? 'No account found with this email address'
@@ -110,7 +110,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         });
       }
     } catch (e) {
-      print('❌ Error verifying OTP: $e');
+      debugPrint('❌ Error verifying OTP: $e');
       setState(() {
         _errorMessage = e.toString().contains('400')
             ? 'Invalid or expired OTP. Please try again.'

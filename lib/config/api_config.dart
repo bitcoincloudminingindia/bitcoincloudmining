@@ -13,8 +13,8 @@ class ApiConfig {
     }
 
     if (kIsWeb) {
-      // 🧪 Local Web testing
-      return 'http://localhost:5000';
+      // 🧪 Web - use production server to avoid CORS issues
+      return 'https://bitcoincloudmining.onrender.com';
     }
 
     if (Platform.isAndroid) {
@@ -41,6 +41,16 @@ class ApiConfig {
         'https://bitcoincloudmining-backend.onrender.com',
       ];
     }
+
+    if (kIsWeb) {
+      return [
+        'https://bitcoincloudmining.onrender.com',
+        'http://localhost:5000',
+        'https://bitcoin-cloud-mining-api.onrender.com',
+        'https://bitcoin-mining-api.onrender.com',
+      ];
+    }
+
     return [baseUrl];
   }
 
@@ -48,23 +58,29 @@ class ApiConfig {
   static Future<String> getWorkingUrl() async {
     for (String url in fallbackUrls) {
       try {
-        print('🔍 Testing URL: $url');
+        debugPrint('🔍 Testing URL: $url');
         final response = await http.get(
           Uri.parse('$url/health'),
-          headers: {'Accept': 'application/json'},
-        ).timeout(const Duration(seconds: 5));
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Origin': kIsWeb
+                ? 'https://bitcoincloudmining.onrender.com'
+                : 'http://localhost:3000',
+          },
+        ).timeout(const Duration(seconds: 10));
 
         if (response.statusCode == 200) {
-          print('✅ Working URL found: $url');
+          debugPrint('✅ Working URL found: $url');
           return url;
         }
       } catch (e) {
-        print('❌ URL failed: $url - $e');
+        debugPrint('❌ URL failed: $url - $e');
         continue;
       }
     }
 
-    print('⚠️ All URLs failed, using primary URL');
+    debugPrint('⚠️ All URLs failed, using primary URL');
     return baseUrl;
   }
 
@@ -87,7 +103,7 @@ class ApiConfig {
   static const int maxConnectionRetries = 3;
 
   // Health Check Configuration
-  static const Duration healthCheckTimeout = Duration(seconds: 3);
+  static const Duration healthCheckTimeout = Duration(seconds: 10);
   static const Duration healthCheckTotalTimeout = Duration(seconds: 30);
   static const int maxHealthCheckRetries = 2;
   static const Duration healthCheckBaseDelay = Duration(seconds: 2);
@@ -191,25 +207,25 @@ class ApiConfig {
 
   static void setToken(String token) {
     _token = token;
-    print('🔑 Token updated in ApiConfig: ${token.substring(0, 10)}...');
+    debugPrint('🔑 Token updated in ApiConfig: ${token.substring(0, 10)}...');
   }
 
   static void setRefreshToken(String refreshToken) {
     _refreshToken = refreshToken;
-    print(
+    debugPrint(
         '🔑 Refresh token updated in ApiConfig: ${refreshToken.substring(0, 10)}...');
   }
 
   static void setUserId(String userId) {
     _userId = userId;
-    print('👤 UserId updated in ApiConfig: $userId');
+    debugPrint('👤 UserId updated in ApiConfig: $userId');
   }
 
   static void clear() {
     _token = null;
     _refreshToken = null;
     _userId = null;
-    print('🧹 ApiConfig cleared');
+    debugPrint('🧹 ApiConfig cleared');
   }
 
   static void setTokenSilently(String? token) {
@@ -222,6 +238,13 @@ class ApiConfig {
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'Origin': kIsWeb
+          ? 'https://bitcoincloudmining.onrender.com'
+          : 'http://localhost:3000',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers':
+          'Content-Type, Authorization, Accept, X-Requested-With, Origin',
       if (token != null) 'Authorization': 'Bearer $token',
     };
   }
@@ -233,65 +256,71 @@ class ApiConfig {
 
     while (attempts < maxAttempts) {
       try {
-        print(
+        debugPrint(
             '🔍 Checking server availability (attempt ${attempts + 1}/$maxAttempts)...');
 
         // First try health endpoint
         final healthResponse = await http
-            .get(Uri.parse('$baseUrl/health'))
-            .timeout(const Duration(seconds: 5));
+            .get(
+              Uri.parse('$baseUrl/health'),
+              headers: getHeaders(),
+            )
+            .timeout(const Duration(seconds: 10));
 
         if (healthResponse.statusCode == 200) {
-          print('✅ Server is available');
+          debugPrint('✅ Server is available');
           return true;
         }
 
         // If health check fails, try base URL
         final baseResponse = await http
-            .get(Uri.parse(baseUrl))
-            .timeout(const Duration(seconds: 5));
+            .get(
+              Uri.parse(baseUrl),
+              headers: getHeaders(),
+            )
+            .timeout(const Duration(seconds: 10));
 
         if (baseResponse.statusCode < 500) {
-          print('✅ Server is available');
+          debugPrint('✅ Server is available');
           return true;
         }
 
         attempts++;
         if (attempts < maxAttempts) {
-          print(
+          debugPrint(
               '⚠️ Server check failed, retrying in ${retryDelay.inSeconds}s...');
           await Future.delayed(retryDelay);
         }
       } on SocketException {
-        print('❌ Server check failed: No connection');
+        debugPrint('❌ Server check failed: No connection');
         attempts++;
         if (attempts < maxAttempts) {
-          print('⚠️ Retrying in ${retryDelay.inSeconds}s...');
+          debugPrint('⚠️ Retrying in ${retryDelay.inSeconds}s...');
           await Future.delayed(retryDelay);
         }
       } on TimeoutException {
-        print('❌ Server check failed: Timeout');
+        debugPrint('❌ Server check failed: Timeout');
         attempts++;
         if (attempts < maxAttempts) {
-          print('⚠️ Retrying in ${retryDelay.inSeconds}s...');
+          debugPrint('⚠️ Retrying in ${retryDelay.inSeconds}s...');
           await Future.delayed(retryDelay);
         }
       } catch (e) {
-        print('❌ Server check failed: $e');
+        debugPrint('❌ Server check failed: $e');
         attempts++;
         if (attempts < maxAttempts) {
-          print('⚠️ Retrying in ${retryDelay.inSeconds}s...');
+          debugPrint('⚠️ Retrying in ${retryDelay.inSeconds}s...');
           await Future.delayed(retryDelay);
         }
       }
     }
 
-    print('❌ Server check failed after $maxAttempts attempts');
+    debugPrint('❌ Server check failed after $maxAttempts attempts');
     return false;
   }
 
   // FCM Token endpoint
-  static const String fcmTokenEndpoint = '/api/user/fcm-token';
+  static const String fcmTokenEndpoint = '/api/auth/fcm-token';
   static String get fcmTokenUrl => '$baseUrl$fcmTokenEndpoint';
 
   // Error Messages

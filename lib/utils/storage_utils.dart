@@ -33,8 +33,8 @@ class StorageUtils {
         throw Exception('Token cannot be empty');
       }
 
-      print('🔄 Saving token...');
-      print('📝 Token structure validation');
+      debugPrint('🔄 Saving token...');
+      debugPrint('📝 Token structure validation');
 
       try {
         // Basic JWT structure validation
@@ -54,21 +54,22 @@ class StorageUtils {
           throw Exception('Token missing userId claim');
         }
 
-        print('✅ Token validation passed');
+        debugPrint('✅ Token validation passed');
       } catch (e) {
-        print('❌ Token validation failed: $e');
+        debugPrint('❌ Token validation failed: $e');
+        debugPrint('❌ Token validation failed: $e');
         throw Exception('Invalid token format: $e');
       }
 
       // Save token using secure storage when available
       if (!kIsWeb) {
         await _secureStorage.write(key: _tokenKey, value: token);
-        print('✅ Token saved to secure storage');
+        debugPrint('✅ Token saved to secure storage');
       } else {
         // Fallback to shared preferences for web
         final prefs = await _getPrefs();
         await prefs.setString(_tokenKey, token);
-        print('✅ Token saved to web storage');
+        debugPrint('✅ Token saved to web storage');
       }
 
       // Update API config
@@ -77,27 +78,28 @@ class StorageUtils {
       // Verify token is saved correctly
       final verifiedToken = await getToken();
       if (verifiedToken != token) {
-        print('❌ Token mismatch after save!');
-        print(
+        debugPrint('❌ Token mismatch after save!');
+        debugPrint(
             'Original length: ${token.length}, Saved length: ${verifiedToken?.length}');
       } else {
-        print('✅ Token verified: matches original');
+        debugPrint('✅ Token verified: matches original');
       }
-      print('✅ Token updated in ApiConfig');
+      debugPrint('✅ Token updated in ApiConfig');
 
       // Verify token was saved
       final savedToken = await getToken();
       if (savedToken == null || savedToken != token) {
         throw Exception('Token was not saved successfully');
       }
-      print('✅ Token verified in storage');
+      debugPrint('✅ Token verified in storage');
     } catch (e) {
-      print('❌ Error saving token: $e');
+      debugPrint('❌ Error saving token: $e');
       // Try to clean up if save failed
       try {
         await removeToken();
       } catch (cleanupError) {
-        print('⚠️ Error cleaning up after failed token save: $cleanupError');
+        debugPrint(
+            '⚠️ Error cleaning up after failed token save: $cleanupError');
       }
       throw Exception('Failed to save token: $e');
     }
@@ -105,13 +107,13 @@ class StorageUtils {
 
   static Future<String?> getToken() async {
     try {
-      print('🔍 Getting token from storage...');
+      debugPrint('🔍 Getting token from storage...');
 
       // Try secure storage first
       if (!kIsWeb) {
         final secureToken = await _secureStorage.read(key: _tokenKey);
         if (secureToken != null && secureToken.isNotEmpty) {
-          print('✅ Token found in secure storage');
+          debugPrint('✅ Token found in secure storage');
           return secureToken;
         }
       }
@@ -120,43 +122,43 @@ class StorageUtils {
       final prefs = await _getPrefs();
       final token = prefs.getString(_tokenKey);
       if (token != null && token.isNotEmpty) {
-        print('✅ Token found in web storage');
+        debugPrint('✅ Token found in web storage');
         return token;
       }
 
-      print('❌ No token found in any storage');
+      debugPrint('❌ No token found in any storage');
       return null;
     } catch (e) {
-      print('❌ Error getting token: $e');
+      debugPrint('❌ Error getting token: $e');
       return null;
     }
   }
 
   static Future<void> removeToken() async {
     try {
-      print('🔄 Removing token from storage...');
+      debugPrint('🔄 Removing token from storage...');
 
       // Remove from both storage types
       if (!kIsWeb) {
         await _secureStorage.delete(key: _tokenKey);
-        print('✅ Token removed from secure storage');
+        debugPrint('✅ Token removed from secure storage');
       }
       final prefs = await _getPrefs();
       await prefs.remove(_tokenKey);
-      print('✅ Token removed from web storage');
+      debugPrint('✅ Token removed from web storage');
 
       // Clear API config
       ApiConfig.clear();
-      print('✅ API config cleared');
+      debugPrint('✅ API config cleared');
 
       // Verify token was removed
       final remainingToken = await getToken();
       if (remainingToken != null) {
         throw Exception('Token was not removed successfully');
       }
-      print('✅ Token removal verified');
+      debugPrint('✅ Token removal verified');
     } catch (e) {
-      print('❌ Error removing token: $e');
+      debugPrint('❌ Error removing token: $e');
       rethrow;
     }
   }
@@ -164,22 +166,22 @@ class StorageUtils {
   // User data methods
   static Future<void> saveUserId(String id) async {
     try {
-      print('📝 Saving User ID: $id');
+      debugPrint('📝 Saving User ID: $id');
 
       // Save in secure storage
       await _secureStorage.write(key: _userIdKey, value: id);
-      print('✅ User ID saved to secure storage');
+      debugPrint('✅ User ID saved to secure storage');
 
       // Save in web storage
       final prefs = await _getPrefs();
       await prefs.setString(_userIdKey, id);
-      print('✅ User ID saved to web storage');
+      debugPrint('✅ User ID saved to web storage');
 
       // Update API config
       ApiConfig.setUserId(id);
-      print('✅ User ID updated in ApiConfig');
+      debugPrint('✅ User ID updated in ApiConfig');
     } catch (e) {
-      print('❌ Error saving user ID: $e');
+      debugPrint('❌ Error saving user ID: $e');
       rethrow;
     }
   }
@@ -190,7 +192,7 @@ class StorageUtils {
       if (!kIsWeb) {
         final secureId = await _secureStorage.read(key: _userIdKey);
         if (secureId != null && secureId.isNotEmpty) {
-          print('✅ User ID found in secure storage');
+          debugPrint('✅ User ID found in secure storage');
           return secureId;
         }
       }
@@ -198,18 +200,18 @@ class StorageUtils {
       // Try web storage
       final prefs = await _getPrefs();
       final id = prefs.getString(_userIdKey);
-      print('📝 Retrieved User ID: $id');
+      debugPrint('📝 Retrieved User ID: $id');
       return id;
     } catch (e) {
-      print('❌ Error getting user ID: $e');
+      debugPrint('❌ Error getting user ID: $e');
       return null;
     }
   }
 
   static Future<void> saveUserData(Map<String, dynamic> data) async {
     try {
-      print('🔄 Saving user data...');
-      print('📝 Raw user data: $data');
+      debugPrint('🔄 Saving user data...');
+      debugPrint('📝 Raw user data: $data');
 
       // Ensure we're using MongoDB _id
       if (data['id'] != null && data['_id'] == null) {
@@ -220,9 +222,9 @@ class StorageUtils {
         key: _userDataKey,
         value: json.encode(data),
       );
-      print('✅ User data saved successfully');
+      debugPrint('✅ User data saved successfully');
     } catch (e) {
-      print('❌ Error saving user data: $e');
+      debugPrint('❌ Error saving user data: $e');
       rethrow;
     }
   }
@@ -240,7 +242,7 @@ class StorageUtils {
       if (userDataStr == null) return null;
       return json.decode(userDataStr) as Map<String, dynamic>;
     } catch (e) {
-      print('❌ Error getting user data: $e');
+      debugPrint('❌ Error getting user data: $e');
       return null;
     }
   }
@@ -262,7 +264,7 @@ class StorageUtils {
         await _secureStorage.write(key: _otpKey, value: json.encode(otpData));
       }
     } catch (e) {
-      print('Error saving OTP data: $e');
+      debugPrint('Error saving OTP data: $e');
       rethrow;
     }
   }
@@ -287,7 +289,7 @@ class StorageUtils {
       }
       return null;
     } catch (e) {
-      print('Error getting OTP data: $e');
+      debugPrint('Error getting OTP data: $e');
       return null;
     }
   }
@@ -301,7 +303,7 @@ class StorageUtils {
         await _secureStorage.delete(key: _otpKey);
       }
     } catch (e) {
-      print('Error removing OTP data: $e');
+      debugPrint('Error removing OTP data: $e');
       rethrow;
     }
   }
@@ -312,7 +314,7 @@ class StorageUtils {
       final prefs = await _getPrefs();
       prefs.setString(_settingsKey, json.encode(settings));
     } catch (e) {
-      print('Error saving settings: $e');
+      debugPrint('Error saving settings: $e');
       rethrow;
     }
   }
@@ -326,7 +328,7 @@ class StorageUtils {
       }
       return null;
     } catch (e) {
-      print('Error getting settings: $e');
+      debugPrint('Error getting settings: $e');
       return null;
     }
   }
@@ -340,7 +342,7 @@ class StorageUtils {
         await _secureStorage.deleteAll();
       }
     } catch (e) {
-      print('❌ Error clearing data: $e');
+      debugPrint('❌ Error clearing data: $e');
       rethrow;
     }
   }
@@ -351,7 +353,7 @@ class StorageUtils {
       final token = await getToken();
       return token != null;
     } catch (e) {
-      print('Error checking login status: $e');
+      debugPrint('Error checking login status: $e');
       return false;
     }
   }
@@ -362,7 +364,7 @@ class StorageUtils {
       final prefs = await _getPrefs();
       await prefs.setString(key, value);
     } catch (e) {
-      print('Error setting value: $e');
+      debugPrint('Error setting value: $e');
       rethrow;
     }
   }
@@ -372,7 +374,7 @@ class StorageUtils {
       final prefs = await _getPrefs();
       return prefs.getString(key);
     } catch (e) {
-      print('Error getting value: $e');
+      debugPrint('Error getting value: $e');
       return null;
     }
   }
@@ -382,7 +384,7 @@ class StorageUtils {
       final prefs = await _getPrefs();
       await prefs.remove(key);
     } catch (e) {
-      print('Error removing value: $e');
+      debugPrint('Error removing value: $e');
       rethrow;
     }
   }
@@ -402,7 +404,7 @@ class StorageUtils {
           .map((item) => Transaction.fromJson(item as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('Error getting stored transactions: $e');
+      debugPrint('Error getting stored transactions: $e');
       return null;
     }
   }
@@ -415,7 +417,7 @@ class StorageUtils {
       );
       await prefs.setString('transactions', transactionsJson);
     } catch (e) {
-      print('Error storing transactions: $e');
+      debugPrint('Error storing transactions: $e');
     }
   }
 
@@ -430,7 +432,7 @@ class StorageUtils {
           .map((item) => Transaction.fromJson(item as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('❌ Error getting transactions: $e');
+      debugPrint('❌ Error getting transactions: $e');
       return [];
     }
   }
@@ -449,7 +451,7 @@ class StorageUtils {
       // Format with exactly 18 decimal places
       return amount.toStringAsFixed(18);
     } catch (e) {
-      print('❌ Error formatting balance: $e');
+      debugPrint('❌ Error formatting balance: $e');
       return '0.000000000000000000';
     }
   }
@@ -464,7 +466,7 @@ class StorageUtils {
       };
       await prefs.setString(_walletBalanceKey, json.encode(walletData));
     } catch (e) {
-      print('❌ Error saving wallet balance: $e');
+      debugPrint('❌ Error saving wallet balance: $e');
       throw Exception('Failed to save wallet balance: $e');
     }
   }
@@ -480,7 +482,7 @@ class StorageUtils {
       }
       return null;
     } catch (e) {
-      print('❌ Error reading wallet balance: $e');
+      debugPrint('❌ Error reading wallet balance: $e');
       return null;
     }
   }
@@ -489,18 +491,18 @@ class StorageUtils {
     try {
       final prefs = await _getPrefs();
       await prefs.remove(_walletBalanceKey);
-      print('✅ Wallet balance removed from storage');
+      debugPrint('✅ Wallet balance removed from storage');
     } catch (e) {
-      print('❌ Error removing wallet balance: $e');
+      debugPrint('❌ Error removing wallet balance: $e');
     }
   }
 
   static Future<bool> refreshToken() async {
     try {
-      print('🔄 Refreshing token...');
+      debugPrint('🔄 Refreshing token...');
       final currentToken = await getToken();
       if (currentToken == null) {
-        print('❌ No token found for refresh');
+        debugPrint('❌ No token found for refresh');
         return false;
       }
 
@@ -512,14 +514,14 @@ class StorageUtils {
       if (response['success']) {
         final newToken = response['data']['token'];
         await saveToken(newToken);
-        print('✅ Token refreshed successfully');
+        debugPrint('✅ Token refreshed successfully');
         return true;
       } else {
-        print('❌ Token refresh failed: ${response['message']}');
+        debugPrint('❌ Token refresh failed: ${response['message']}');
         return false;
       }
     } catch (e) {
-      print('❌ Error refreshing token: $e');
+      debugPrint('❌ Error refreshing token: $e');
       return false;
     }
   }
@@ -553,7 +555,7 @@ class StorageUtils {
         value: jsonEncode(transactions.toList()),
       );
     } catch (e) {
-      print('Error saving claimed transactions: $e');
+      debugPrint('Error saving claimed transactions: $e');
       rethrow;
     }
   }
@@ -564,7 +566,7 @@ class StorageUtils {
       if (data == null) return {};
       return Set<String>.from(jsonDecode(data));
     } catch (e) {
-      print('Error getting claimed transactions: $e');
+      debugPrint('Error getting claimed transactions: $e');
       return {};
     }
   }
@@ -575,27 +577,27 @@ class StorageUtils {
         throw Exception('Refresh token cannot be empty');
       }
 
-      print('🔄 Saving refresh token...');
-      print('📝 Refresh token to save: ${token.substring(0, 10)}...');
+      debugPrint('🔄 Saving refresh token...');
+      debugPrint('📝 Refresh token to save: ${token.substring(0, 10)}...');
 
       // Save in both storage types for redundancy
       final prefs = await _getPrefs();
       await prefs.setString(_refreshTokenKey, token);
-      print('✅ Refresh token saved to web storage');
+      debugPrint('✅ Refresh token saved to web storage');
 
       if (!kIsWeb) {
         await _secureStorage.write(key: _refreshTokenKey, value: token);
-        print('✅ Refresh token saved to secure storage');
+        debugPrint('✅ Refresh token saved to secure storage');
       }
     } catch (e) {
-      print('❌ Error saving refresh token: $e');
+      debugPrint('❌ Error saving refresh token: $e');
       throw Exception('Failed to save refresh token: $e');
     }
   }
 
   static Future<String?> getRefreshToken() async {
     try {
-      print('🔍 Getting refresh token from storage...');
+      debugPrint('🔍 Getting refresh token from storage...');
 
       String? refreshToken;
 
@@ -603,51 +605,51 @@ class StorageUtils {
       if (kIsWeb) {
         final prefs = await _getPrefs();
         refreshToken = prefs.getString(_refreshTokenKey);
-        print(
+        debugPrint(
             '📱 Refresh token from web storage: ${refreshToken != null ? 'Found' : 'Not found'}');
       } else {
         // Check secure storage
         refreshToken = await _secureStorage.read(key: _refreshTokenKey);
-        print(
+        debugPrint(
             '📱 Refresh token from secure storage: ${refreshToken != null ? 'Found' : 'Not found'}');
 
         // If not found in secure storage, check web storage
         if (refreshToken == null) {
           final prefs = await _getPrefs();
           refreshToken = prefs.getString(_refreshTokenKey);
-          print(
+          debugPrint(
               '📱 Refresh token from web storage: ${refreshToken != null ? 'Found' : 'Not found'}');
         }
       }
 
       if (refreshToken == null || refreshToken.isEmpty) {
-        print('⚠️ No refresh token found in storage');
+        debugPrint('⚠️ No refresh token found in storage');
         return null;
       }
 
-      print('✅ Refresh token found: ${refreshToken.substring(0, 10)}...');
+      debugPrint('✅ Refresh token found: ${refreshToken.substring(0, 10)}...');
       return refreshToken;
     } catch (e) {
-      print('❌ Error getting refresh token: $e');
+      debugPrint('❌ Error getting refresh token: $e');
       return null;
     }
   }
 
   static Future<void> removeRefreshToken() async {
     try {
-      print('🗑️ Removing refresh token...');
+      debugPrint('🗑️ Removing refresh token...');
 
       // Remove from both storage types
       final prefs = await _getPrefs();
       await prefs.remove(_refreshTokenKey);
-      print('✅ Refresh token removed from web storage');
+      debugPrint('✅ Refresh token removed from web storage');
 
       if (!kIsWeb) {
         await _secureStorage.delete(key: _refreshTokenKey);
-        print('✅ Refresh token removed from secure storage');
+        debugPrint('✅ Refresh token removed from secure storage');
       }
     } catch (e) {
-      print('❌ Error removing refresh token: $e');
+      debugPrint('❌ Error removing refresh token: $e');
       throw Exception('Failed to remove refresh token: $e');
     }
   }
@@ -655,27 +657,27 @@ class StorageUtils {
   // Sync balance with server
   static Future<Map<String, dynamic>> syncWalletBalance(String balance) async {
     try {
-      print('🔄 Syncing wallet balance with server...');
+      debugPrint('🔄 Syncing wallet balance with server...');
 
       // Get auth token
-      print('🔍 Getting token from storage...');
+      debugPrint('🔍 Getting token from storage...');
       final token = await getToken();
       if (token == null) {
         throw Exception('No auth token found');
       }
-      print('✅ Token found in web storage');
-      print('✅ Got auth token: ${token.substring(0, 10)}...');
+      debugPrint('✅ Token found in web storage');
+      debugPrint('✅ Got auth token: ${token.substring(0, 10)}...');
 
       // Basic token validation
       final parts = token.split('.');
-      print('🔐 Token parts: ${parts.length}');
+      debugPrint('🔐 Token parts: ${parts.length}');
 
       // Make API request
       const url = ' {ApiConfig.baseUrl}/api/wallet/sync-balance';
-      print('📤 POST request to $url');
+      debugPrint('📤 POST request to $url');
 
       final data = {'balance': balance};
-      print('📦 Request data: $data');
+      debugPrint('📦 Request data: $data');
 
       final response = await ApiService.postWithAuth(
         url,
@@ -686,15 +688,15 @@ class StorageUtils {
       final responseData = response['data'];
       final statusCode = response['statusCode'] as int;
 
-      print('📥 Response status: $statusCode');
-      print('📦 Response data: $responseData');
+      debugPrint('📥 Response status: $statusCode');
+      debugPrint('📦 Response data: $responseData');
 
       // Handle successful sync
       if (statusCode == 200) {
         if (responseData['success'] == true) {
           // Check if it was a skipped sync
           if (responseData['message']?.contains('Sync skipped') == true) {
-            print('ℹ️ Sync skipped: ${responseData['message']}');
+            debugPrint('ℹ️ Sync skipped: ${responseData['message']}');
             return {
               'success': true,
               'skipped': true,
@@ -702,7 +704,7 @@ class StorageUtils {
             };
           }
 
-          print('✅ Balance synced successfully');
+          debugPrint('✅ Balance synced successfully');
           if (responseData['data'] != null) {
             return {
               'success': true,
@@ -717,10 +719,10 @@ class StorageUtils {
       throw Exception(responseData['message'] ?? 'Failed to sync balance');
     } catch (e) {
       if (e.toString().contains('Sync skipped')) {
-        print('ℹ️ ${e.toString()}');
+        debugPrint('ℹ️ ${e.toString()}');
         return {'success': true, 'skipped': true, 'message': e.toString()};
       }
-      print('❌ Error syncing balance: $e');
+      debugPrint('❌ Error syncing balance: $e');
       rethrow;
     }
   }
@@ -728,46 +730,46 @@ class StorageUtils {
   // Update and sync wallet balance
   static Future<void> updateAndSyncBalance(String newBalance) async {
     try {
-      print('🔄 Updating wallet balance...');
-      print('💰 New balance: $newBalance');
+      debugPrint('🔄 Updating wallet balance...');
+      debugPrint('💰 New balance: $newBalance');
 
       final currentBalance = await getWalletBalance() ?? '0.000000000000000000';
-      print('📊 Current balance: $currentBalance');
+      debugPrint('📊 Current balance: $currentBalance');
 
       // Format balances to 18 decimal places
       final formattedNewBalance =
           NumberFormatter.formatBalanceString(newBalance);
-      print('💫 Formatted balance: $formattedNewBalance');
+      debugPrint('💫 Formatted balance: $formattedNewBalance');
 
       if (formattedNewBalance == currentBalance) {
-        print('ℹ️ Balance unchanged');
+        debugPrint('ℹ️ Balance unchanged');
         // Save the balance even if unchanged to update lastUpdated
         await saveWalletBalance(formattedNewBalance);
-        print('✅ Wallet balance updated: $formattedNewBalance BTC');
+        debugPrint('✅ Wallet balance updated: $formattedNewBalance BTC');
 
         // Sync with server
         final syncResult = await syncWalletBalance(formattedNewBalance);
         if (syncResult['skipped'] == true) {
-          print('ℹ️ Server sync skipped: ${syncResult['message']}');
+          debugPrint('ℹ️ Server sync skipped: ${syncResult['message']}');
         } else {
-          print('✅ Server sync completed');
+          debugPrint('✅ Server sync completed');
         }
       } else {
-        print(
+        debugPrint(
             '📈 Balance changed from $currentBalance to $formattedNewBalance');
         await saveWalletBalance(formattedNewBalance);
-        print('✅ Wallet balance updated: $formattedNewBalance BTC');
+        debugPrint('✅ Wallet balance updated: $formattedNewBalance BTC');
 
         // Sync with server
         final syncResult = await syncWalletBalance(formattedNewBalance);
         if (syncResult['skipped'] == true) {
-          print('ℹ️ Server sync skipped: ${syncResult['message']}');
+          debugPrint('ℹ️ Server sync skipped: ${syncResult['message']}');
         } else {
-          print('✅ Server sync completed');
+          debugPrint('✅ Server sync completed');
         }
       }
     } catch (e) {
-      print('❌ Error updating balance: $e');
+      debugPrint('❌ Error updating balance: $e');
       throw Exception('Failed to update wallet balance: $e');
     }
   }

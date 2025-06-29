@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+
 class User {
   final String? id;
   final String userId;
@@ -55,41 +59,41 @@ class User {
   }
 
   static void _debugRequiredFields(Map<String, dynamic> json) {
-    print('\n🔍 DEBUG: Checking User Model Fields');
-    print('📦 Raw JSON Data:');
-    print(json);
+    debugPrint('\n🔍 DEBUG: Checking User Model Fields');
+    debugPrint('📦 Raw JSON Data:');
+    debugPrint(jsonEncode(json));
 
     // Check data object first
     final data = json['data'];
     if (data != null) {
-      print('\n📦 Data Object Found:');
-      print(data);
+      debugPrint('\n📦 Data Object Found:');
+      debugPrint(data);
     }
 
     // Get user data from correct location
     final userData = data?['user'] ?? json['user'] ?? json;
-    print('\n📋 Required Fields Status:');
-    print(
+    debugPrint('\n📋 Required Fields Status:');
+    debugPrint(
         'userId: ${userData['userId'] != null ? '✅' : '❌'} (${userData['userId']})');
-    print(
+    debugPrint(
         'email: ${userData['email'] != null ? '✅' : '❌'} (${userData['email']})');
-    print(
+    debugPrint(
         'username: ${userData['username'] != null ? '✅' : '❌'} (${userData['username']})');
-    print(
+    debugPrint(
         'isVerified: ${userData['isVerified'] != null ? '✅' : '❌'} (${userData['isVerified']})');
-    print(
+    debugPrint(
         'referralCode: ${userData['referralCode'] != null ? '✅' : '❌'} (${userData['referralCode']})');
-    print(
+    debugPrint(
         'referredBy: ${userData['referredBy'] != null ? '✅' : 'ℹ️'} (${userData['referredBy'] ?? 'Not referred'})');
-    print(
+    debugPrint(
         'walletBalance: ${userData['walletBalance'] != null ? '✅' : '❌'} (${userData['walletBalance']})');
-    print(
+    debugPrint(
         'referralCount: ${userData['referralCount'] != null ? '✅' : '❌'} (${userData['referralCount']})');
 
     // Check token in both locations
     final token = data?['token'] ?? json['token'];
-    print('token: ${token != null ? '✅' : '❌'} ($token)');
-    print('\n');
+    debugPrint('token: ${token != null ? '✅' : '❌'} ($token)');
+    debugPrint('\n');
   }
 
   Map<String, dynamic> toJson() {

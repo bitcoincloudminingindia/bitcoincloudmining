@@ -112,7 +112,7 @@ class _WalletScreenState extends State<WalletScreen>
         });
       }
     } catch (e) {
-      print('Error loading wallet data: $e');
+      debugPrint('❌ Error loading wallet: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -215,7 +215,7 @@ class _WalletScreenState extends State<WalletScreen>
         }
       }
     } catch (e) {
-      print('Error checking pending transactions: $e');
+      debugPrint('❌ Error checking pending transactions: $e');
     }
   }
 
@@ -243,7 +243,7 @@ class _WalletScreenState extends State<WalletScreen>
         });
       }
     } catch (e) {
-      print('Error loading wallet: $e');
+      debugPrint('❌ Error loading wallet: $e');
       if (mounted && !_isDisposed) {
         setState(() {
           _isLoading = false;
@@ -264,7 +264,7 @@ class _WalletScreenState extends State<WalletScreen>
         });
       }
     } catch (e) {
-      print('Error loading wallet balance: $e');
+      debugPrint('❌ Error loading wallet balance: $e');
     }
   }
 
@@ -274,7 +274,7 @@ class _WalletScreenState extends State<WalletScreen>
       if (currentBalance < 0) {
         // If balance is negative, reset it to 0
         await _walletProvider.updateBalance(0);
-        print('Reset negative balance to 0');
+        debugPrint('Reset negative balance to 0');
       }
 
       // Refresh transactions
@@ -286,7 +286,7 @@ class _WalletScreenState extends State<WalletScreen>
         });
       }
     } catch (e) {
-      print('Error syncing wallet balance: $e');
+      debugPrint('❌ Error syncing wallet balance: $e');
     }
   }
 
@@ -321,12 +321,12 @@ class _WalletScreenState extends State<WalletScreen>
       throw Exception('Insufficient balance');
     }
 
-    print('Converting to BTC:');
-    print(
+    debugPrint('Converting to BTC:');
+    debugPrint(
         'Local Amount: ${NumberFormatter.formatBTCAmount(localAmount)} ${_selectedMethod == "Paytm" ? "INR" : _selectedMethod == "Paypal" ? "USD" : "BTC"}');
-    print('BTC Price: $btcPrice');
-    print('Currency Rate: $currencyRate');
-    print('Calculated BTC: ${NumberFormatter.formatBTCAmount(btcAmount)}');
+    debugPrint('BTC Price: $btcPrice');
+    debugPrint('Currency Rate: $currencyRate');
+    debugPrint('Calculated BTC: ${NumberFormatter.formatBTCAmount(btcAmount)}');
 
     return double.parse(NumberFormatter.formatBTCAmount(btcAmount));
   }
@@ -1685,12 +1685,12 @@ class _WalletScreenState extends State<WalletScreen>
     }
 
     final localBalance = _walletProvider.btcBalance * btcPrice * currencyRate;
-    print('Local balance calculation:');
-    print(
+    debugPrint('Local balance calculation:');
+    debugPrint(
         'BTC Balance: ${NumberFormatter.formatBTCAmount(_walletProvider.btcBalance)}');
-    print('BTC Price: $btcPrice');
-    print('Currency Rate: $currencyRate');
-    print(
+    debugPrint('BTC Price: $btcPrice');
+    debugPrint('Currency Rate: $currencyRate');
+    debugPrint(
         'Calculated Local Balance: ${NumberFormatter.formatBTCAmount(localBalance)}');
 
     return localBalance;
@@ -1808,7 +1808,7 @@ class _WalletScreenState extends State<WalletScreen>
         setState(() {});
       }
     } catch (e) {
-      print('Error refreshing wallet: $e');
+      debugPrint('❌ Error refreshing wallet: $e');
     }
   }
 

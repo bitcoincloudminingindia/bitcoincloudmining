@@ -175,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       _adService.dispose();
     } catch (e) {
-      print('Ad dispose error: $e');
+      debugPrint('Ad dispose error: $e');
     }
     super.dispose();
   }
@@ -206,9 +206,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final walletProvider =
           Provider.of<WalletProvider>(context, listen: false);
       await walletProvider.loadWallet();
-      print('✅ Wallet balance loaded successfully');
+      debugPrint('✅ Wallet balance loaded successfully');
     } catch (e) {
-      print('Error initializing app: $e');
+      debugPrint('Error initializing app: $e');
 
       // Check if it's a DNS error and provide better message
       String errorMessage = 'Error initializing app: ${e.toString()}';
@@ -1281,8 +1281,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   String _getRemainingTime() {
     // If not mining or mining just completed, return empty string
-    if (!_isMining || _miningStartTime == null || _miningStatus == 'Completed')
+    if (!_isMining ||
+        _miningStartTime == null ||
+        _miningStatus == 'Completed') {
       return '';
+    }
 
     final now = DateTime.now();
     final elapsedMinutes = now.difference(_miningStartTime!).inMinutes;
@@ -1390,7 +1393,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         );
       }
     } catch (e) {
-      print('Error showing rewarded ad: $e');
+      debugPrint('Error showing rewarded ad: $e');
     }
   }
 
@@ -1488,7 +1491,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         );
       }
     } catch (e) {
-      print('Power boost error: $e');
+      debugPrint('Power boost error: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1532,7 +1535,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         );
       }
     } catch (e) {
-      print('❌ Error adding tap reward: $e');
+      debugPrint('❌ Error adding tap reward: $e');
       if (mounted) {
         Fluttertoast.showToast(
           msg: 'Failed to add tap reward: ${e.toString()}',
@@ -1549,7 +1552,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _sciFiTapCount = 0;
 
       try {
-        print('🎬 Showing rewarded ad for sci-fi tap...');
+        debugPrint('🎬 Showing rewarded ad for sci-fi tap...');
         final bool adWatched = await _adService.showRewardedAd(
           onRewarded: (double amount) async {
             if (!mounted) return;
@@ -1573,7 +1576,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 );
               }
             } catch (e) {
-              print('❌ Error adding ad reward: $e');
+              debugPrint('❌ Error adding ad reward: $e');
               if (mounted) {
                 Fluttertoast.showToast(
                   msg: 'Failed to add ad reward: ${e.toString()}',
@@ -1598,7 +1601,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           );
         }
       } catch (e) {
-        print('❌ Error showing rewarded ad: $e');
+        debugPrint('❌ Error showing rewarded ad: $e');
         if (mounted) {
           Fluttertoast.showToast(
             msg: 'Error showing ad: ${e.toString()}',
@@ -1644,7 +1647,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await _audioPlayer.setVolume(1.0);
       // Optionally preload a sound or set other audio settings here
     } catch (e) {
-      print('Audio initialization error: $e');
+      debugPrint('Audio initialization error: $e');
     }
   }
 
@@ -1652,7 +1655,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       // Save any pending earnings to wallet
       if (_miningEarnings > 0 && _isMining) {
-        print('💾 Saving pending mining earnings: $_miningEarnings BTC');
+        debugPrint('💾 Saving pending mining earnings: $_miningEarnings BTC');
         final walletProvider =
             Provider.of<WalletProvider>(context, listen: false);
         await walletProvider.addEarning(
@@ -1660,12 +1663,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           type: 'mining',
           description: 'Mining earnings (saved on exit)',
         );
-        print('✅ Pending earnings saved successfully');
+        debugPrint('✅ Pending earnings saved successfully');
       }
 
       // Save any pending tap earnings
       if (_sciFiTapCount > 0) {
-        print('💾 Saving pending tap earnings');
+        debugPrint('💾 Saving pending tap earnings');
         final walletProvider =
             Provider.of<WalletProvider>(context, listen: false);
         await walletProvider.addEarning(
@@ -1673,10 +1676,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           type: 'tap',
           description: 'Tap earnings (saved on exit)',
         );
-        print('✅ Tap earnings saved successfully');
+        debugPrint('✅ Tap earnings saved successfully');
       }
     } catch (e) {
-      print('❌ Error saving pending earnings: $e');
+      debugPrint('❌ Error saving pending earnings: $e');
     }
   }
 

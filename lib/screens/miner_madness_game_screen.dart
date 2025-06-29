@@ -106,7 +106,7 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
       await _audioPlayer.setReleaseMode(ReleaseMode.stop);
       await _audioPlayer.setVolume(_isMuted ? 0.0 : 1.0);
     } catch (e) {
-      print('❌ Audio initialization error: $e');
+      debugPrint('❌ Audio initialization error: $e');
     }
   }
 
@@ -305,11 +305,11 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
     // Set the won amount to the exact value of the stopping segment
     _wonAmount = _rewards[stoppingSegmentIndex];
 
-    print('Selected segment index: $stoppingSegmentIndex');
-    print(
+    debugPrint('Selected segment index: $stoppingSegmentIndex');
+    debugPrint(
         'Segment middle angle (from right): ${segmentMiddleAngleFromRight * 180 / pi}°');
-    print('Total end angle (for animation): ${_endAngle * 180 / pi}°');
-    print('Won amount: $_wonAmount BTC');
+    debugPrint('Total end angle (for animation): ${_endAngle * 180 / pi}°');
+    debugPrint('Won amount: $_wonAmount BTC');
 
     // Start spinning animation
     _spinController.forward(from: 0);
@@ -353,7 +353,7 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
         );
       }
     } catch (e) {
-      print('Error awarding bonus: $e');
+      debugPrint('Error awarding bonus: $e');
     }
   }
 
@@ -839,7 +839,7 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
                                 ),
                               );
                             } catch (e) {
-                              print('Error adding reward to wallet: $e');
+                              debugPrint('Error adding reward to wallet: $e');
                               if (mounted) {
                                 setState(() {
                                   _isCollecting = false;

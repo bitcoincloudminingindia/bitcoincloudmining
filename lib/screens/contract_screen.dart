@@ -226,14 +226,14 @@ class _ContractScreenState extends State<ContractScreen>
 
   Future<void> _initializeAdService() async {
     try {
-      await MobileAds.instance.initialize();
+      await _adService.initialize();
       setState(() {
         _isAdInitialized = true;
       });
       await _loadAdUnitId();
       await _loadRewardedAd();
     } catch (e) {
-      print('Error initializing ad service: $e');
+      debugPrint('Error initializing ad service: $e');
       // Retry after 5 seconds
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) {
@@ -345,7 +345,7 @@ class _ContractScreenState extends State<ContractScreen>
         await prefs.remove('contract_is_mining_$index');
       }
     } catch (e) {
-      print('Error saving contract state: $e');
+      debugPrint('Error saving contract state: $e');
     }
   }
 
@@ -388,7 +388,7 @@ class _ContractScreenState extends State<ContractScreen>
         }
       }
     } catch (e) {
-      print('Error completing contract: $e');
+      debugPrint('Error completing contract: $e');
     }
   }
 
@@ -454,7 +454,7 @@ class _ContractScreenState extends State<ContractScreen>
         await _loadRewardedAd();
       }
     } catch (e) {
-      print('Error loading ad unit ID: $e');
+      debugPrint('Error loading ad unit ID: $e');
     }
   }
 
@@ -470,10 +470,10 @@ class _ContractScreenState extends State<ContractScreen>
           onAdLoaded: (RewardedAd ad) {
             _rewardedAd = ad;
             _isAdLoading = false;
-            print('Rewarded ad loaded successfully');
+            debugPrint('Rewarded ad loaded successfully');
           },
           onAdFailedToLoad: (LoadAdError error) {
-            print('Rewarded ad failed to load: $error');
+            debugPrint('Rewarded ad failed to load: $error');
             _isAdLoading = false;
             // Retry after 30 seconds if failed
             Future.delayed(const Duration(seconds: 30), () {
@@ -485,7 +485,7 @@ class _ContractScreenState extends State<ContractScreen>
         ),
       );
     } catch (e) {
-      print('Error in _loadRewardedAd: $e');
+      debugPrint('Error in _loadRewardedAd: $e');
       _isAdLoading = false;
     }
   }
@@ -548,7 +548,7 @@ class _ContractScreenState extends State<ContractScreen>
     try {
       await _rewardedAd!.show(
         onUserEarnedReward: (_, reward) {
-          print('User earned reward: ${reward.amount} ${reward.type}');
+          debugPrint('User earned reward: ${reward.amount} ${reward.type}');
           final contract = contracts[index];
           setState(() {
             if (contract['adsWatched'] < contract['adsRequired']) {
@@ -561,7 +561,7 @@ class _ContractScreenState extends State<ContractScreen>
         },
       );
     } catch (e) {
-      print('Error showing ad: $e');
+      debugPrint('Error showing ad: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Failed to show ad. Please try again.'),
@@ -587,7 +587,7 @@ class _ContractScreenState extends State<ContractScreen>
     try {
       await _adService.loadNativeAd();
     } catch (e) {
-      print('Error loading native ad: $e');
+      debugPrint('Error loading native ad: $e');
     }
   }
 

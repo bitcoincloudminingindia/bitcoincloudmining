@@ -395,16 +395,13 @@ class AdService {
             );
           },
           onAdFailedToLoad: (error) {
-            debugPrint('❌ Rewarded ad failed to load: $error');
-            _isRewardedAdLoaded = false;
+            debugPrint('Rewarded ad failed to load: $error');
             _isRewardedAdLoading = false;
-            _adFailures['rewarded'] = (_adFailures['rewarded'] ?? 0) + 1;
           },
         ),
       );
     } catch (e) {
-      debugPrint('❌ Error loading rewarded ad: $e');
-      _isRewardedAdLoaded = false;
+      debugPrint('Error loading rewarded ad: $e');
       _isRewardedAdLoading = false;
     }
   }

@@ -63,9 +63,30 @@ io.on('connection', (socket) => {
 
 // Middleware
 app.use(cors({
-  origin: ['*', 'https://bitcoincloudmining.onrender.com', 'http://localhost:3000', 'http://localhost:5000'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'Origin'],
+  origin: [
+    '*',
+    'https://bitcoincloudmining.onrender.com',
+    'https://bitcoin-cloud-mining.onrender.com',
+    'https://bitcoin-mining.onrender.com',
+    'http://localhost:3000',
+    'http://localhost:5000',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5000',
+    'https://web.bitcoincloudmining.onrender.com',
+    'https://bitcoincloudmining.web.app',
+    'https://bitcoincloudmining.firebaseapp.com'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'Accept',
+    'X-Requested-With',
+    'Origin',
+    'Access-Control-Allow-Origin',
+    'Access-Control-Allow-Methods',
+    'Access-Control-Allow-Headers'
+  ],
   credentials: true,
   preflightContinue: false,
   optionsSuccessStatus: 204,
@@ -119,7 +140,7 @@ const generalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 auth requests per windowMs
+  max: 50, // limit each IP to 50 auth requests per windowMs (increased from 5)
   message: {
     success: false,
     message: 'Too many authentication attempts, please try again later'
@@ -158,6 +179,18 @@ app.get('/', (req, res) => {
     version: '1.0.0'
   });
 });
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: 'ok',
+    message: 'Server is healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 // Optionally handle HEAD / for health checks
 app.head('/', (req, res) => {
   res.status(200).end();
@@ -219,19 +252,6 @@ app.get('/api/rewards', (req, res) => {
 
 // Initialize daily referral rewards job
 scheduleDailyRewards();
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  const { getDBStatus } = require('./config/database');
-  const dbStatus = getDBStatus();
-
-  res.json({
-    status: 'ok',
-    message: 'Server is running',
-    database: dbStatus,
-    timestamp: new Date().toISOString()
-  });
-});
 
 // Get all users endpoint (for debugging)
 app.get('/api/debug/users', async (req, res) => {

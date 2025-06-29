@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bitcoin_cloud_mining/config/api_config.dart';
 import 'package:bitcoin_cloud_mining/fcm_service.dart';
 import 'package:bitcoin_cloud_mining/utils/storage_utils.dart';
@@ -29,7 +31,7 @@ class _MyAppState extends State<MyApp> {
     await FcmService.requestPermission();
     final token = await FcmService.getFcmToken();
     setState(() => _fcmToken = token);
-    print('FCM Token: $token');
+    debugPrint('FCM Token: $token');
     if (token != null) {
       await sendTokenToBackend(token);
     }
@@ -47,12 +49,12 @@ class _MyAppState extends State<MyApp> {
         body: '{"token": "$token"}',
       );
       if (response.statusCode == 200) {
-        print('FCM token sent to backend successfully');
+        debugPrint('FCM token sent to backend successfully');
       } else {
-        print('Failed to send FCM token to backend: \\${response.body}');
+        debugPrint('Failed to send FCM token to backend: \\${response.body}');
       }
     } catch (e) {
-      print('Error sending FCM token to backend: $e');
+      debugPrint('Error sending FCM token to backend: $e');
     }
   }
 

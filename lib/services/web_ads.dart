@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 // Mock implementation of google_mobile_ads for web platform
 class MobileAds {
   static MobileAds _instance = MobileAds._();
@@ -7,7 +9,7 @@ class MobileAds {
   MobileAds._();
 
   Future<InitializationStatus> initialize() async {
-    print('Web platform - using mock ads implementation');
+    debugPrint('Web platform - using mock ads implementation');
     return WebInitializationStatus();
   }
 }
@@ -165,4 +167,22 @@ class AdError {
     required this.message,
     required this.domain,
   });
+}
+
+class WebAds {
+  static bool _isInitialized = false;
+
+  static bool get isInitialized => _isInitialized;
+
+  static Future<void> initialize() async {
+    if (_isInitialized) return;
+
+    try {
+      // Web-specific ad initialization
+      debugPrint('Web ads initialized');
+      _isInitialized = true;
+    } catch (e) {
+      debugPrint('Error initializing web ads: $e');
+    }
+  }
 }
