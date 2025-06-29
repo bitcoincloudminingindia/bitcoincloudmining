@@ -111,9 +111,9 @@ class NotificationService {
     if (Platform.isAndroid) {
       // Request notification permission for Android 13+
       if (await Permission.notification.request().isGranted) {
-        print('Notification permission granted');
+        debugPrint('Notification permission granted');
       } else {
-        print('Notification permission denied');
+        debugPrint('Notification permission denied');
       }
     } else if (Platform.isIOS) {
       await _notifications
@@ -220,7 +220,7 @@ class NotificationService {
         throw Exception('Failed to load notifications');
       }
     } catch (e) {
-      print('Error getting notifications: $e');
+      debugPrint('Error getting notifications: $e');
       return [];
     }
   }
@@ -238,7 +238,7 @@ class NotificationService {
         },
       );
     } catch (e) {
-      print('Error marking notification as read: $e');
+      debugPrint('Error marking notification as read: $e');
     }
   }
 
@@ -255,7 +255,7 @@ class NotificationService {
         },
       );
     } catch (e) {
-      print('Error marking all notifications as read: $e');
+      debugPrint('Error marking all notifications as read: $e');
     }
   }
 
@@ -264,7 +264,7 @@ class NotificationService {
     try {
       final token = await StorageUtils.getToken();
       if (token == null) {
-        print('No token available for login notification');
+        debugPrint('No token available for login notification');
         return;
       }
 
@@ -285,19 +285,19 @@ class NotificationService {
         'timestamp': DateTime.now().toIso8601String(),
       };
 
-      print('Sending login notification with data: $data');
+      debugPrint('Sending login notification with data: $data');
 
       final response = await ApiService.post(
         '/auth/login-notification',
         data,
       );
 
-      print('Login notification response: $response');
+      debugPrint('Login notification response: $response');
       if (!response['success']) {
-        print('Failed to send login notification: ${response['message']}');
+        debugPrint('Failed to send login notification: ${response['message']}');
       }
     } catch (e) {
-      print('Error sending login notification: $e');
+      debugPrint('Error sending login notification: $e');
     }
   }
 

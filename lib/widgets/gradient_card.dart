@@ -30,11 +30,11 @@ class GradientCard extends StatelessWidget {
               ],
         ),
         borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: Color.fromRGBO(0, 0, 0, 0.1),
             blurRadius: 8,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),

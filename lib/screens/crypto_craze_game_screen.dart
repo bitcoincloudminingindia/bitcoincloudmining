@@ -61,7 +61,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     _adService.dispose();
 
     if (_sessionEarnings > 0) {
-      print(
+      debugPrint(
           '🔄 Adding game earnings to wallet: ${_sessionEarnings.toStringAsFixed(18)} BTC');
       try {
         _walletProvider
@@ -71,7 +71,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
           description: 'Crypto Craze Game Earnings - Level $_currentLevel',
         )
             .then((_) {
-          print('✅ Game earnings added to wallet successfully');
+          debugPrint('✅ Game earnings added to wallet successfully');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -82,7 +82,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
             );
           }
         }).catchError((error) {
-          print('❌ Error adding game earnings to wallet: $error');
+          debugPrint('❌ Error adding game earnings to wallet: $error');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -93,7 +93,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
           }
         });
       } catch (error) {
-        print('❌ Error adding game earnings to wallet: $error');
+        debugPrint('❌ Error adding game earnings to wallet: $error');
       }
     }
 
@@ -384,7 +384,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     });
 
     try {
-      print('🎬 Showing rewarded ad for Crypto Craze...');
+      debugPrint('🎬 Showing rewarded ad for Crypto Craze...');
 
       if (!_adService.isRewardedAdLoaded) {
         await _adService.loadRewardedAd();
@@ -420,10 +420,10 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                 );
               }
 
-              print(
+              debugPrint(
                   '✅ Crypto Craze ad reward earned: ${adReward.toStringAsFixed(18)} BTC');
             } catch (e) {
-              print('❌ Error adding ad reward: $e');
+              debugPrint('❌ Error adding ad reward: $e');
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -449,7 +449,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
         );
       }
     } catch (e) {
-      print('❌ Error showing rewarded ad: $e');
+      debugPrint('❌ Error showing rewarded ad: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -529,7 +529,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     // Save earnings to wallet
     if (_sessionEarnings > 0) {
       try {
-        print(
+        debugPrint(
             '💾 Saving Crypto Craze earnings: ${_sessionEarnings.toStringAsFixed(18)} BTC');
 
         await _walletProvider.addEarning(
@@ -538,7 +538,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
           description: 'Crypto Craze Game Earnings - Level $_currentLevel',
         );
 
-        print('✅ Crypto Craze earnings saved successfully');
+        debugPrint('✅ Crypto Craze earnings saved successfully');
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -553,7 +553,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
           );
         }
       } catch (e) {
-        print('❌ Error saving Crypto Craze earnings: $e');
+        debugPrint('❌ Error saving Crypto Craze earnings: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -568,7 +568,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
 
     // Save game data
     _saveGameData();
-    print('✅ Game data saved');
+    debugPrint('✅ Game data saved');
 
     // Navigate back
     if (mounted) {

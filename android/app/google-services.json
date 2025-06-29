@@ -1,28 +1,29 @@
 {
     "project_info": {
-        "project_number": "YOUR_PROJECT_NUMBER",
-        "project_id": "YOUR_PROJECT_ID"
+      "project_number": "486206486627",
+      "project_id": "bitcoin-cloud-mining-19fb5",
+      "storage_bucket": "bitcoin-cloud-mining-19fb5.firebasestorage.app"
     },
     "client": [
-        {
-            "client_info": {
-                "mobilesdk_app_id": "YOUR_APP_ID",
-                "android_client_info": {
-                    "package_name": "com.example.bitcoin_cloud_mining"
-                }
-            },
-            "oauth_client": [],
-            "api_key": [
-                {
-                    "current_key": "YOUR_API_KEY"
-                }
-            ],
-            "services": {
-                "appinvite_service": {
-                    "other_platform_oauth_client": []
-                }
-            }
+      {
+        "client_info": {
+          "mobilesdk_app_id": "1:486206486627:android:7edb445533533d2073e056",
+          "android_client_info": {
+            "package_name": "com.example.bitcoin_cloud_mining"
+          }
+        },
+        "oauth_client": [],
+        "api_key": [
+          {
+            "current_key": "AIzaSyAwS7-6JQyZVEsnEg72ZZf-LQ0872lHLiM"
+          }
+        ],
+        "services": {
+          "appinvite_service": {
+            "other_platform_oauth_client": []
+          }
         }
+      }
     ],
     "configuration_version": "1"
-}
+  }

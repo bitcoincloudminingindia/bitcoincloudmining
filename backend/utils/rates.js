@@ -11,6 +11,32 @@ let rateCache = {
 // Cache duration in milliseconds (5 minutes)
 const CACHE_DURATION = 5 * 60 * 1000;
 
+// Retry configuration
+const RETRY_CONFIG = {
+  maxRetries: 2,
+  retryDelay: 1000, // 1 second
+  timeout: 8000 // 8 seconds
+};
+
+/**
+ * Retry function with exponential backoff
+ */
+async function retryWithBackoff(fn, maxRetries = RETRY_CONFIG.maxRetries) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw error;
+      }
+
+      const delay = RETRY_CONFIG.retryDelay * Math.pow(2, attempt);
+      logger.warn(`API call failed, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
 /**
  * Get current BTC/USD exchange rate from multiple sources
  * @returns {Promise<BigNumber>} Current BTC/USD rate
@@ -23,17 +49,28 @@ async function getBTCUSDRate() {
       return rateCache.rate;
     }
 
-    // Fetch rates from multiple sources
-    const [coinGeckoRate, binanceRate, krakenRate] = await Promise.allSettled([
-      getCoinGeckoRate(),
-      getBinanceRate(),
-      getKrakenRate()
-    ]);
+    // Fetch rates from multiple sources with individual error handling
+    const ratePromises = [
+      getCoinGeckoRate().catch(error => {
+        logger.error('CoinGecko rate fetch failed:', error.message);
+        return null;
+      }),
+      getBinanceRate().catch(error => {
+        logger.error('Binance rate fetch failed:', error.message);
+        return null;
+      }),
+      getKrakenRate().catch(error => {
+        logger.error('Kraken rate fetch failed:', error.message);
+        return null;
+      })
+    ];
+
+    const results = await Promise.allSettled(ratePromises);
 
     const rates = {
-      coinGecko: coinGeckoRate.status === 'fulfilled' ? coinGeckoRate.value : null,
-      binance: binanceRate.status === 'fulfilled' ? binanceRate.value : null,
-      kraken: krakenRate.status === 'fulfilled' ? krakenRate.value : null
+      coinGecko: results[0].status === 'fulfilled' ? results[0].value : null,
+      binance: results[1].status === 'fulfilled' ? results[1].value : null,
+      kraken: results[2].status === 'fulfilled' ? results[2].value : null
     };
 
     logger.info('BTC/USD Rates:', rates);
@@ -66,41 +103,45 @@ async function getBTCUSDRate() {
  * Get BTC/USD rate from CoinGecko
  */
 async function getCoinGeckoRate() {
-  try {
-    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+  return retryWithBackoff(async () => {
+    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd', {
+      timeout: RETRY_CONFIG.timeout,
+      headers: {
+        'User-Agent': 'BitcoinCloudMining/1.0'
+      }
+    });
     return response.data.bitcoin.usd.toString();
-  } catch (error) {
-    logger.error('Error fetching CoinGecko rate:', error);
-    return null;
-  }
+  });
 }
 
 /**
  * Get BTC/USD rate from Binance
  */
 async function getBinanceRate() {
-  try {
-    const response = await axios.get('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
+  return retryWithBackoff(async () => {
+    const response = await axios.get('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT', {
+      timeout: RETRY_CONFIG.timeout,
+      headers: {
+        'User-Agent': 'BitcoinCloudMining/1.0'
+      }
+    });
     return response.data.price;
-  } catch (error) {
-    logger.error('Error fetching Binance rate:', error);
-    return null;
-  }
+  });
 }
 
 /**
  * Get BTC/USD rate from Kraken
  */
 async function getKrakenRate() {
-  try {
+  return retryWithBackoff(async () => {
     const response = await axios.get('https://api.kraken.com/0/public/Ticker?pair=XBTUSD', {
-      timeout: 5000 // 5 second timeout
+      timeout: RETRY_CONFIG.timeout,
+      headers: {
+        'User-Agent': 'BitcoinCloudMining/1.0'
+      }
     });
     return response.data.result.XXBTZUSD.c[0];
-  } catch (error) {
-    logger.error('Error fetching Kraken rate:', error);
-    return null;
-  }
+  });
 }
 
 module.exports = {

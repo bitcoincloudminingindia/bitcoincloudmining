@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide Notification;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -72,7 +74,7 @@ class NotificationProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      print('Error loading notifications: $e');
+      debugPrint('Error loading notifications: $e');
       _isLoading = false;
       notifyListeners();
     }
@@ -109,7 +111,7 @@ class NotificationProvider with ChangeNotifier {
       _unreadCount++;
       notifyListeners();
     } catch (e) {
-      print('Error adding notification: $e');
+      debugPrint('Error adding notification: $e');
     }
   }
 
@@ -132,7 +134,7 @@ class NotificationProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Error marking notification as read: $e');
+      debugPrint('Error marking notification as read: $e');
     }
   }
 
@@ -146,7 +148,7 @@ class NotificationProvider with ChangeNotifier {
       _unreadCount = 0;
       notifyListeners();
     } catch (e) {
-      print('Error marking all notifications as read: $e');
+      debugPrint('Error marking all notifications as read: $e');
     }
   }
 

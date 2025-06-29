@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 class NumberFormatter {
@@ -33,7 +34,7 @@ class NumberFormatter {
       // Format with exactly 18 decimal places
       return amount.toStringAsFixed(18);
     } catch (e) {
-      print('❌ Error formatting balance: $e');
+      debugPrint('❌ Error formatting balance: $e');
       return '0.000000000000000000';
     }
   }
@@ -57,14 +58,14 @@ class NumberFormatter {
       }
       return _currencyFormat.format(value);
     } catch (e) {
-      print('Error formatting currency value: $e');
+      debugPrint('Error formatting currency value: $e');
       return '\$${value.toString()}';
     }
   }
 
   static String _handleFormattingError(
       String operation, dynamic error, double value) {
-    print('Error in $operation: $error');
+    debugPrint('Error in $operation: $error');
     return value.toString();
   }
 
@@ -99,7 +100,7 @@ class NumberFormatter {
     try {
       return double.parse(amount);
     } catch (e) {
-      print('Error parsing amount: $e');
+      debugPrint('Error parsing amount: $e');
       return 0.0;
     }
   }
@@ -161,7 +162,7 @@ class NumberFormatter {
       try {
         return double.parse(value);
       } catch (e) {
-        print('Error parsing string to double: $e');
+        debugPrint('Error parsing string to double: $e');
         return 0.0;
       }
     }

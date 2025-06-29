@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:bitcoin_cloud_mining/config/api_config.dart';
+import 'package:bitcoin_cloud_mining/firebase_options.dart';
 import 'package:bitcoin_cloud_mining/models/notification.dart' as model;
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/network_provider.dart';
@@ -26,9 +27,16 @@ import 'package:window_manager/window_manager.dart';
 import 'package:workmanager/workmanager.dart';
 
 import 'fcm_service.dart';
+import 'services/audio_service.dart';
 import 'utils/storage_utils.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+// Background message handler
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  debugPrint('📩 Background Message: ${message.messageId}');
+}
 
 void main() async {
   // Set zone error handling to non-fatal
@@ -37,9 +45,22 @@ void main() async {
   // Ensure Flutter bindings are initialized first
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase and FCM (Android only)
-  await Firebase.initializeApp();
-  await FcmService.initializeFCM();
+  // Initialize Firebase with proper configuration
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint('✅ Firebase initialized successfully');
+
+    // Set up background message handler
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    // Initialize FCM after Firebase is ready
+    await FcmService.initializeFCM();
+  } catch (e) {
+    debugPrint('❌ Firebase initialization failed: $e');
+    // Continue without Firebase if initialization fails
+  }
 
   // Only initialize window_manager on desktop platforms
   if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
@@ -59,7 +80,7 @@ void main() async {
         });
       });
     } catch (e) {
-      print('Platform initialization error: $e');
+      debugPrint('Platform initialization error: $e');
     }
   }
 
@@ -73,7 +94,7 @@ void main() async {
         // Register your native ad factory in native code, not Dart.
       }
     } catch (e) {
-      print('Mobile Ads initialization error: $e');
+      debugPrint('Mobile Ads initialization error: $e');
     }
   }
 
@@ -86,7 +107,7 @@ void main() async {
       );
       // Removed periodic mining and cloud mining task registration for manual mining only
     } catch (e) {
-      print('Background task initialization error: $e');
+      debugPrint('Background task initialization error: $e');
     }
   }
 
@@ -97,10 +118,14 @@ void main() async {
       apiService: apiService);
 
   // Run the app
-  runApp(MyApp(
-    apiService: apiService,
-    notificationService: notificationService,
-  ));
+  try {
+    runApp(MyApp(
+      apiService: apiService,
+      notificationService: notificationService,
+    ));
+  } catch (e) {
+    debugPrint('❌ Error running app: $e');
+  }
 }
 
 class MyApp extends StatefulWidget {
@@ -127,12 +152,16 @@ class _MyAppState extends State<MyApp> with WindowListener {
   }
 
   Future<void> _setupFCM() async {
-    await FcmService.requestPermission();
-    final token = await FcmService.getFcmToken();
-    if (token != null) {
-      await sendTokenToBackend(token);
+    try {
+      await FcmService.requestPermission();
+      final token = await FcmService.getFcmToken();
+      if (token != null) {
+        await sendTokenToBackend(token);
+      }
+      FcmService.listenFCM();
+    } catch (e) {
+      debugPrint('FCM setup failed: $e');
     }
-    FcmService.listenFCM();
   }
 
   void _setupNotificationListeners() {
@@ -155,25 +184,32 @@ class _MyAppState extends State<MyApp> with WindowListener {
       }
     });
 
-    // Listen for FCM foreground messages
-    FirebaseMessaging.onMessage.listen((message) {
-      final context = navigatorKey.currentContext;
-      if (context != null) {
-        final provider =
-            Provider.of<NotificationProvider>(context, listen: false);
-        final notification = model.Notification(
-          id: message.messageId ??
-              DateTime.now().millisecondsSinceEpoch.toString(),
-          title: message.notification?.title ?? 'Push Notification',
-          body: message.notification?.body ?? '',
-          status: 'unread',
-          timestamp: DateTime.now(),
-          category: NotificationCategory.system,
-          payload: message.data['payload'],
-        );
-        provider.addNotificationFromLocal(notification);
-      }
-    });
+    // Listen for FCM foreground messages (only if Firebase is available)
+    try {
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint(
+            '📬 Foreground Notification: ${message.notification?.title}');
+
+        final context = navigatorKey.currentContext;
+        if (context != null) {
+          final provider =
+              Provider.of<NotificationProvider>(context, listen: false);
+          final notification = model.Notification(
+            id: message.messageId ??
+                DateTime.now().millisecondsSinceEpoch.toString(),
+            title: message.notification?.title ?? 'Push Notification',
+            body: message.notification?.body ?? '',
+            status: 'unread',
+            timestamp: DateTime.now(),
+            category: NotificationCategory.system,
+            payload: message.data['payload'],
+          );
+          provider.addNotificationFromLocal(notification);
+        }
+      });
+    } catch (e) {
+      debugPrint('Firebase messaging listener setup failed: $e');
+    }
   }
 
   Future<void> sendTokenToBackend(String token) async {
@@ -181,30 +217,37 @@ class _MyAppState extends State<MyApp> with WindowListener {
       final jwtToken = await StorageUtils.getToken();
       final url = Uri.parse(ApiConfig.fcmTokenUrl);
       final headers = ApiConfig.getHeaders(token: jwtToken);
+
+      debugPrint(
+          '📤 Sending FCM token to backend: ${token.substring(0, 20)}...');
+
       final response = await http.post(
         url,
         headers: headers,
         body: '{"token": "$token"}',
       );
+
       if (response.statusCode == 200) {
-        print('FCM token sent to backend successfully');
+        debugPrint('✅ FCM token sent to backend successfully');
       } else {
-        print('Failed to send FCM token to backend: \\${response.body}');
+        debugPrint('❌ Failed to send FCM token to backend: ${response.body}');
       }
     } catch (e) {
-      print('Error sending FCM token to backend: $e');
+      debugPrint('❌ Error sending FCM token to backend: $e');
     }
   }
 
   @override
   void dispose() {
     windowManager.removeListener(this);
+    // Dispose audio service
+    AudioService.dispose();
     super.dispose();
   }
 
   @override
   void onWindowEvent(String eventName) {
-    print('[WindowManager] onWindowEvent: $eventName');
+    debugPrint('[WindowManager] onWindowEvent: $eventName');
   }
 
   @override

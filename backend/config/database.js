@@ -128,7 +128,7 @@ const connectDB = async () => {
       journal: true,                    // Journal write concern (updated from 'j')
 
       // Read preference - optimize for Atlas
-      readPreference: 'primaryPreferred',
+      readPreference: 'primary',
 
       // Server API version
       serverApi: {

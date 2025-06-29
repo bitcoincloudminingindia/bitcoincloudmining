@@ -20,21 +20,21 @@ enum TransactionType {
   tap,
   referral,
   penalty,
-  daily_reward,
-  gaming_reward,
+  dailyReward,
+  gamingReward,
   game,
-  streak_reward,
-  youtube_reward,
-  twitter_reward,
-  telegram_reward,
-  instagram_reward,
-  facebook_reward,
-  tiktok_reward,
-  social_reward,
-  ad_reward,
-  withdrawal_bitcoin,
-  withdrawal_paypal,
-  withdrawal_paytm
+  streakReward,
+  youtubeReward,
+  twitterReward,
+  telegramReward,
+  instagramReward,
+  facebookReward,
+  tiktokReward,
+  socialReward,
+  adReward,
+  withdrawalBitcoin,
+  withdrawalPaypal,
+  withdrawalPaytm
 }
 
 // Get string value for transaction type
@@ -53,35 +53,35 @@ extension TransactionTypeExtension on TransactionType {
         return 'referral';
       case TransactionType.penalty:
         return 'penalty';
-      case TransactionType.daily_reward:
+      case TransactionType.dailyReward:
         return 'daily_reward';
-      case TransactionType.gaming_reward:
+      case TransactionType.gamingReward:
         return 'gaming_reward';
       case TransactionType.game:
         return 'game';
-      case TransactionType.streak_reward:
+      case TransactionType.streakReward:
         return 'streak_reward';
-      case TransactionType.youtube_reward:
+      case TransactionType.youtubeReward:
         return 'youtube_reward';
-      case TransactionType.twitter_reward:
+      case TransactionType.twitterReward:
         return 'twitter_reward';
-      case TransactionType.telegram_reward:
+      case TransactionType.telegramReward:
         return 'telegram_reward';
-      case TransactionType.instagram_reward:
+      case TransactionType.instagramReward:
         return 'instagram_reward';
-      case TransactionType.facebook_reward:
+      case TransactionType.facebookReward:
         return 'facebook_reward';
-      case TransactionType.tiktok_reward:
+      case TransactionType.tiktokReward:
         return 'tiktok_reward';
-      case TransactionType.social_reward:
+      case TransactionType.socialReward:
         return 'social_reward';
-      case TransactionType.ad_reward:
+      case TransactionType.adReward:
         return 'ad_reward';
-      case TransactionType.withdrawal_bitcoin:
+      case TransactionType.withdrawalBitcoin:
         return 'withdrawal_bitcoin';
-      case TransactionType.withdrawal_paypal:
+      case TransactionType.withdrawalPaypal:
         return 'withdrawal_paypal';
-      case TransactionType.withdrawal_paytm:
+      case TransactionType.withdrawalPaytm:
         return 'withdrawal_paytm';
     }
   }

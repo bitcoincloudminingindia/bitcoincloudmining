@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import '../models/transaction.dart';
 import '../services/api_service.dart';
@@ -78,7 +79,7 @@ class WalletProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      print('🔄 Initializing wallet...');
+      debugPrint('🔄 Initializing wallet...');
 
       final data = await _walletService.initializeWallet();
 
@@ -86,16 +87,16 @@ class WalletProvider extends ChangeNotifier {
         _btcBalance = double.tryParse(data['balance'].toString()) ?? 0.0;
         _balance = _btcBalance;
       } else {
-        print('⚠️ No balance in wallet data');
+        debugPrint('⚠️ No balance in wallet data');
       }
 
       // Save to local storage
       final formattedBalance = NumberFormatter.formatBTCAmount(_btcBalance);
       await StorageUtils.saveWalletBalance(formattedBalance);
 
-      print('✅ Wallet initialized successfully');
+      debugPrint('✅ Wallet initialized successfully');
     } catch (e) {
-      print('❌ Error initializing wallet: $e');
+      debugPrint('❌ Error initializing wallet: $e');
       _error = 'Failed to initialize wallet: ${e.toString()}';
     } finally {
       _isLoading = false;
@@ -105,7 +106,7 @@ class WalletProvider extends ChangeNotifier {
 
   Future<void> loadWallet() async {
     try {
-      print('🔄 Loading wallet...');
+      debugPrint('🔄 Loading wallet...');
 
       // FIX: Only load wallet balance from server, do not initialize
       final double serverBalance = await _walletService.getWalletBalance();
@@ -116,11 +117,11 @@ class WalletProvider extends ChangeNotifier {
       await StorageUtils.saveWalletBalance(
           NumberFormatter.formatBTCAmount(_btcBalance));
 
-      print(
+      debugPrint(
           '✅ Wallet loaded: ${NumberFormatter.formatBTCAmount(_btcBalance)} BTC');
       notifyListeners();
     } catch (e) {
-      print('❌ Error loading wallet: $e');
+      debugPrint('❌ Error loading wallet: $e');
 
       // Check if it's a DNS error and provide better message
       if (e.toString().contains('Failed host lookup') ||
@@ -149,14 +150,15 @@ class WalletProvider extends ChangeNotifier {
 
   Future<void> updateBalance(double newBalance) async {
     try {
-      print('🔄 Updating wallet balance...');
-      print('💰 New balance: ${NumberFormatter.formatBTCAmount(newBalance)}');
-      print(
+      debugPrint('🔄 Updating wallet balance...');
+      debugPrint(
+          '💰 New balance: ${NumberFormatter.formatBTCAmount(newBalance)}');
+      debugPrint(
           '📊 Current balance: ${NumberFormatter.formatBTCAmount(_btcBalance)}');
 
       // Validate balance
       if (newBalance < 0) {
-        print(
+        debugPrint(
             '❌ Invalid balance update attempt: ${NumberFormatter.formatBTCAmount(newBalance)}');
         return;
       }
@@ -173,22 +175,22 @@ class WalletProvider extends ChangeNotifier {
         await StorageUtils.saveWalletBalance(formattedBalance);
 
         if (result['skipped'] == true) {
-          print('ℹ️ ${result['message']}');
+          debugPrint('ℹ️ ${result['message']}');
         } else {
-          print('✅ Balance updated from server');
+          debugPrint('✅ Balance updated from server');
         }
 
         // Save to local storage
         await StorageUtils.saveWalletBalance(formattedBalance);
-        print('💾 Balance saved successfully');
+        debugPrint('💾 Balance saved successfully');
 
         notifyListeners();
-        print('✅ Balance updated successfully');
+        debugPrint('✅ Balance updated successfully');
       } else {
-        print('❌ Failed to update balance on server');
+        debugPrint('❌ Failed to update balance on server');
       }
     } catch (e) {
-      print('❌ Error updating balance: $e');
+      debugPrint('❌ Error updating balance: $e');
       // Try to recover
       final String? currentBalanceStr = await StorageUtils.getWalletBalance();
       if (currentBalanceStr != null) {
@@ -196,7 +198,7 @@ class WalletProvider extends ChangeNotifier {
         if (currentBalance != _btcBalance) {
           _btcBalance = currentBalance;
           notifyListeners();
-          print('🔄 Recovered balance from storage: $_btcBalance');
+          debugPrint('🔄 Recovered balance from storage: $_btcBalance');
         }
       }
     }
@@ -222,9 +224,9 @@ class WalletProvider extends ChangeNotifier {
       String? description,
       Map<String, dynamic>? details}) async {
     try {
-      print('🔄 Adding earning: $amount BTC');
-      print('Type: $type');
-      print('Description: $description');
+      debugPrint('🔄 Adding earning: $amount BTC');
+      debugPrint('Type: $type');
+      debugPrint('Description: $description');
 
       // Always fetch the latest balance from backend before adding
       await loadWallet();
@@ -249,13 +251,13 @@ class WalletProvider extends ChangeNotifier {
         await updateBalance(newBalance);
         // Add to total earned
         updateTotalEarned(amount);
-        print('✅ Earning added successfully');
+        debugPrint('✅ Earning added successfully');
       } else {
-        print('❌ Failed to add earning: ${result['message']}');
+        debugPrint('❌ Failed to add earning: ${result['message']}');
         throw Exception(result['message'] ?? 'Failed to add earning');
       }
     } catch (e) {
-      print('❌ Error adding earning: $e');
+      debugPrint('❌ Error adding earning: $e');
       rethrow;
     }
   }
@@ -283,13 +285,13 @@ class WalletProvider extends ChangeNotifier {
     try {
       // Ensure we have a valid BTC balance
       if (_btcBalance < 0 || _btcBalance.isNaN) {
-        print('⚠️ Invalid BTC balance: $_btcBalance');
+        debugPrint('⚠️ Invalid BTC balance: $_btcBalance');
         return 0.0;
       }
 
       // Ensure we have a valid BTC price
       if (_btcPrice <= 0 || _btcPrice.isNaN) {
-        print('⚠️ Invalid BTC price, using fallback: $_btcPrice');
+        debugPrint('⚠️ Invalid BTC price, using fallback: $_btcPrice');
         _btcPrice = 30000.0; // Fallback price
       }
 
@@ -318,23 +320,24 @@ class WalletProvider extends ChangeNotifier {
       // Convert USD to target currency
       final localValue = usdValue * rate;
 
-      print('💱 Currency conversion details:');
-      print('BTC Balance: ${NumberFormatter.formatBTCAmount(_btcBalance)}');
-      print('BTC Price (USD): \$${_btcPrice.toStringAsFixed(2)}');
-      print('USD Value: \$${usdValue.toStringAsFixed(2)}');
-      print('$currency Rate: $rate');
-      print('$currency Value: ${localValue.toStringAsFixed(2)}');
+      debugPrint('💱 Currency conversion details:');
+      debugPrint(
+          'BTC Balance: ${NumberFormatter.formatBTCAmount(_btcBalance)}');
+      debugPrint('BTC Price (USD): \$${_btcPrice.toStringAsFixed(2)}');
+      debugPrint('USD Value: \$${usdValue.toStringAsFixed(2)}');
+      debugPrint('$currency Rate: $rate');
+      debugPrint('$currency Value: ${localValue.toStringAsFixed(2)}');
 
       return localValue.isFinite ? localValue : 0.0;
     } catch (e) {
-      print('❌ Error converting currency: $e');
+      debugPrint('❌ Error converting currency: $e');
       return 0.0;
     }
   }
 
   Future<void> _updateCurrencyRates() async {
     try {
-      print('🔄 Updating currency rates...');
+      debugPrint('🔄 Updating currency rates...');
       final result = await _apiService.getCurrencyRates();
 
       if (result['success']) {
@@ -344,9 +347,9 @@ class WalletProvider extends ChangeNotifier {
               double.tryParse(result['data']['btcPrice'].toString());
           if (newBtcPrice != null && newBtcPrice > 0) {
             _btcPrice = newBtcPrice;
-            print('📊 Updated BTC Price: \$$_btcPrice');
+            debugPrint('📊 Updated BTC Price: \$$_btcPrice');
           } else {
-            print(
+            debugPrint(
                 '⚠️ Invalid BTC price from API, keeping current price: \$$_btcPrice');
           }
         }
@@ -371,26 +374,26 @@ class WalletProvider extends ChangeNotifier {
             if (newRate != null && newRate > 0) {
               _currencyRates[currency] = newRate;
             } else {
-              print(
+              debugPrint(
                   '⚠️ Invalid rate for $currency, keeping current rate: $oldRate');
             }
           });
 
-          print('📊 Current Currency Rates:');
+          debugPrint('📊 Current Currency Rates:');
           _currencyRates.forEach((currency, rate) {
-            print('$currency: $rate');
+            debugPrint('$currency: $rate');
           });
         }
 
         notifyListeners();
-        print('✅ Currency rates updated successfully');
+        debugPrint('✅ Currency rates updated successfully');
       } else {
-        print('⚠️ Failed to update rates: ${result['message']}');
+        debugPrint('⚠️ Failed to update rates: ${result['message']}');
         // Ensure we have fallback rates
         _ensureFallbackRates();
       }
     } catch (e) {
-      print('❌ Error updating currency rates: $e');
+      debugPrint('❌ Error updating currency rates: $e');
       // Ensure we have fallback rates on error
       _ensureFallbackRates();
       // Use fallback rates if update fails
@@ -411,7 +414,7 @@ class WalletProvider extends ChangeNotifier {
 
   Future<void> refreshTransactions() async {
     try {
-      print('🔄 Refreshing transactions...');
+      debugPrint('🔄 Refreshing transactions...');
       final result = await _apiService.getTransactions();
 
       if (result['success'] && result['data'] != null) {
@@ -419,18 +422,19 @@ class WalletProvider extends ChangeNotifier {
         final transactionData =
             result['data']['transactions'] ?? result['data'];
         if (transactionData is List) {
-          _transactions =
-              transactionData.map((tx) => Transaction.fromJson(tx)).toList();
+          _transactions = transactionData
+              .map((json) => Transaction.fromJson(json as Map<String, dynamic>))
+              .toList();
         } else {
           _transactions = []; // Reset transactions if empty or invalid data
         }
         notifyListeners();
-        print('✅ Transactions refreshed successfully');
+        debugPrint('✅ Transactions refreshed successfully');
       } else {
-        print('❌ Failed to refresh transactions: ${result['message']}');
+        debugPrint('❌ Failed to refresh transactions: ${result['message']}');
       }
     } catch (e) {
-      print('❌ Error refreshing transactions: $e');
+      debugPrint('❌ Error refreshing transactions: $e');
       rethrow;
     }
   }
@@ -447,16 +451,16 @@ class WalletProvider extends ChangeNotifier {
     required double btcAmount,
   }) async {
     try {
-      print('🔄 Processing withdrawal...');
-      print('Method: $method');
-      print('Amount: $amount $currency');
-      print('BTC Amount: $btcAmount');
+      debugPrint('🔄 Processing withdrawal...');
+      debugPrint('Method: $method');
+      debugPrint('Amount: $amount $currency');
+      debugPrint('BTC Amount: $btcAmount');
 
       // Ensure wallet is initialized
       try {
         await initializeWallet();
       } catch (e) {
-        print('❌ Failed to initialize wallet before withdrawal: $e');
+        debugPrint('❌ Failed to initialize wallet before withdrawal: $e');
         throw Exception('Failed to initialize wallet: \\${e.toString()}');
       }
 
@@ -506,21 +510,21 @@ class WalletProvider extends ChangeNotifier {
         // Refresh transactions to show the new withdrawal
         await refreshTransactions();
 
-        print('✅ Withdrawal processed successfully');
+        debugPrint('✅ Withdrawal processed successfully');
         return true;
       } else {
-        print('❌ Withdrawal failed: \\${result['message']}');
+        debugPrint('❌ Withdrawal failed: \\${result['message']}');
         throw Exception(result['message'] ?? 'Withdrawal failed');
       }
     } catch (e) {
-      print('❌ Error processing withdrawal: $e');
+      debugPrint('❌ Error processing withdrawal: $e');
       rethrow;
     }
   }
 
   Future<void> claimRejectedTransaction(String transactionId) async {
     try {
-      print('🔄 Claiming rejected transaction...');
+      debugPrint('🔄 Claiming rejected transaction...');
 
       final result = await _apiService.claimTransaction(transactionId);
 
@@ -531,13 +535,13 @@ class WalletProvider extends ChangeNotifier {
         // Refresh transactions to get latest status
         await refreshTransactions();
 
-        print('✅ Transaction claimed successfully');
+        debugPrint('✅ Transaction claimed successfully');
       } else {
-        print('❌ Failed to claim transaction: ${result['message']}');
+        debugPrint('❌ Failed to claim transaction: ${result['message']}');
         throw Exception(result['message'] ?? 'Failed to claim transaction');
       }
     } catch (e) {
-      print('❌ Error claiming transaction: $e');
+      debugPrint('❌ Error claiming transaction: $e');
       rethrow;
     }
   }
@@ -574,7 +578,7 @@ class WalletProvider extends ChangeNotifier {
 
   Future<void> verifyBalance() async {
     try {
-      print('🔄 Verifying wallet balance...');
+      debugPrint('🔄 Verifying wallet balance...');
 
       // Get balance from server
       final double serverBalance = await _apiService.getWalletBalance();
@@ -582,14 +586,14 @@ class WalletProvider extends ChangeNotifier {
       final double localBalance =
           localBalanceStr != null ? double.parse(localBalanceStr) : 0.0;
 
-      print(
+      debugPrint(
           '📊 Server balance: ${NumberFormatter.formatBTCAmount(serverBalance)}');
-      print(
+      debugPrint(
           '📊 Local balance: ${NumberFormatter.formatBTCAmount(localBalance)}');
 
       // If there's a mismatch, update to server balance
       if (localBalanceStr == null || localBalance != serverBalance) {
-        print('⚠️ Balance mismatch detected, updating to server balance');
+        debugPrint('⚠️ Balance mismatch detected, updating to server balance');
         _btcBalance = serverBalance;
         _balance = serverBalance;
 
@@ -598,12 +602,12 @@ class WalletProvider extends ChangeNotifier {
             NumberFormatter.formatBTCAmount(serverBalance));
 
         notifyListeners();
-        print('✅ Balance verified and updated');
+        debugPrint('✅ Balance verified and updated');
       } else {
-        print('✅ Balance verified - local and server in sync');
+        debugPrint('✅ Balance verified - local and server in sync');
       }
     } catch (e) {
-      print('❌ Error verifying balance: $e');
+      debugPrint('❌ Error verifying balance: $e');
       // Do not update anything if verification fails
       rethrow;
     }
@@ -613,7 +617,7 @@ class WalletProvider extends ChangeNotifier {
     // Ensure BTC price has a valid value
     if (_btcPrice <= 0 || _btcPrice.isNaN) {
       _btcPrice = 30000.0; // Default BTC price in USD
-      print('📊 Using fallback BTC Price: \$$_btcPrice');
+      debugPrint('📊 Using fallback BTC Price: \$$_btcPrice');
     }
 
     // Ensure all currency rates have valid values
@@ -623,7 +627,7 @@ class WalletProvider extends ChangeNotifier {
       if (currentRate != null && currentRate > 0 && !currentRate.isNaN) {
         updatedRates[currency] = currentRate;
       } else {
-        print('📊 Using fallback rate for $currency: $defaultRate');
+        debugPrint('📊 Using fallback rate for $currency: $defaultRate');
       }
     });
 

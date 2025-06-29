@@ -11,7 +11,7 @@ class LoadingButton extends StatelessWidget {
   final double height;
 
   const LoadingButton({
-    Key? key,
+    super.key,
     required this.isLoading,
     required this.onPressed,
     required this.text,
@@ -19,7 +19,7 @@ class LoadingButton extends StatelessWidget {
     this.textColor = Colors.white,
     this.width,
     this.height = UIConstants.buttonHeight,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

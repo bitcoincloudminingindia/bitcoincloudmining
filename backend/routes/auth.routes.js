@@ -39,6 +39,45 @@ router.post('/validate-token', validateToken);
 // Protected routes (require authentication)
 router.get('/profile', authenticate, getProfile);
 
+// FCM Token endpoint
+router.post('/fcm-token', authenticate, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { fcmToken } = req.body;
+
+    if (!fcmToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'FCM token is required'
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { fcmToken },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'FCM token updated successfully'
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update FCM token',
+      error: error.message
+    });
+  }
+});
+
 // Send verification OTP
 router.post('/send-verification-otp', sendVerificationOTP);
 

@@ -192,11 +192,12 @@ class ApiService {
 
         final isPublicEndpoint =
             publicEndpoints.any((e) => endpoint.endsWith(e));
-        final Map<String, String> finalHeaders = {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          ...?headers,
-        };
+        final Map<String, String> finalHeaders = ApiConfig.getHeaders();
+
+        // Add custom headers if provided
+        if (headers != null) {
+          finalHeaders.addAll(headers);
+        }
 
         if (!isPublicEndpoint) {
           final token = await _getAuthToken();
@@ -205,7 +206,7 @@ class ApiService {
           }
         }
 
-        print('📤 Final request headers: $finalHeaders');
+        debugPrint('📤 Final request headers: $finalHeaders');
 
         // Debug headers
         final headersDebug = Map<String, String>.from(finalHeaders);
@@ -215,11 +216,11 @@ class ApiService {
             final token = authHeader.substring(7);
             headersDebug['Authorization'] =
                 'Bearer ${token.substring(0, 10)}...';
-            print(
+            debugPrint(
                 '🔐 Token length: ${token.length}, parts: ${token.split('.').length}');
           }
         }
-        print('📤 Request headers: $headersDebug');
+        debugPrint('📤 Request headers: $headersDebug');
 
         late http.Response response;
 
@@ -254,8 +255,8 @@ class ApiService {
             throw Exception('Unsupported HTTP method: $method');
         }
 
-        print('📥 Response status: ${response.statusCode}');
-        print('📥 Response body: ${response.body}');
+        debugPrint('📥 Response status: ${response.statusCode}');
+        debugPrint('📥 Response body: ${response.body}');
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
           final data = jsonDecode(response.body);
@@ -269,7 +270,7 @@ class ApiService {
           };
         }
       } catch (e) {
-        print('❌ Request error (attempt ${retryCount + 1}): $e');
+        debugPrint('❌ Request error (attempt ${retryCount + 1}): $e');
 
         // Check if it's a DNS resolution error
         if (e.toString().contains('Failed host lookup') ||
@@ -277,7 +278,7 @@ class ApiService {
             e.toString().contains('SocketException')) {
           if (retryCount < maxRetries) {
             retryCount++;
-            print('🔄 DNS error detected, retrying with fallback URL...');
+            debugPrint('🔄 DNS error detected, retrying with fallback URL...');
             await Future.delayed(
                 Duration(seconds: retryCount * 2)); // Exponential backoff
             continue;
@@ -310,9 +311,7 @@ class ApiService {
   }) async {
     try {
       final url = Uri.parse(ApiConfig.baseUrl + endpoint);
-      final headers = {
-        'Content-Type': 'application/json',
-      };
+      final headers = ApiConfig.getHeaders();
 
       if (requiresAuth) {
         final token = await _instance._getAuthToken();
@@ -367,12 +366,9 @@ class ApiService {
       throw ApiError('Invalid response format from server');
     } on ValidationError catch (e) {
       throw ApiError(e.message);
-    } on AuthenticationError catch (e) {
-      throw ApiError('Authentication failed: ${e.message}');
-    } on TimeoutException catch (_) {
-      throw ApiError('Request timed out');
     } catch (e) {
-      throw ApiError(e.toString());
+      debugPrint('❌ POST request error: $e');
+      throw ApiError('Network error: ${e.toString()}');
     }
   }
 
@@ -382,7 +378,7 @@ class ApiService {
   }) async {
     try {
       final url = Uri.parse(buildUrl(endpoint));
-      print('🌐 Making GET request to: $url');
+      debugPrint('🌐 Making GET request to: $url');
 
       final response = await http.get(
         url,
@@ -394,8 +390,8 @@ class ApiService {
         },
       );
 
-      print('📥 Response status: ${response.statusCode}');
-      print('📥 Response body: ${response.body}');
+      debugPrint('📥 Response status: ${response.statusCode}');
+      debugPrint('📥 Response body: ${response.body}');
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -409,7 +405,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('❌ Request error: $e');
+      debugPrint('❌ Request error: $e');
       return {
         'success': false,
         'message': 'Request failed',
@@ -445,20 +441,20 @@ class ApiService {
       }
       return null;
     } catch (e) {
-      print('Error getting token: $e');
+      debugPrint('Error getting token: $e');
       return null;
     }
   }
 
   Future<Map<String, dynamic>> validateToken(String token) async {
     try {
-      print('🔑 Validating token...');
+      debugPrint('🔑 Validating token...');
       final response = await post(
         ApiConfig.validateToken,
         {'token': token},
       );
 
-      print('📥 Token validation response: $response');
+      debugPrint('📥 Token validation response: $response');
 
       if (response['success'] == true || response['status'] == 'success') {
         return {
@@ -472,7 +468,7 @@ class ApiService {
         'message': response['message'] ?? 'Token validation failed'
       };
     } catch (e) {
-      print('❌ Token validation error: $e');
+      debugPrint('❌ Token validation error: $e');
       return {'success': false, 'message': e.toString()};
     }
   }
@@ -564,7 +560,7 @@ class ApiService {
 
       // Format BTC amount to 18 decimal places
       final formattedBTCAmount = NumberFormatter.formatBTCAmount(btcAmount);
-      print('BTC Amount (18 decimals): $formattedBTCAmount');
+      debugPrint('BTC Amount (18 decimals): $formattedBTCAmount');
 
       // Normalize method name
       final normalizedMethod = method == 'Bitcoin' ? 'BTC' : method;
@@ -594,26 +590,27 @@ class ApiService {
         throw Exception('Withdrawal request failed');
       }
     } catch (e) {
-      print('Withdrawal error: $e');
+      debugPrint('Withdrawal error: $e');
       rethrow;
     }
   }
 
   Future<Map<String, dynamic>> getWithdrawalHistory() async {
     try {
-      print('🔄 Fetching withdrawal history...');
+      debugPrint('🔄 Fetching withdrawal history...');
 
       final response = await get(ApiConfig.walletWithdrawals);
 
       if (response['success']) {
-        print('✅ Withdrawal history fetched successfully');
+        debugPrint('✅ Withdrawal history fetched successfully');
         return response;
       } else {
-        print('❌ Failed to fetch withdrawal history: ${response['message']}');
+        debugPrint(
+            '❌ Failed to fetch withdrawal history: ${response['message']}');
         return response;
       }
     } catch (e) {
-      print('❌ Error fetching withdrawal history: $e');
+      debugPrint('❌ Error fetching withdrawal history: $e');
       rethrow;
     }
   }
@@ -621,12 +618,12 @@ class ApiService {
   // Centralized method for balance sync
   Future<Map<String, dynamic>> syncWalletBalance(String balance) async {
     try {
-      print('🔄 Syncing wallet balance...');
+      debugPrint('🔄 Syncing wallet balance...');
 
       // Convert scientific notation to regular decimal format
       final formattedBalance =
           NumberFormatter.formatBTCAmount(double.parse(balance));
-      print('💰 Formatted balance for sync: $formattedBalance');
+      debugPrint('💰 Formatted balance for sync: $formattedBalance');
 
       final response = await _makeRequest(
         endpoint: '/api/wallet/sync-balance',
@@ -638,7 +635,7 @@ class ApiService {
       );
 
       if (response['success']) {
-        print('✅ Wallet balance synced successfully');
+        debugPrint('✅ Wallet balance synced successfully');
 
         // Format the balance in response to 18 decimal places
         if (response['data'] != null && response['data']['balance'] != null) {
@@ -646,16 +643,16 @@ class ApiService {
           final formattedServerBalance =
               NumberFormatter.formatBTCAmount(double.parse(serverBalance));
           response['data']['balance'] = formattedServerBalance;
-          print('💰 Server balance after sync: $formattedServerBalance');
+          debugPrint('💰 Server balance after sync: $formattedServerBalance');
         }
 
         return response;
       } else {
-        print('❌ Failed to sync wallet balance: ${response['message']}');
+        debugPrint('❌ Failed to sync wallet balance: ${response['message']}');
         throw Exception(response['message'] ?? 'Failed to sync wallet balance');
       }
     } catch (e) {
-      print('❌ Error syncing wallet balance: $e');
+      debugPrint('❌ Error syncing wallet balance: $e');
       rethrow;
     }
   }
@@ -663,13 +660,13 @@ class ApiService {
   // Update wallet balance
   Future<Map<String, dynamic>> updateWalletBalance(double balance) async {
     try {
-      print('🔄 Updating wallet balance: $balance');
+      debugPrint('🔄 Updating wallet balance: $balance');
 
       // Format balance to 18 decimal places (string)
       final formattedBalanceStr = NumberFormatter.formatBTCAmount(balance);
       // Parse string to double for backend
       final formattedBalance = double.tryParse(formattedBalanceStr) ?? 0.0;
-      print('💰 Formatted balance for update (number): $formattedBalance');
+      debugPrint('💰 Formatted balance for update (number): $formattedBalance');
 
       final response = await _makeRequest(
         endpoint: ApiConfig.syncBalance,
@@ -683,7 +680,7 @@ class ApiService {
       if (response['success']) {
         // Check if sync was skipped
         if (response['message']?.toString().contains('Sync skipped') == true) {
-          print('ℹ️ ${response['message']}');
+          debugPrint('ℹ️ ${response['message']}');
           return {
             'success': true,
             'skipped': true,
@@ -703,12 +700,12 @@ class ApiService {
         }
 
         final serverBalance = serverBalanceData['balance'];
-        print('💰 Server balance after update: $serverBalance');
+        debugPrint('💰 Server balance after update: $serverBalance');
 
         // If server returns 0 but we sent a non-zero balance, keep our balance
         final serverBalanceNum = double.tryParse(serverBalance.toString()) ?? 0;
         if (serverBalanceNum == 0 && balance > 0) {
-          print(
+          debugPrint(
               '⚠️ Server returned 0 balance, keeping local balance: $balance');
           return {
             'success': true,
@@ -725,7 +722,7 @@ class ApiService {
         'data': {'balance': formattedBalance}
       };
     } catch (e) {
-      print('❌ Error updating wallet balance: $e');
+      debugPrint('❌ Error updating wallet balance: $e');
       return {
         'success': false,
         'message': 'Failed to update balance',
@@ -777,7 +774,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> getTransactions() async {
     try {
-      print('🔄 Fetching transactions...');
+      debugPrint('🔄 Fetching transactions...');
       final token = await StorageUtils.getToken();
       if (token == null) {
         return {'success': false, 'message': 'Authentication token not found'};
@@ -794,12 +791,12 @@ class ApiService {
         headers: headers,
       );
 
-      print('✅ Transactions fetched successfully');
-      print('📊 Response data: ${response['data']}');
+      debugPrint('✅ Transactions fetched successfully');
+      debugPrint('📊 Response data: ${response['data']}');
 
       return response;
     } catch (e) {
-      print('❌ Error fetching transactions: $e');
+      debugPrint('❌ Error fetching transactions: $e');
       return {
         'success': false,
         'message': e.toString(),
@@ -809,7 +806,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> getTransactionById(String id) async {
     try {
-      print('🔄 Fetching transaction details for ID: $id');
+      debugPrint('🔄 Fetching transaction details for ID: $id');
 
       final token = await StorageUtils.getToken();
       if (token == null) {
@@ -826,10 +823,11 @@ class ApiService {
       );
 
       if (response['success']) {
-        print('✅ Transaction details fetched successfully');
+        debugPrint('✅ Transaction details fetched successfully');
         return response;
       } else {
-        print('❌ Failed to fetch transaction details: ${response['message']}');
+        debugPrint(
+            '❌ Failed to fetch transaction details: ${response['message']}');
         return {
           'success': false,
           'message':
@@ -837,14 +835,14 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('❌ Error fetching transaction details: $e');
+      debugPrint('❌ Error fetching transaction details: $e');
       return {'success': false, 'message': e.toString()};
     }
   }
 
   Future<Map<String, dynamic>> getPendingTransactions() async {
     try {
-      print('🔄 Fetching pending transactions...');
+      debugPrint('🔄 Fetching pending transactions...');
 
       final token = await StorageUtils.getToken();
       if (token == null) {
@@ -861,10 +859,11 @@ class ApiService {
       );
 
       if (response['success']) {
-        print('✅ Pending transactions fetched successfully');
+        debugPrint('✅ Pending transactions fetched successfully');
         return response;
       } else {
-        print('❌ Failed to fetch pending transactions: ${response['message']}');
+        debugPrint(
+            '❌ Failed to fetch pending transactions: ${response['message']}');
         return {
           'success': false,
           'message':
@@ -872,14 +871,14 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('❌ Error fetching pending transactions: $e');
+      debugPrint('❌ Error fetching pending transactions: $e');
       return {'success': false, 'message': e.toString()};
     }
   }
 
   Future<Map<String, dynamic>> getCompletedTransactions() async {
     try {
-      print('🔄 Fetching completed transactions...');
+      debugPrint('🔄 Fetching completed transactions...');
 
       final token = await StorageUtils.getToken();
       if (token == null) {
@@ -896,10 +895,10 @@ class ApiService {
       );
 
       if (response['success']) {
-        print('✅ Completed transactions fetched successfully');
+        debugPrint('✅ Completed transactions fetched successfully');
         return response;
       } else {
-        print(
+        debugPrint(
             '❌ Failed to fetch completed transactions: ${response['message']}');
         return {
           'success': false,
@@ -908,7 +907,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('❌ Error fetching completed transactions: $e');
+      debugPrint('❌ Error fetching completed transactions: $e');
       return {'success': false, 'message': e.toString()};
     }
   }
@@ -1271,7 +1270,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
-      print('📤 Login attempt: $email');
+      debugPrint('📤 Login attempt: $email');
 
       final response = await _makeRequest(
         endpoint: ApiConfig.login,
@@ -1282,7 +1281,7 @@ class ApiService {
         },
       );
 
-      print('📥 Login response: $response');
+      debugPrint('📥 Login response: $response');
 
       if (response['success'] == true) {
         try {
@@ -1296,7 +1295,7 @@ class ApiService {
 
           // Save token first
           await StorageUtils.saveToken(token);
-          print('✅ Token saved successfully');
+          debugPrint('✅ Token saved successfully');
 
           // Save user ID and set in ApiConfig
           final userId =
@@ -1310,23 +1309,23 @@ class ApiService {
 
           await StorageUtils.saveUserId(userId);
           ApiConfig.setUserId(userId);
-          print('✅ User ID saved and set in ApiConfig');
+          debugPrint('✅ User ID saved and set in ApiConfig');
 
           // Save user data
           await StorageUtils.saveUserData(userData);
-          print('✅ User data saved successfully');
+          debugPrint('✅ User data saved successfully');
 
           return response;
         } catch (e) {
-          print('❌ Error saving data: $e');
+          debugPrint('❌ Error saving data: $e');
           throw Exception('Failed to save login data: $e');
         }
       } else {
-        print('❌ Login failed: ${response['message']}');
+        debugPrint('❌ Login failed: ${response['message']}');
         return response;
       }
     } catch (e) {
-      print('❌ Login error: $e');
+      debugPrint('❌ Login error: $e');
       rethrow;
     }
   }
@@ -1334,8 +1333,8 @@ class ApiService {
   Future<Map<String, dynamic>> addTransaction(
       Map<String, dynamic> transaction) async {
     try {
-      print('🔄 Adding transaction to backend...');
-      print('📝 Transaction data: $transaction');
+      debugPrint('🔄 Adding transaction to backend...');
+      debugPrint('📝 Transaction data: $transaction');
 
       final token = await StorageUtils.getToken();
       if (token == null) {
@@ -1373,13 +1372,13 @@ class ApiService {
         }),
       );
 
-      print('📥 Response status: ${response.statusCode}');
-      print('📝 Response body: ${response.body}');
+      debugPrint('📥 Response status: ${response.statusCode}');
+      debugPrint('📝 Response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = jsonDecode(response.body);
         if (responseData['success']) {
-          print('✅ Transaction added successfully');
+          debugPrint('✅ Transaction added successfully');
 
           // If this is a withdrawal transaction, also update withdrawal status
           if (transaction['type']
@@ -1387,7 +1386,7 @@ class ApiService {
                   .toLowerCase()
                   .contains('withdrawal') &&
               transaction['withdrawalId'] != null) {
-            print('🔄 Updating withdrawal status...');
+            debugPrint('🔄 Updating withdrawal status...');
             await http.post(
               Uri.parse('${ApiConfig.baseUrl}/api/wallet/withdrawals/update'),
               headers: {
@@ -1401,16 +1400,16 @@ class ApiService {
                 'transactionId': transaction['transactionId'],
               }),
             );
-            print('✅ Withdrawal status updated');
+            debugPrint('✅ Withdrawal status updated');
           }
         }
         return responseData;
       } else {
-        print('❌ Failed to add transaction: ${response.statusCode}');
+        debugPrint('❌ Failed to add transaction: ${response.statusCode}');
         throw Exception('Failed to add transaction: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error adding transaction: $e');
+      debugPrint('❌ Error adding transaction: $e');
       rethrow;
     }
   }
@@ -1596,7 +1595,7 @@ class ApiService {
       if (response['success']) {
         return response;
       } else {
-        print('❌ Failed to get currency rates: ${response['message']}');
+        debugPrint('❌ Failed to get currency rates: ${response['message']}');
         return {
           'success': false,
           'message': response['message'] ?? 'Failed to get currency rates',
@@ -1607,7 +1606,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('❌ Error fetching currency rates: $e');
+      debugPrint('❌ Error fetching currency rates: $e');
       return {
         'success': false,
         'message': 'Error fetching currency rates',
@@ -1622,20 +1621,20 @@ class ApiService {
   Future<Map<String, dynamic>> createWithdrawal(
       Map<String, dynamic> withdrawalData) async {
     try {
-      print('🔄 Creating withdrawal request...');
+      debugPrint('🔄 Creating withdrawal request...');
 
       final response = await _makeRequest(
           endpoint: '/api/wallet/withdraw',
           method: 'POST',
           body: withdrawalData);
 
-      print('📥 Withdrawal response: $response');
+      debugPrint('📥 Withdrawal response: $response');
 
       if (response['success']) {
-        print('✅ Withdrawal request created successfully');
+        debugPrint('✅ Withdrawal request created successfully');
         return response;
       } else {
-        print('❌ Failed to create withdrawal: ${response['message']}');
+        debugPrint('❌ Failed to create withdrawal: ${response['message']}');
         return {
           'success': false,
           'message':
@@ -1643,7 +1642,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('❌ Error creating withdrawal: $e');
+      debugPrint('❌ Error creating withdrawal: $e');
       return {'success': false, 'message': 'Error creating withdrawal: $e'};
     }
   }
@@ -1681,7 +1680,7 @@ class ApiService {
   }) async {
     try {
       final Uri url = Uri.parse(ApiConfig.baseUrl + endpoint);
-      print('🌐 Making $method request to: $url');
+      debugPrint('🌐 Making $method request to: $url');
 
       // Get auth token
       final token = await _getAuthToken();
@@ -1693,7 +1692,7 @@ class ApiService {
         ...?headers,
       };
 
-      print('📤 Request headers: $requestHeaders');
+      debugPrint('📤 Request headers: $requestHeaders');
 
       http.Response response;
       switch (method.toUpperCase()) {
@@ -1721,13 +1720,13 @@ class ApiService {
           throw Exception('Unsupported HTTP method: $method');
       }
 
-      print('📥 Response status: ${response.statusCode}');
-      print('📥 Response body: ${response.body}');
+      debugPrint('📥 Response status: ${response.statusCode}');
+      debugPrint('📥 Response body: ${response.body}');
 
       final responseData = json.decode(response.body) as Map<String, dynamic>;
       return responseData;
     } catch (e) {
-      print('❌ API request error: $e');
+      debugPrint('❌ API request error: $e');
       rethrow;
     }
   }

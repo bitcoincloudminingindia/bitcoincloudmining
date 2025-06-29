@@ -113,7 +113,7 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
           _rewardedAd = ad;
         },
         onAdFailedToLoad: (error) {
-          print('Failed to load rewarded ad: $error');
+          debugPrint('Failed to load rewarded ad: $error');
         },
       ),
     );
@@ -135,7 +135,7 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
           _interstitialAd = ad;
         },
         onAdFailedToLoad: (error) {
-          print('Failed to load interstitial ad: $error');
+          debugPrint('Failed to load interstitial ad: $error');
         },
       ),
     );
@@ -183,7 +183,7 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
     });
 
     try {
-      print(
+      debugPrint(
           '💾 Transferring Flip Coin earnings: ${_gameWalletBalance.toString()} BTC');
 
       final walletProvider =
@@ -194,7 +194,7 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
         description: 'Flip Coin Game Earnings',
       );
 
-      print('✅ Flip Coin earnings transferred successfully');
+      debugPrint('✅ Flip Coin earnings transferred successfully');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -209,7 +209,7 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
         );
       }
     } catch (e) {
-      print('❌ Error transferring Flip Coin earnings: $e');
+      debugPrint('❌ Error transferring Flip Coin earnings: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -245,8 +245,9 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
       _showResult = false;
     });
 
-    print('Starting flip - User chose: ${isHeads ? "Heads" : "Tails"}');
-    print('Random result: ${randomResult ? "Heads" : "Tails"}');
+    debugPrint(
+        'Starting flip - User chose: [1m${isHeads ? "Heads" : "Tails"}[0m');
+    debugPrint('Random result: [1m${randomResult ? "Heads" : "Tails"}[0m');
 
     // Start animation
     _controller.reset();
@@ -779,10 +780,10 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
           type: 'game',
           description: 'Flip Coin Game Earnings (Auto-saved)',
         );
-        print(
+        debugPrint(
             '💾 Auto-saved Flip Coin earnings on dispose: ${_gameWalletBalance.toString()} BTC');
       } catch (e) {
-        print('❌ Error auto-saving Flip Coin earnings: $e');
+        debugPrint('❌ Error auto-saving Flip Coin earnings: $e');
       }
     }
 

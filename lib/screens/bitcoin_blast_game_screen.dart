@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+
+
 class BitcoinBlastGameScreen extends StatefulWidget {
   final String gameTitle;
   final double baseWinAmount;
@@ -60,7 +62,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
       _audioPlayer.stop();
       _audioPlayer.dispose();
     } catch (e) {
-      print('❌ Error disposing audio player: $e');
+      debugPrint('❌ Error disposing audio player: $e');
     }
     gameTimer?.cancel();
     itemTimer?.cancel();
@@ -101,11 +103,11 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
       try {
         await _audioPlayer.play(AssetSource('audio/background.mp3'));
       } catch (e) {
-        print('❌ Background music error: $e');
+        debugPrint('❌ Background music error: $e');
         // Continue without background music
       }
     } catch (e) {
-      print('❌ Audio initialization error: $e');
+      debugPrint('❌ Audio initialization error: $e');
       // Continue without audio
     }
   }
@@ -538,7 +540,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
       // Try to play collect sound with better error handling
       await _audioPlayer.play(AssetSource('audio/collect.mp3'));
     } catch (e) {
-      print('❌ Collect sound error: $e');
+      debugPrint('❌ Collect sound error: $e');
       // Continue without sound
     }
   }

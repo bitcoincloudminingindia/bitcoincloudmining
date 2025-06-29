@@ -13,6 +13,40 @@
   <script>
     const serviceWorkerVersion = "{{flutter_service_worker_version}}";
   </script>
+
+  <!-- Firebase Configuration -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getMessaging, onBackgroundMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
+    import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBTBr5z9vixdO9TzzKVGCUVP-G4BaaMAyo",
+      authDomain: "bitcoin-cloud-mining-19fb5.firebaseapp.com",
+      projectId: "bitcoin-cloud-mining-19fb5",
+      storageBucket: "bitcoin-cloud-mining-19fb5.firebasestorage.app",
+      messagingSenderId: "486206486627",
+      appId: "1:486206486627:web:993fedd92937142473e056",
+      measurementId: "G-LPLPZBE2YV"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const messaging = getMessaging(app);
+
+    // Register service worker for Firebase messaging
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .then((registration) => {
+          console.log('Firebase messaging service worker registered:', registration);
+        })
+        .catch((error) => {
+          console.log('Firebase messaging service worker registration failed:', error);
+        });
+    }
+  </script>
+
   <script src="main.dart.js" defer></script>
 </head>
 

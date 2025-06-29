@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -161,7 +163,8 @@ class RewardProvider with ChangeNotifier {
     if (_lastReset == null ||
         now.difference(_lastReset!).inHours >= 24 ||
         now.day != _lastReset!.day) {
-      print('Resetting daily rewards - Last reset: $_lastReset, Now: $now');
+      debugPrint(
+          'Resetting daily rewards - Last reset: $_lastReset, Now: $now');
       _claimedDailyPlay = false;
       _claimedDailyMine = false;
       _claimedSciFiReward = false;
@@ -184,7 +187,8 @@ class RewardProvider with ChangeNotifier {
       _saveData();
       notifyListeners();
     } else {
-      print('Loading daily rewards state - Last reset: $_lastReset, Now: $now');
+      debugPrint(
+          'Loading daily rewards state - Last reset: $_lastReset, Now: $now');
       _claimedDailyPlay = prefs.getBool('claimedDailyPlay') ?? false;
       _claimedDailyMine = prefs.getBool('claimedDailyMine') ?? false;
     }
@@ -230,7 +234,8 @@ class RewardProvider with ChangeNotifier {
     if (_lastReset == null ||
         now.difference(_lastReset!).inHours >= 24 ||
         now.day != _lastReset!.day) {
-      print('Resetting daily rewards - Last reset: $_lastReset, Now: $now');
+      debugPrint(
+          'Resetting daily rewards - Last reset: $_lastReset, Now: $now');
       _claimedDailyPlay = false;
       _claimedDailyMine = false;
       _claimedSciFiReward = false;
@@ -532,10 +537,10 @@ class RewardProvider with ChangeNotifier {
     final difference = now.difference(_lastHourlyClaim!);
     final remainingSeconds = (3600 - difference.inSeconds).clamp(0, 3600);
 
-    print('Last claim: $_lastHourlyClaim');
-    print('Now: $now');
-    print('Difference: ${difference.inSeconds} seconds');
-    print('Remaining: $remainingSeconds seconds');
+    debugPrint('Last claim: $_lastHourlyClaim');
+    debugPrint('Now: $now');
+    debugPrint('Difference: ${difference.inSeconds} seconds');
+    debugPrint('Remaining: $remainingSeconds seconds');
 
     return remainingSeconds;
   }
@@ -616,7 +621,7 @@ class RewardProvider with ChangeNotifier {
     try {
       // Check if verification is already in progress
       if (_verificationInProgress[platform] == true) {
-        print('Verification already in progress for $platform');
+        debugPrint('Verification already in progress for $platform');
         return false;
       }
 
@@ -644,7 +649,7 @@ class RewardProvider with ChangeNotifier {
         if (attemptTime != null) {
           final timeSpent = DateTime.now().difference(attemptTime).inSeconds;
           if (timeSpent < 10) {
-            print(
+            debugPrint(
                 'User returned too quickly ($timeSpent seconds) for $platform');
             _verificationInProgress[platform] = false;
             return false;
@@ -680,7 +685,7 @@ class RewardProvider with ChangeNotifier {
       _verificationInProgress[platform] = false;
       return false;
     } catch (e) {
-      print('Social media verification error: $e');
+      debugPrint('Social media verification error: $e');
       _verificationInProgress[platform] = false;
       return false;
     }
@@ -745,7 +750,7 @@ class RewardProvider with ChangeNotifier {
         }
       ];
     } catch (e) {
-      print('Error loading social media platforms: $e');
+      debugPrint('Error loading social media platforms: $e');
       // Keep using default values if API fails
     }
     notifyListeners();
@@ -810,13 +815,14 @@ class RewardProvider with ChangeNotifier {
           }
         }
       } else {
-        print('❌ Failed to update rewards on server: ${response['message']}');
+        debugPrint(
+            '❌ Failed to update rewards on server: ${response['message']}');
       }
 
       _saveData();
       notifyListeners();
     } catch (e) {
-      print('❌ Error updating rewards: $e');
+      debugPrint('❌ Error updating rewards: $e');
       // Keep local state even if server update fails
       _saveData();
       notifyListeners();
@@ -825,10 +831,10 @@ class RewardProvider with ChangeNotifier {
 
   // Add method to sync rewards with server
   Future<void> syncRewards() async {
-    print('🔄 syncRewards() called');
+    debugPrint('🔄 syncRewards() called');
     try {
       final response = await _apiService.getClaimedRewardsInfo();
-      print('🔄 getClaimedRewardsInfo response: $response');
+      debugPrint('🔄 getClaimedRewardsInfo response: $response');
       if (response['success'] && response['data'] != null) {
         final claimedInfo = response['data'];
         if (claimedInfo['claimedRewards'] != null) {
@@ -842,7 +848,7 @@ class RewardProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('❌ Error syncing rewards: $e');
+      debugPrint('❌ Error syncing rewards: $e');
     }
   }
 
@@ -887,7 +893,7 @@ class RewardProvider with ChangeNotifier {
         }
       }
     } catch (e) {
-      print('Error fetching total rewards: $e');
+      debugPrint('Error fetching total rewards: $e');
     }
   }
   */
@@ -916,7 +922,7 @@ class RewardProvider with ChangeNotifier {
       }
       return [];
     } catch (e) {
-      print('Error getting rewards history: $e');
+      debugPrint('Error getting rewards history: $e');
       return [];
     }
   }

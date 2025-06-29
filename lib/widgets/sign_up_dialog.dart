@@ -178,7 +178,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
           });
         }
       } catch (e) {
-        print('Username check error: $e');
+        debugPrint('Username check error: $e');
         if (mounted) {
           setState(() {
             _isCheckingUsername = false;
@@ -283,8 +283,8 @@ class _SignUpDialogState extends State<SignUpDialog> {
     });
 
     try {
-      print('📤 Sending signup request');
-      print('📝 User data: $fullName, $username, $email');
+      debugPrint('📤 Sending signup request');
+      debugPrint('📝 User data: $fullName, $username, $email');
 
       final response = await ApiService().signup(
         fullName: _fullNameController.text.trim(),
@@ -294,7 +294,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
         referredByCode: referredByCode,
       );
 
-      print('📥 Signup response: $response');
+      debugPrint('📥 Signup response: $response');
 
       if (!mounted) return;
 
@@ -323,7 +323,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
         });
       }
     } catch (e) {
-      print('❌ Signup error: $e');
+      debugPrint('❌ Signup error: $e');
       if (!mounted) return;
       setState(() {
         _errorMessage = 'An error occurred. Please try again.';
