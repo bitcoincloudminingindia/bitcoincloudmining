@@ -657,64 +657,36 @@ class _ContractScreenState extends State<ContractScreen>
           itemBuilder: (context, index) {
             // If index is odd, show ad
             if (index.isOdd) {
-              // Add 'Sponsored Ad' label in the corner of the native ad
               return Container(
-                height: 100,
+                height: 250,
                 margin: const EdgeInsets.symmetric(vertical: 8),
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: _adService.isNativeAdLoaded
-                          ? _adService.getNativeAd()
-                          : Container(
-                              decoration: BoxDecoration(
-                                color: Colors.grey[200],
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey[300]!),
-                              ),
-                              child: const Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.ads_click,
-                                        color: Colors.grey, size: 24),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      'Ad Loading...',
-                                      style: TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
+                child: _adService.isNativeAdLoaded
+                    ? _adService.getNativeAd()
+                    : Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.ads_click,
+                                  color: Colors.grey, size: 24),
+                              SizedBox(height: 4),
+                              Text(
+                                'Ad Loading...',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
-                            ),
-                    ),
-                    Positioned(
-                      top: 4,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'Sponsored Ad',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
               );
             }
 

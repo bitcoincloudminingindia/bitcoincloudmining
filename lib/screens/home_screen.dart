@@ -5,6 +5,7 @@ import 'package:audioplayers/audioplayers.dart'; // For AudioPlayer
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
+import 'package:bitcoin_cloud_mining/services/mining_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart'; // For Flutter Toast
@@ -35,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static const double POWER_BOOST_INCREMENT = 0.1; // Increment per click
   static const int POWER_BOOST_DURATION_MINUTES = 5; // 5 minutes duration
   static const double TAP_REWARD_RATE =
-      0.000000000000005000; // 5x increased reward
+      0.000000000000001000; // 5x increased reward
 
   // Variables
   final AdService _adService = AdService();
@@ -142,6 +143,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         if (_isMining && _miningStartTime != null) {
           _updateMiningProgressFromElapsed();
           _startMiningUiTimer();
+          
+          // Resume mining notification if it was active
+          if (!MiningNotificationService.isActive) {
+            final walletProvider = context.read<WalletProvider>();
+            final currentBalance = walletProvider.balance.toStringAsFixed(8);
+            MiningNotificationService.startMiningNotification(
+              initialBalance: currentBalance,
+              initialHashRate: _hashRate.toStringAsFixed(1),
+            );
+          }
         }
         break;
       case AppLifecycleState.paused:
@@ -150,12 +161,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         // App going to background - save state
         if (_isMining) {
           _saveMiningState();
+          // Keep mining notification active in background
         }
         break;
       case AppLifecycleState.detached:
         // App terminated
         if (_isMining) {
           _saveMiningState();
+          // Keep mining notification active even if app is terminated
         }
         break;
     }
@@ -169,6 +182,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _cancelAllTimers();
     _uiUpdateTimer?.cancel();
     _periodicSaveTimer?.cancel();
+    
+    // Stop mining notification
+    MiningNotificationService.stopMiningNotification();
+    
     WidgetsBinding.instance.removeObserver(this);
     _audioPlayer.dispose();
     _scrollController.dispose();
@@ -273,6 +290,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       });
       await _saveMiningState();
       _startMiningUiTimer();
+      
+      // Start mining notification
+      final walletProvider = context.read<WalletProvider>();
+      final currentBalance = walletProvider.balance.toStringAsFixed(8);
+      await MiningNotificationService.startMiningNotification(
+        initialBalance: currentBalance,
+        initialHashRate: _hashRate.toStringAsFixed(1),
+      );
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -292,6 +318,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // End/reset the mining session
   Future<void> _resetMiningState() async {
+    // Stop mining notification
+    await MiningNotificationService.stopMiningNotification();
+    
     _cancelAllTimers();
     _uiUpdateTimer?.cancel();
     // Store earnings before resetting state
@@ -375,6 +404,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _miningProgress = (elapsedMinutes / MINING_DURATION_MINUTES) * 100;
       if (_miningProgress > 100) _miningProgress = 100;
     });
+    
+    // Update mining notification with new stats
+    if (MiningNotificationService.isActive) {
+      final walletProvider = context.read<WalletProvider>();
+      final currentBalance = walletProvider.balance.toStringAsFixed(8);
+      MiningNotificationService.updateMiningStats(
+        balance: currentBalance,
+        hashRate: _hashRate.toStringAsFixed(1),
+        status: _isPowerBoostActive 
+          ? '⛏️ Mining with Power Boost!'
+          : '⛏️ Mining in progress...',
+      );
+    }
   }
 
   // Save mining state
@@ -1367,8 +1409,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
             // Start power boost timer
             _powerBoostTimer?.cancel();
-            _powerBoostTimer = Timer(
-                const Duration(minutes: POWER_BOOST_DURATION_MINUTES), () {
+            _powerBoostTimer =
+                Timer(const Duration(minutes: POWER_BOOST_DURATION_MINUTES), () {
               if (!mounted) return;
 
               setState(() {

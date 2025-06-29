@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:bitcoin_cloud_mining/models/user.dart';
 import 'package:bitcoin_cloud_mining/services/api_service.dart';
+import 'package:bitcoin_cloud_mining/services/analytics_service.dart';
 // wallet_service.dart file does not exist, so it has been removed
 import 'package:bitcoin_cloud_mining/utils/constants.dart';
 import 'package:bitcoin_cloud_mining/utils/error_handler.dart';
@@ -295,6 +296,14 @@ class AuthProvider extends ChangeNotifier {
         await _updateUserState(userData);
         _isLoggedIn = true;
         notifyListeners();
+
+        // Track login analytics
+        await AnalyticsService.trackLogin(method: 'email');
+        await AnalyticsService.setUserProperties(
+          userId: userId,
+          userType: 'user',
+          registrationDate: DateTime.now().toIso8601String(),
+        );
 
         return {
           'success': true,

@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../config/api_config.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import '../utils/constants.dart';
 import '../utils/validators.dart' as form_validators;
 import '../widgets/custom_button.dart';
@@ -309,6 +311,19 @@ class _SignUpDialogState extends State<SignUpDialog> {
         );
 
         if (verified == true) {
+          // Request mandatory notification permission after successful signup
+          final notificationService = Provider.of<NotificationService>(context, listen: false);
+          final permissionGranted = await notificationService.requestMandatoryPermission(context);
+          
+          if (!permissionGranted) {
+            // If permission not granted, show error and stay on signup screen
+            setState(() {
+              _errorMessage = 'Notification permission is required to use this app. Please allow notifications and try again.';
+              _isLoading = false;
+            });
+            return;
+          }
+          
           // Close both dialogs only after successful verification
           Navigator.of(context).pop(); // Close signup dialog
           showDialog(
