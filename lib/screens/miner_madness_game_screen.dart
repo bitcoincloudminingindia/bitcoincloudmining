@@ -345,7 +345,7 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Achievement Unlocked! 1000 Spins Completed - Bonus ${widget.baseWinAmount} BTC Added!',
+              'Achievement Unlocked! 1000 Spins Completed - Bonus ${widget.baseWinAmount.toStringAsFixed(18)} BTC Added!',
             ),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 5),

@@ -288,7 +288,7 @@ class _CryptoRunnerGameScreenState extends State<CryptoRunnerGameScreen>
             ),
             const SizedBox(height: 10),
             Text(
-              'Reward: ${reward.toStringAsFixed(8)} BTC',
+              'Reward: ${reward.toStringAsFixed(18)} BTC',
               style: TextStyle(color: ColorConstants.primaryTextColor),
             ),
           ],

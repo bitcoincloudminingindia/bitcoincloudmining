@@ -186,6 +186,10 @@ class _MyAppState extends State<MyApp> with WindowListener {
     widget.notificationService.selectNotificationSubject.listen((payload) {
       final context = navigatorKey.currentContext;
       if (context != null) {
+        // Navigate to notification screen instead of just adding to provider
+        Navigator.of(context).pushNamed('/notifications');
+
+        // Also add to provider for display
         final provider =
             Provider.of<NotificationProvider>(context, listen: false);
         final notification = model.Notification(
@@ -209,6 +213,9 @@ class _MyAppState extends State<MyApp> with WindowListener {
 
         final context = navigatorKey.currentContext;
         if (context != null) {
+          // Navigate to notification screen for FCM messages too
+          Navigator.of(context).pushNamed('/notifications');
+
           final provider =
               Provider.of<NotificationProvider>(context, listen: false);
           final notification = model.Notification(

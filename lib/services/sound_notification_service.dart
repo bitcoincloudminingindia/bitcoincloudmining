@@ -17,7 +17,14 @@ class SoundNotificationService {
           AndroidInitializationSettings('@mipmap/ic_launcher');
       const initSettings = InitializationSettings(android: androidSettings);
 
-      await _notifications.initialize(initSettings);
+      await _notifications.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {
+          // Handle notification tap - navigate to notification screen
+          debugPrint('📱 Notification tapped: ${response.payload}');
+          // Navigation will be handled by the main app's notification listener
+        },
+      );
 
       // Create notification channels
       await _createNotificationChannels();
@@ -103,19 +110,19 @@ class SoundNotificationService {
       String soundPath;
       switch (soundType) {
         case 'mining':
-          soundPath = 'assets/sounds/mining_notification.mp3';
+          soundPath = 'sounds/mining_notification.mp3';
           break;
         case 'reward':
-          soundPath = 'assets/sounds/reward_notification.mp3';
+          soundPath = 'sounds/reward_notification.mp3';
           break;
         case 'withdrawal':
-          soundPath = 'assets/sounds/withdrawal_notification.mp3';
+          soundPath = 'sounds/withdrawal_notification.mp3';
           break;
         case 'alert':
-          soundPath = 'assets/sounds/notification_alert.mp3';
+          soundPath = 'sounds/notification_alert.mp3';
           break;
         default:
-          soundPath = 'assets/sounds/notification_alert.mp3';
+          soundPath = 'sounds/notification_alert.mp3';
       }
 
       await _audioPlayer.play(AssetSource(soundPath));
@@ -211,7 +218,7 @@ class SoundNotificationService {
   }) async {
     await showNotification(
       title: '🎉 Reward Earned!',
-      body: 'You earned ${amount.toStringAsFixed(8)} BTC from $type!',
+      body: 'You earned ${amount.toStringAsFixed(18)} BTC from $type!',
       soundType: 'reward',
       channelId: 'reward_channel',
       payload: {
@@ -229,7 +236,7 @@ class SoundNotificationService {
   }) async {
     await showNotification(
       title: '💰 Withdrawal Successful!',
-      body: '${amount.toStringAsFixed(8)} BTC withdrawn via $method',
+      body: '${amount.toStringAsFixed(18)} BTC withdrawn via $method',
       soundType: 'withdrawal',
       channelId: 'withdrawal_channel',
       payload: {
@@ -301,7 +308,7 @@ class SoundNotificationService {
     await showNotification(
       title: '🎯 Level Up!',
       body:
-          'Congratulations! You reached level $level and earned ${bonus.toStringAsFixed(8)} BTC bonus!',
+          'Congratulations! You reached level $level and earned ${bonus.toStringAsFixed(18)} BTC bonus!',
       soundType: 'reward',
       channelId: 'reward_channel',
       payload: {
@@ -318,7 +325,7 @@ class SoundNotificationService {
   }) async {
     await showNotification(
       title: '🎁 Daily Bonus Available!',
-      body: 'Claim your daily bonus of ${amount.toStringAsFixed(8)} BTC now!',
+      body: 'Claim your daily bonus of ${amount.toStringAsFixed(18)} BTC now!',
       soundType: 'reward',
       channelId: 'reward_channel',
       payload: {
@@ -336,7 +343,7 @@ class SoundNotificationService {
     await showNotification(
       title: '👥 Referral Bonus!',
       body:
-          '$referrerName joined using your code! You earned ${amount.toStringAsFixed(8)} BTC bonus!',
+          '$referrerName joined using your code! You earned ${amount.toStringAsFixed(18)} BTC bonus!',
       soundType: 'reward',
       channelId: 'reward_channel',
       payload: {

@@ -873,7 +873,7 @@ class ContractCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${contract['currentEarnings'].toStringAsFixed(17)}',
+                        '${contract['currentEarnings'].toStringAsFixed(18)}',
                         style: const TextStyle(
                           fontSize: 14,
                           color: Color.fromARGB(255, 196, 146, 9),

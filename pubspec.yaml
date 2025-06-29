@@ -55,6 +55,7 @@ dependencies:
   firebase_messaging: ^15.2.7
   firebase_analytics: ^11.3.3
   permission_handler: ^11.3.1
+  animated_text_kit: ^4.2.2
 
   shimmer: ^3.0.0
   app_links: ^6.4.0
@@ -91,6 +92,8 @@ flutter:
   
   assets:
     - assets/images/
+    - assets/audio/
+    - assets/sounds/
     - assets/images/team_member1.png.webp
     - assets/images/team_member2.png.webp
     - assets/images/default_avatar.png.webp
@@ -101,7 +104,6 @@ flutter:
     - assets/audio/error_sound.mp3
     - assets/audio/background.mp3
     - assets/audio/collect.mp3
-    - assets/sounds/
     - assets/sounds/notification_alert.mp3
     - assets/sounds/mining_notification.mp3
     - assets/sounds/reward_notification.mp3
