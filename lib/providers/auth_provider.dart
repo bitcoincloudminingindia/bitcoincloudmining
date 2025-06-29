@@ -256,12 +256,12 @@ class AuthProvider extends ChangeNotifier {
 
       final response = await http
           .post(
-            Uri.parse('${ApiConfig.baseUrl}/api/auth/login'),
+        Uri.parse('${ApiConfig.baseUrl}/api/auth/login'),
             headers: ApiConfig.getHeaders(),
-            body: jsonEncode({
-              'email': email,
-              'password': password,
-            }),
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+        }),
           )
           .timeout(const Duration(seconds: 30));
 

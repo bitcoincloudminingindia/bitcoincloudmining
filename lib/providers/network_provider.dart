@@ -1,45 +1,51 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:bitcoin_cloud_mining/services/network_service.dart';
+import 'package:flutter/foundation.dart';
 
 class NetworkProvider extends ChangeNotifier {
   final NetworkService _networkService = NetworkService();
-  
+
   bool _isConnected = true;
   String _connectionType = 'Unknown';
   bool _isInitialized = false;
+  String _currentServer = 'Singapore';
 
   // Getters
   bool get isConnected => _isConnected;
   String get connectionType => _connectionType;
   bool get isInitialized => _isInitialized;
   Stream<bool> get connectionStatus => _networkService.connectionStatus;
+  String get currentServer => _currentServer;
+  set currentServer(String value) {
+    _currentServer = value;
+    notifyListeners();
+  }
 
   // Initialize network monitoring
   Future<void> initialize() async {
     if (_isInitialized) return;
-    
+
     try {
       await _networkService.initialize();
-      
+
       // Get initial connection type
       _connectionType = await _networkService.getConnectionType();
-      
+
       // Listen to connection status changes
       _networkService.connectionStatus.listen((isConnected) {
         _isConnected = isConnected;
         _updateConnectionType();
         notifyListeners();
-        
-        debugPrint(isConnected 
-          ? '✅ Network connected via $_connectionType' 
-          : '❌ Network disconnected');
+
+        debugPrint(isConnected
+            ? '✅ Network connected via $_connectionType'
+            : '❌ Network disconnected');
       });
-      
+
       _isInitialized = true;
       notifyListeners();
-      
+
       debugPrint('✅ Network provider initialized');
     } catch (e) {
       debugPrint('❌ Error initializing network provider: $e');
@@ -74,7 +80,7 @@ class NetworkProvider extends ChangeNotifier {
     if (!_isConnected) {
       return 'No internet connection';
     }
-    
+
     switch (_connectionType) {
       case 'WiFi':
         return 'Connected via WiFi';
@@ -92,7 +98,7 @@ class NetworkProvider extends ChangeNotifier {
     if (!_isConnected) {
       return 'wifi_off';
     }
-    
+
     switch (_connectionType) {
       case 'WiFi':
         return 'wifi';
@@ -110,7 +116,7 @@ class NetworkProvider extends ChangeNotifier {
     if (!_isConnected) {
       return 0xFFE53935; // Red
     }
-    
+
     switch (_connectionType) {
       case 'WiFi':
         return 0xFF4CAF50; // Green
@@ -139,4 +145,4 @@ class NetworkProvider extends ChangeNotifier {
     _networkService.dispose();
     super.dispose();
   }
-} 
+}

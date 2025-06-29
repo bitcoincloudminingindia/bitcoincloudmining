@@ -3,6 +3,7 @@ import 'package:bitcoin_cloud_mining/screens/home_screen.dart'; // Import HomeSc
 // import 'package:bitcoin_cloud_mining/screens/rewards_screen.dart'; // रिवॉर्ड्स स्क्रीन को हटा दिया
 import 'package:bitcoin_cloud_mining/screens/setting_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
 import 'contract_screen.dart';
@@ -399,40 +400,131 @@ class _NavigationScreenState extends State<NavigationScreen> {
   }
 
   Widget _getNetworkIcon(NetworkProvider networkProvider) {
-    if (!networkProvider.isConnected) {
-      return const Icon(
-        Icons.wifi_off,
-        color: Colors.white,
-        size: 16,
-      );
-    }
+    // App logo as network indicator (small, circular)
+    return GestureDetector(
+      onTap: () => _showGamifiedNetworkDialog(networkProvider),
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withAlpha(31),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.amber.withAlpha(60),
+              blurRadius: 4,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(2.0),
+          child:
+              Image.asset('assets/images/app_logo.png', width: 24, height: 24),
+        ),
+      ),
+    );
+  }
 
-    switch (networkProvider.connectionType) {
-      case 'WiFi':
-        return const Icon(
-          Icons.wifi,
-          color: Colors.white,
-          size: 16,
-        );
-      case 'Mobile Data':
-        return const Icon(
-          Icons.signal_cellular_4_bar,
-          color: Colors.white,
-          size: 16,
-        );
-      case 'Ethernet':
-        return const Icon(
-          Icons.cable,
-          color: Colors.white,
-          size: 16,
-        );
-      default:
-        return const Icon(
-          Icons.wifi,
-          color: Colors.white,
-          size: 16,
-        );
+  void _showGamifiedNetworkDialog(NetworkProvider networkProvider) async {
+    // HomeScreen ka current server fetch karo
+    final String server = networkProvider.currentServer;
+    final ping = 42 + (DateTime.now().second % 10); // Mock ping
+    String userLocation = 'Unknown';
+    try {
+      final Position pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low);
+      userLocation =
+          'Lat: \\${pos.latitude.toStringAsFixed(2)}, Long: \\${pos.longitude.toStringAsFixed(2)}';
+    } catch (e) {
+      userLocation = 'Location permission denied';
     }
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black.withAlpha(230),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset('assets/images/app_logo.png',
+                      width: 48, height: 48),
+                  const SizedBox(width: 12),
+                  const Text('Network Gamification',
+                      style: TextStyle(
+                          fontSize: 20,
+                          color: Colors.amber,
+                          fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _gamifiedInfoRow('🌐 Server', server, Colors.cyan),
+              const SizedBox(height: 12),
+              _gamifiedInfoRow('⚡ Ping', '$ping ms', Colors.green),
+              const SizedBox(height: 12),
+              _gamifiedInfoRow('📍 Location', userLocation, Colors.orange),
+              const SizedBox(height: 24),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeInOut,
+                width: 120 + (ping % 20).toDouble(),
+                height: 12,
+                decoration: BoxDecoration(
+                  color: ping < 60 ? Colors.green : Colors.red,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.amber.withAlpha(60),
+                      blurRadius: 8,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Live Network Status',
+                  style: TextStyle(color: Colors.white70, fontSize: 14)),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.check_circle, color: Colors.amber),
+                label:
+                    const Text('Close', style: TextStyle(color: Colors.amber)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _gamifiedInfoRow(String label, String value, Color color) {
+    return Row(
+      children: [
+        Text(label,
+            style: TextStyle(
+                fontSize: 16, color: color, fontWeight: FontWeight.bold)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(value,
+              style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600)),
+        ),
+      ],
+    );
   }
 
   Widget _buildOfflineOverlay(NetworkProvider networkProvider) {

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart' as overlay;
 
 class MiningNotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
@@ -67,12 +68,14 @@ class MiningNotificationService {
       _currentHashRate = initialHashRate;
       _miningStartTime = DateTime.now();
       _isNotificationActive = true;
+      _miningStatus = '⛏️ Mining in progress...';
 
       // Show initial notification
       await _showMiningNotification();
 
-      // Start periodic updates
-      _updateTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      // Start periodic updates (every 1s for live timer)
+      _updateTimer?.cancel();
+      _updateTimer = Timer.periodic(const Duration(seconds: 1), (_) {
         _updateMiningNotification();
       });
 
@@ -82,21 +85,44 @@ class MiningNotificationService {
     }
   }
 
-  // Show mining notification
-  static Future<void> _showMiningNotification() async {
+  // Complete mining notification (status update, don't remove notification)
+  static Future<void> completeMiningNotification() async {
+    try {
+      _isNotificationActive = true; // notification bar me rahe
+      _miningStatus = '✅ Mining completed!';
+      await _showMiningNotification(
+          statusOverride: '✅ Mining completed!', timeOverride: '-');
+      _updateTimer?.cancel();
+      _updateTimer = null;
+      debugPrint('✅ Mining notification completed (status updated)');
+    } catch (e) {
+      debugPrint('❌ Failed to complete mining notification: $e');
+    }
+  }
+
+  // Show mining notification (with optional override)
+  static Future<void> _showMiningNotification(
+      {String? statusOverride, String? timeOverride}) async {
     if (!_isNotificationActive) return;
 
     try {
-      final duration = _getMiningDuration();
+      final duration = timeOverride ?? _getMiningDuration();
+      final status = statusOverride ?? _miningStatus;
 
-      final content = _buildNotificationContent(duration);
+      final content =
+          '💰 Balance: ${_formatBalanceTo18Decimals(_currentBalance)} BTC\n'
+          '⚡ Hashrate: $_currentHashRate H/s\n'
+          '⏱️ Duration: $duration\n'
+          '📊 Status: $status';
 
       final androidDetails = AndroidNotificationDetails(
         'mining_channel',
         'Mining Status',
         channelDescription: 'Shows current mining stats and status',
         importance: Importance.max,
+        priority: Priority.high,
         ongoing: true, // 🔒 Makes it non-dismissible
+        autoCancel: false, // User forcefully bhi remove nahi kar sakta
         showWhen: false,
         enableVibration: false,
         enableLights: true,
@@ -130,43 +156,7 @@ class MiningNotificationService {
   // Update mining notification with new data
   static Future<void> _updateMiningNotification() async {
     if (!_isNotificationActive) return;
-
-    try {
-      final duration = _getMiningDuration();
-      final content = _buildNotificationContent(duration);
-
-      final androidDetails = AndroidNotificationDetails(
-        'mining_channel',
-        'Mining Status',
-        channelDescription: 'Shows current mining stats and status',
-        importance: Importance.max,
-        ongoing: true,
-        showWhen: false,
-        enableVibration: false,
-        enableLights: true,
-        playSound: false,
-        color: const Color(0xFFFFC107),
-        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-        styleInformation: BigTextStyleInformation(
-          '$content\n\n🚀 Keep mining, keep earning! 💸',
-          contentTitle: '⛏️ Bitcoin Cloud Mining - Mining in Progress',
-          summaryText: 'Mining is active. Don\'t close the app!',
-        ),
-        category: AndroidNotificationCategory.service,
-        visibility: NotificationVisibility.public,
-      );
-
-      final notificationDetails = NotificationDetails(android: androidDetails);
-
-      await _notifications.show(
-        _notificationId,
-        '⛏️ Bitcoin Cloud Mining - Mining in Progress',
-        '$content\n\n🚀 Keep mining, keep earning! 💸',
-        notificationDetails,
-      );
-    } catch (e) {
-      debugPrint('❌ Failed to update mining notification: $e');
-    }
+    await _showMiningNotification();
   }
 
   // Update mining stats
@@ -178,22 +168,6 @@ class MiningNotificationService {
     _currentBalance = balance;
     _currentHashRate = hashRate;
     _miningStatus = status;
-
-    // Update notification if active
-    if (_isNotificationActive) {
-      _updateMiningNotification();
-    }
-  }
-
-  // Build notification content
-  static String _buildNotificationContent(String duration) {
-    // Format balance to 18 decimal places
-    final formattedBalance = _formatBalanceTo18Decimals(_currentBalance);
-
-    return '💰 Balance: $formattedBalance BTC\n'
-        '⚡ Hashrate: $_currentHashRate H/s\n'
-        '⏱️ Duration: $duration\n'
-        '📊 Status: $_miningStatus';
   }
 
   // Format balance to exactly 18 decimal places
@@ -227,18 +201,14 @@ class MiningNotificationService {
     }
   }
 
-  // Stop mining notification
+  // Stop mining notification (now only stops timer, does not remove notification)
   static Future<void> stopMiningNotification() async {
     try {
       _isNotificationActive = false;
       _updateTimer?.cancel();
       _updateTimer = null;
-      _miningStartTime = null;
-
-      // Remove the notification
-      await _notifications.cancel(_notificationId);
-
-      debugPrint('✅ Mining notification stopped');
+      // Notification ko remove nahi karenge, bas timer band karenge
+      debugPrint('✅ Mining notification timer stopped (notification remains)');
     } catch (e) {
       debugPrint('❌ Failed to stop mining notification: $e');
     }
@@ -259,5 +229,28 @@ class MiningNotificationService {
   static void dispose() {
     _updateTimer?.cancel();
     _updateTimer = null;
+  }
+
+  // Android floating bubble (show)
+  static Future<void> showFloatingBubble() async {
+    if (Platform.isAndroid) {
+      if (!await overlay.FlutterOverlayWindow.isPermissionGranted()) {
+        await overlay.FlutterOverlayWindow.requestPermission();
+      }
+      await overlay.FlutterOverlayWindow.showOverlay(
+        height: 80,
+        width: 80,
+        alignment: overlay.OverlayAlignment.centerLeft,
+        flag: overlay.OverlayFlag.defaultFlag,
+        visibility: overlay.NotificationVisibility.visibilityPublic,
+      );
+    }
+  }
+
+  // Android floating bubble (hide)
+  static Future<void> hideFloatingBubble() async {
+    if (Platform.isAndroid) {
+      await overlay.FlutterOverlayWindow.closeOverlay();
+    }
   }
 }
