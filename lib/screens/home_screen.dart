@@ -6,6 +6,10 @@ import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:bitcoin_cloud_mining/services/mining_notification_service.dart';
+import 'package:bitcoin_cloud_mining/services/sound_notification_service.dart';
+import 'package:bitcoin_cloud_mining/widgets/network_status_widget.dart';
+import 'package:bitcoin_cloud_mining/widgets/server_connection_animation.dart';
+import 'package:bitcoin_cloud_mining/widgets/world_map_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart'; // For Flutter Toast
@@ -77,6 +81,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // Periodic save timer to save earnings every 30 seconds
   Timer? _periodicSaveTimer;
 
+  // Network connection state
+  bool _isConnectingToServer = false;
+  bool _isServerConnected = false;
+  final String _currentServer = 'Dubai';
+
   @override
   void initState() {
     super.initState();
@@ -109,6 +118,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     // Start periodic save timer
     _startPeriodicSaveTimer();
+
+    // Start server connection simulation
+    _startServerConnectionSimulation();
   }
 
   void _startMiningUiTimer() {
@@ -143,11 +155,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         if (_isMining && _miningStartTime != null) {
           _updateMiningProgressFromElapsed();
           _startMiningUiTimer();
-          
+
           // Resume mining notification if it was active
           if (!MiningNotificationService.isActive) {
             final walletProvider = context.read<WalletProvider>();
-            final currentBalance = walletProvider.balance.toStringAsFixed(8);
+            final currentBalance = walletProvider.balance.toStringAsFixed(18);
             MiningNotificationService.startMiningNotification(
               initialBalance: currentBalance,
               initialHashRate: _hashRate.toStringAsFixed(1),
@@ -176,16 +188,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    // Save any pending earnings before disposing
-    _savePendingEarnings();
+    // Only save mining state, don't add earnings prematurely
+    if (_isMining) {
+      _saveMiningState();
+    }
 
     _cancelAllTimers();
     _uiUpdateTimer?.cancel();
     _periodicSaveTimer?.cancel();
-    
+
     // Stop mining notification
     MiningNotificationService.stopMiningNotification();
-    
+
     WidgetsBinding.instance.removeObserver(this);
     _audioPlayer.dispose();
     _scrollController.dispose();
@@ -272,7 +286,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           );
           return;
         } else {
-          await _resetMiningState();
+          // Don't call _resetMiningState() here as it will add earnings prematurely
+          // Just reset the state without adding earnings
+          debugPrint(
+              '⏰ Previous mining session completed, resetting state without adding earnings');
+          if (mounted) {
+            setState(() {
+              _isMining = false;
+              _miningStartTime = null;
+              _miningProgress = 0.0;
+              _currentMiningRate = BASE_MINING_RATE;
+              _hashRate = 2.5;
+              _isPowerBoostActive = false;
+              _currentPowerBoostMultiplier = 0.0;
+              _miningEarnings = 0.0;
+              _miningStatus = 'Inactive';
+              _lastMiningTime = 0;
+              _powerBoostClickCount = 0;
+              _powerBoostStartTime = null;
+            });
+          }
+          await _saveMiningState();
         }
       }
       final now = DateTime.now();
@@ -290,15 +324,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       });
       await _saveMiningState();
       _startMiningUiTimer();
-      
+
       // Start mining notification
       final walletProvider = context.read<WalletProvider>();
-      final currentBalance = walletProvider.balance.toStringAsFixed(8);
+      final currentBalance = walletProvider.balance.toStringAsFixed(18);
       await MiningNotificationService.startMiningNotification(
         initialBalance: currentBalance,
         initialHashRate: _hashRate.toStringAsFixed(1),
       );
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -320,11 +354,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _resetMiningState() async {
     // Stop mining notification
     await MiningNotificationService.stopMiningNotification();
-    
+
     _cancelAllTimers();
     _uiUpdateTimer?.cancel();
-    // Store earnings before resetting state
-    final double earningsToAdd = _miningEarnings;
+
+    // Calculate final earnings based on actual elapsed time
+    double earningsToAdd = 0.0;
+    if (_isMining && _miningStartTime != null) {
+      final now = DateTime.now();
+      final elapsedSeconds = now.difference(_miningStartTime!).inSeconds;
+      final elapsedMinutes = elapsedSeconds ~/ 60;
+
+      // Only add earnings if mining session was at least partially completed
+      // and mining session has actually completed (30 minutes or more)
+      if (elapsedMinutes >= MINING_DURATION_MINUTES) {
+        final miningRate = BASE_MINING_RATE *
+            (1 + (_isPowerBoostActive ? _currentPowerBoostMultiplier : 0.0));
+        earningsToAdd =
+            double.parse((miningRate * elapsedSeconds).toStringAsFixed(18));
+
+        debugPrint(
+            '💰 Mining session completed! Adding earnings: ${earningsToAdd.toStringAsFixed(18)} BTC');
+
+        // Show mining completion notification
+        await SoundNotificationService.showAlertNotification(
+          title: '⛏️ Mining Session Completed!',
+          message:
+              'Your mining session has completed successfully! You can start a new session now.',
+        );
+      } else {
+        debugPrint(
+            '⏰ Mining session not completed yet ($elapsedMinutes/$MINING_DURATION_MINUTES minutes), no earnings added');
+      }
+    }
+
     if (mounted) {
       setState(() {
         _isMining = false;
@@ -341,6 +404,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _powerBoostStartTime = null;
       });
     }
+
     if (earningsToAdd > 0) {
       try {
         final walletProvider = context.read<WalletProvider>();
@@ -349,6 +413,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           type: 'mining',
           description: 'Mining session earnings',
         );
+
+        // Show earnings notification
+        await SoundNotificationService.showRewardNotification(
+          amount: earningsToAdd,
+          type: 'mining',
+        );
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -372,6 +443,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         }
       }
     }
+
     // Always save state after resetting, to clear mining keys
     await _saveMiningState();
     if (mounted) {
@@ -404,17 +476,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _miningProgress = (elapsedMinutes / MINING_DURATION_MINUTES) * 100;
       if (_miningProgress > 100) _miningProgress = 100;
     });
-    
+
     // Update mining notification with new stats
     if (MiningNotificationService.isActive) {
       final walletProvider = context.read<WalletProvider>();
-      final currentBalance = walletProvider.balance.toStringAsFixed(8);
+      final currentBalance = walletProvider.balance.toStringAsFixed(18);
       MiningNotificationService.updateMiningStats(
         balance: currentBalance,
         hashRate: _hashRate.toStringAsFixed(1),
-        status: _isPowerBoostActive 
-          ? '⛏️ Mining with Power Boost!'
-          : '⛏️ Mining in progress...',
+        status: _isPowerBoostActive
+            ? '⛏️ Mining with Power Boost!'
+            : '⛏️ Mining in progress...',
       );
     }
   }
@@ -524,22 +596,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
 
       if (miningExpired && loadedIsMining && loadedMiningStartTime != null) {
-        // Calculate total earnings for the session
-        const double miningRate = BASE_MINING_RATE; // No boost after reload
-        final double earningsToAdd = double.parse(
-            (miningRate * (MINING_DURATION_MINUTES * 60)).toStringAsFixed(18));
-        if (earningsToAdd > 0) {
-          try {
-            final walletProvider = context.read<WalletProvider>();
-            await walletProvider.addEarning(
-              earningsToAdd,
-              type: 'mining',
-              description: 'Mining session earnings (auto on reload)',
-            );
-          } catch (e) {
-            // Optionally log error
-          }
-        }
+        // Don't add earnings here, let _resetMiningState() handle it
+        // This prevents duplicate earnings being added
+        debugPrint(
+            '⏰ Mining session expired, will be handled by _resetMiningState()');
       }
 
       setState(() {
@@ -598,7 +658,35 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       // If mining expired, reset mining state (this will also clear prefs)
       if (miningExpired) {
-        await _resetMiningState();
+        // Don't call _resetMiningState() here as it will add earnings prematurely
+        // Just reset the state without adding earnings
+        debugPrint(
+            '⏰ Mining session expired on reload, resetting state without adding earnings');
+
+        // Show mining completion notification for expired session
+        await SoundNotificationService.showAlertNotification(
+          title: '⛏️ Mining Session Completed!',
+          message:
+              'Your previous mining session has completed. You can start a new session now.',
+        );
+
+        if (mounted) {
+          setState(() {
+            _isMining = false;
+            _miningStartTime = null;
+            _miningProgress = 0.0;
+            _currentMiningRate = BASE_MINING_RATE;
+            _hashRate = 2.5;
+            _isPowerBoostActive = false;
+            _currentPowerBoostMultiplier = 0.0;
+            _miningEarnings = 0.0;
+            _miningStatus = 'Inactive';
+            _lastMiningTime = 0;
+            _powerBoostClickCount = 0;
+            _powerBoostStartTime = null;
+          });
+        }
+        await _saveMiningState();
       } else if (powerBoostExpired && _isMining) {
         // If only power boost expired, save state to update prefs
         await _saveMiningState();
@@ -640,8 +728,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
-          // Save any pending earnings before exit
-          await _savePendingEarnings();
+          // Only save mining state, don't add earnings prematurely
+          if (_isMining) {
+            await _saveMiningState();
+          }
 
           // Show confirmation dialog
           final shouldExit = await showDialog<bool>(
@@ -655,9 +745,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   Text('Exit App'),
                 ],
               ),
-              content: const Text(
-                'Are you sure you want to exit the app?\n\nYour earnings have been saved.',
-                style: TextStyle(fontSize: 16),
+              content: Text(
+                _isMining
+                    ? 'Are you sure you want to exit the app?\n\nYour mining session will continue in the background and earnings will be added when complete.'
+                    : 'Are you sure you want to exit the app?\n\nYour earnings have been saved.',
+                style: const TextStyle(fontSize: 16),
               ),
               actions: [
                 TextButton(
@@ -893,6 +985,37 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ),
               ),
+            const SizedBox(height: 16),
+            // Add Network Status Widget
+            NetworkStatusWidget(
+              isMining: _isMining,
+              hashRate: _hashRate,
+              onServerChange: () {
+                // Optional: Handle server change
+                setState(() {});
+              },
+            ),
+            const SizedBox(height: 16),
+            // Add Server Connection Animation
+            ServerConnectionAnimation(
+              serverName: _currentServer,
+              isConnecting: _isConnectingToServer,
+              isConnected: _isServerConnected,
+              onConnectionComplete: () {
+                setState(() {
+                  _isServerConnected = true;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            // Add World Map Widget
+            WorldMapWidget(
+              serverLocation: _currentServer,
+              isConnected: _isServerConnected,
+              onTap: () {
+                // Optional: Handle map tap
+              },
+            ),
             const SizedBox(height: 16),
             buildGameSection(),
             const SizedBox(height: 16),
@@ -1409,8 +1532,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
             // Start power boost timer
             _powerBoostTimer?.cancel();
-            _powerBoostTimer =
-                Timer(const Duration(minutes: POWER_BOOST_DURATION_MINUTES), () {
+            _powerBoostTimer = Timer(
+                const Duration(minutes: POWER_BOOST_DURATION_MINUTES), () {
               if (!mounted) return;
 
               setState(() {
@@ -1695,31 +1818,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _savePendingEarnings() async {
     try {
-      // Save any pending earnings to wallet
-      if (_miningEarnings > 0 && _isMining) {
-        debugPrint('💾 Saving pending mining earnings: $_miningEarnings BTC');
-        final walletProvider =
-            Provider.of<WalletProvider>(context, listen: false);
-        await walletProvider.addEarning(
-          _miningEarnings,
-          type: 'mining',
-          description: 'Mining earnings (saved on exit)',
-        );
-        debugPrint('✅ Pending earnings saved successfully');
-      }
+      // Only save tap earnings periodically, NOT mining earnings
+      // Mining earnings should only be saved when mining session completes
 
-      // Save any pending tap earnings
-      if (_sciFiTapCount > 0) {
-        debugPrint('💾 Saving pending tap earnings');
-        final walletProvider =
-            Provider.of<WalletProvider>(context, listen: false);
-        await walletProvider.addEarning(
-          TAP_REWARD_RATE * _sciFiTapCount,
-          type: 'tap',
-          description: 'Tap earnings (saved on exit)',
-        );
-        debugPrint('✅ Tap earnings saved successfully');
-      }
+      // Note: Tap rewards are already added immediately in _onSciFiObjectTapped()
+      // So we don't need to add them again here
+      // This method is kept for any future pending earnings that might need periodic saving
+
+      debugPrint(
+          '💾 No pending earnings to save (mining earnings saved on completion, tap rewards added immediately)');
     } catch (e) {
       debugPrint('❌ Error saving pending earnings: $e');
     }
@@ -1727,9 +1834,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _startPeriodicSaveTimer() {
     _periodicSaveTimer?.cancel();
-    _periodicSaveTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    _periodicSaveTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
       if (mounted) {
         _savePendingEarnings();
+      }
+    });
+  }
+
+  // Start server connection simulation
+  void _startServerConnectionSimulation() {
+    setState(() {
+      _isConnectingToServer = true;
+      _isServerConnected = false;
+    });
+
+    // Simulate connection process
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _isConnectingToServer = false;
+          _isServerConnected = true;
+        });
       }
     });
   }

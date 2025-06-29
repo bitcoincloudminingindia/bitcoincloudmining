@@ -200,7 +200,7 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '🎉 ${_gameWalletBalance.toString()} BTC added to wallet!',
+              '🎉 ${_gameWalletBalance.toStringAsFixed(18)} BTC added to wallet!',
               style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
             backgroundColor: ColorConstants.successColor,

@@ -167,24 +167,25 @@ class _WalletScreenState extends State<WalletScreen>
         final oldStatus = oldTransactions[tx.transactionId];
         if (oldStatus != null && oldStatus != tx.status) {
           // Status has changed, show notification
-          String title = 'Transaction Update';
-          String message = '';
+          String title = '✅ Transaction Completed';
+          String message =
+              '${tx.type} of ${tx.amount.toStringAsFixed(18)} BTC has been completed';
 
           switch (tx.status.toLowerCase()) {
             case 'completed':
-              title = 'Transaction Successful';
+              title = '✅ Transaction Completed';
               message =
-                  '${tx.type} of ${tx.amount.toStringAsFixed(8)} BTC has been completed';
+                  '${tx.type} of ${tx.amount.toStringAsFixed(18)} BTC has been completed';
               break;
             case 'approved':
-              title = 'Transaction Approved';
+              title = '✅ Transaction Approved';
               message =
-                  '${tx.type} of ${tx.amount.toStringAsFixed(8)} BTC has been approved';
+                  '${tx.type} of ${tx.amount.toStringAsFixed(18)} BTC has been approved';
               break;
             case 'rejected':
-              title = 'Transaction Rejected';
+              title = '❌ Transaction Rejected';
               message =
-                  '${tx.type} of ${tx.amount.toStringAsFixed(8)} BTC has been rejected';
+                  '${tx.type} of ${tx.amount.toStringAsFixed(18)} BTC has been rejected';
               if (tx.adminNote != null) {
                 message += '\nReason: ${tx.adminNote}';
               }
@@ -206,7 +207,7 @@ class _WalletScreenState extends State<WalletScreen>
                   label: 'VIEW',
                   textColor: Colors.white,
                   onPressed: () async {
-                    await _showNotificationsDialog();
+                    // REMOVE: await _showNotificationsDialog();
                   },
                 ),
               ),
@@ -605,8 +606,6 @@ class _WalletScreenState extends State<WalletScreen>
     );
   }
 
-  // Update withdrawal message method to include BTC amount with more decimals
-
   // Update local currency rates method
   void _updateLocalCurrencyRates() {
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
@@ -630,62 +629,6 @@ class _WalletScreenState extends State<WalletScreen>
         });
       }
     });
-  }
-
-  Future<void> _showNotificationsDialog() async {
-    final wallet = Provider.of<WalletProvider>(context, listen: false);
-    final transactions = wallet.transactions;
-
-    // Separate transactions by status
-    final pendingTransactions = transactions
-        .where((tx) => tx.status.toLowerCase() == 'pending')
-        .toList()
-      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
-
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.notifications, color: Colors.blue),
-            SizedBox(width: 8),
-            Text('Notifications'),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (pendingTransactions.isEmpty)
-                const Text('No pending transactions')
-              else
-                ...pendingTransactions.map((transaction) => Card(
-                      child: ListTile(
-                        leading: Icon(
-                          transaction.type.contains('Withdrawal')
-                              ? Icons.arrow_upward
-                              : Icons.arrow_downward,
-                          color: transaction.type.contains('Withdrawal')
-                              ? Colors.red
-                              : Colors.green,
-                        ),
-                        title: Text(transaction.type),
-                        subtitle: Text(
-                            '${NumberFormatter.formatBTCAmount(transaction.amount)} BTC\n${DateFormat('MMM dd, yyyy – HH:mm').format(transaction.date)}'),
-                        isThreeLine: true,
-                      ),
-                    )),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
   }
 
   void _startRefreshTimer() {
@@ -1407,9 +1350,9 @@ class _WalletScreenState extends State<WalletScreen>
     await _localNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) async {
-        // Handle notification tap
+        // Handle notification tap - navigate to actual notification screen
         if (mounted && !_isDisposed) {
-          await _showNotificationsDialog();
+          Navigator.of(context).pushNamed('/notifications');
         }
       },
     );

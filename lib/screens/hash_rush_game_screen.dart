@@ -436,10 +436,10 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
             SnackBar(
               content: Text(
                 '🎉 ${earnedBTC.toStringAsFixed(18)} BTC added to wallet!',
-                style: const TextStyle(fontSize: 16),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
               backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
+              duration: const Duration(seconds: 3),
             ),
           );
         }

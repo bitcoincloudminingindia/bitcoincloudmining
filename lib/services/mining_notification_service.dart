@@ -132,35 +132,79 @@ class MiningNotificationService {
     if (!_isNotificationActive) return;
 
     try {
-      // Update stats (in real app, these would come from your mining service)
-      await _showMiningNotification();
+      final duration = _getMiningDuration();
+      final content = _buildNotificationContent(duration);
+
+      final androidDetails = AndroidNotificationDetails(
+        'mining_channel',
+        'Mining Status',
+        channelDescription: 'Shows current mining stats and status',
+        importance: Importance.max,
+        ongoing: true,
+        showWhen: false,
+        enableVibration: false,
+        enableLights: true,
+        playSound: false,
+        color: const Color(0xFFFFC107),
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        styleInformation: BigTextStyleInformation(
+          '$content\n\n🚀 Keep mining, keep earning! 💸',
+          contentTitle: '⛏️ Bitcoin Cloud Mining - Mining in Progress',
+          summaryText: 'Mining is active. Don\'t close the app!',
+        ),
+        category: AndroidNotificationCategory.service,
+        visibility: NotificationVisibility.public,
+      );
+
+      final notificationDetails = NotificationDetails(android: androidDetails);
+
+      await _notifications.show(
+        _notificationId,
+        '⛏️ Bitcoin Cloud Mining - Mining in Progress',
+        '$content\n\n🚀 Keep mining, keep earning! 💸',
+        notificationDetails,
+      );
     } catch (e) {
       debugPrint('❌ Failed to update mining notification: $e');
     }
   }
 
   // Update mining stats
-  static Future<void> updateMiningStats({
-    String? balance,
-    String? hashRate,
-    String? status,
-  }) async {
-    if (balance != null) _currentBalance = balance;
-    if (hashRate != null) _currentHashRate = hashRate;
-    if (status != null) _miningStatus = status;
+  static void updateMiningStats({
+    required String balance,
+    required String hashRate,
+    required String status,
+  }) {
+    _currentBalance = balance;
+    _currentHashRate = hashRate;
+    _miningStatus = status;
 
+    // Update notification if active
     if (_isNotificationActive) {
-      await _showMiningNotification();
+      _updateMiningNotification();
     }
   }
 
   // Build notification content
   static String _buildNotificationContent(String duration) {
-    return '''
-💰 Balance: $_currentBalance BTC
-⚡ Hashrate: $_currentHashRate H/s
-⏱️ Duration: $duration
-🔒 App is running in background''';
+    // Format balance to 18 decimal places
+    final formattedBalance = _formatBalanceTo18Decimals(_currentBalance);
+
+    return '💰 Balance: $formattedBalance BTC\n'
+        '⚡ Hashrate: $_currentHashRate H/s\n'
+        '⏱️ Duration: $duration\n'
+        '📊 Status: $_miningStatus';
+  }
+
+  // Format balance to exactly 18 decimal places
+  static String _formatBalanceTo18Decimals(String balance) {
+    try {
+      final doubleValue = double.tryParse(balance) ?? 0.0;
+      return doubleValue.toStringAsFixed(18);
+    } catch (e) {
+      debugPrint('❌ Error formatting balance: $e');
+      return '0.000000000000000000';
+    }
   }
 
   // Get mining duration
