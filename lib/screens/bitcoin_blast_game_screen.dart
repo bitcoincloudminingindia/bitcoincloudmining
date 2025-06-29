@@ -263,9 +263,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
         if (timeLeft > 0) {
           setState(() {
             timeLeft--;
-            if (timeLeft % 10 == 0) {
-              fallingSpeed += 1.0;
-            }
+            // Speed increase logic removed - speed will stay constant
           });
         } else {
           showWinScreen();
@@ -296,9 +294,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
       if (timeLeft > 0) {
         setState(() {
           timeLeft--;
-          if (timeLeft % 10 == 0) {
-            fallingSpeed += 1.0;
-          }
+          // Speed increase logic removed - speed will stay constant
         });
       } else {
         showWinScreen();
@@ -328,9 +324,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
       if (timeLeft > 0) {
         setState(() {
           timeLeft--;
-          if (timeLeft % 10 == 0) {
-            fallingSpeed += 1.0;
-          }
+          // Speed increase logic removed - speed will stay constant
         });
       } else {
         showWinScreen();
@@ -350,8 +344,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
     // Play Again के लिए कॉमन फंक्शन
     Navigator.of(context).pop();
     _onDialogClose();
-    resumeGame();
-    startGame(); // स्पीड रीसेट नहीं होगी
+    startNewGame(); // स्पीड रीसेट करने के लिए startNewGame का उपयोग करें
     _showRewardedAd(() {}); // Play Again पर rewarded ad दिखाएं
   }
 

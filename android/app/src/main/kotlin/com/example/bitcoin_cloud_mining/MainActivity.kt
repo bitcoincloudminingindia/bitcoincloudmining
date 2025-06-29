@@ -36,30 +36,45 @@ class ListTileNativeAdFactory(private val context: Context) : GoogleMobileAdsPlu
         val adView = LayoutInflater.from(context)
             .inflate(R.layout.native_ad_list_tile, null) as NativeAdView
 
-        // Bind headline
-        adView.headlineView = adView.findViewById(R.id.ad_headline)
-        (adView.headlineView as TextView).text = nativeAd.headline
+        try {
+            // Bind headline
+            adView.headlineView = adView.findViewById(R.id.ad_headline)
+            val headlineView = adView.headlineView as? TextView
+            if (headlineView != null && nativeAd.headline != null) {
+                headlineView.text = nativeAd.headline
+            }
 
-        // Bind media content (image/video)
-        adView.mediaView = adView.findViewById(R.id.ad_media)
-        adView.mediaView?.setMediaContent(nativeAd.mediaContent)
+            // Bind media content (image/video)
+            adView.mediaView = adView.findViewById(R.id.ad_media)
+            if (nativeAd.mediaContent != null) {
+                adView.mediaView?.setMediaContent(nativeAd.mediaContent)
+            }
 
-        // Bind icon if available
-        adView.iconView = adView.findViewById(R.id.ad_app_icon)
-        val icon = nativeAd.icon
-        if (icon != null) {
-            (adView.iconView as ImageView).setImageDrawable(icon.drawable)
-            adView.iconView?.visibility = View.VISIBLE
-        } else {
-            adView.iconView?.visibility = View.GONE
+            // Bind icon if available
+            adView.iconView = adView.findViewById(R.id.ad_app_icon)
+            val iconView = adView.iconView as? ImageView
+            val icon = nativeAd.icon
+            if (icon != null && iconView != null) {
+                iconView.setImageDrawable(icon.drawable)
+                iconView.visibility = View.VISIBLE
+            } else {
+                iconView?.visibility = View.GONE
+            }
+
+            // Bind CTA button
+            adView.callToActionView = adView.findViewById(R.id.ad_call_to_action)
+            val ctaButton = adView.callToActionView as? Button
+            if (ctaButton != null && nativeAd.callToAction != null) {
+                ctaButton.text = nativeAd.callToAction
+            }
+
+            // Set the ad
+            adView.setNativeAd(nativeAd)
+
+        } catch (e: Exception) {
+            // Log error but don't crash
+            println("Error creating native ad: ${e.message}")
         }
-
-        // Bind CTA button
-        adView.callToActionView = adView.findViewById(R.id.ad_call_to_action)
-        (adView.callToActionView as Button).text = nativeAd.callToAction
-
-        // Set the ad
-        adView.setNativeAd(nativeAd)
 
         return adView
     }

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../screens/auth/reset_password_screen.dart';
 import '../screens/loading_user_data_screen.dart';
+import '../services/notification_service.dart';
 import '../utils/constants.dart';
 import '../utils/validators.dart' as form_validators;
 import '../widgets/custom_button.dart';
@@ -81,6 +82,19 @@ class _LoginDialogState extends State<LoginDialog> {
       if (!mounted) return;
 
       if (result['success'] == true) {
+        // Request mandatory notification permission after successful login
+        final notificationService = Provider.of<NotificationService>(context, listen: false);
+        final permissionGranted = await notificationService.requestMandatoryPermission(context);
+        
+        if (!permissionGranted) {
+          // If permission not granted, show error and stay on login screen
+          setState(() {
+            _errorMessage = 'Notification permission is required to use this app. Please allow notifications and try again.';
+            _isLoading = false;
+          });
+          return;
+        }
+        
         // Close login dialog
         Navigator.of(context).pop();
 

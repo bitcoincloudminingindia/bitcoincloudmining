@@ -9,6 +9,9 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     
+    <!-- Foreground Service permission for persistent mining notification -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    
     <!-- Firebase Cloud Messaging permissions -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 

@@ -411,14 +411,18 @@ class AdService {
 
   // Load native ad with retry mechanism and auto-refresh
   Future<void> loadNativeAd() async {
-    if (_isNativeAdLoaded) return;
-
-    final adUnitId = _getAdUnitId('native');
-    if (adUnitId.isEmpty) {
-      debugPrint('Invalid native ad unit ID');
+    if (_isNativeAdLoaded) {
+      debugPrint('✅ Native ad already loaded');
       return;
     }
 
+    final adUnitId = _getAdUnitId('native');
+    if (adUnitId.isEmpty) {
+      debugPrint('❌ Invalid native ad unit ID');
+      return;
+    }
+
+    debugPrint('🔄 Loading native ad with ID: $adUnitId');
     final startTime = DateTime.now();
 
     await _loadAdWithRetry(
@@ -447,6 +451,9 @@ class AdService {
 
               debugPrint(
                   '✅ Native ad loaded successfully in ${loadTime.inMilliseconds}ms');
+              debugPrint(
+                  '📊 Native ad metrics: Load count: $_nativeAdLoadCount, Fail count: $_nativeAdFailCount');
+
               // Start auto-refresh timer
               _startNativeAdAutoRefresh();
             },
@@ -455,23 +462,25 @@ class AdService {
               _nativeAdFailCount++;
               ad.dispose();
               debugPrint('❌ Native ad failed to load: $error');
+              debugPrint(
+                  '📊 Native ad failure details: Code: ${error.code}, Message: ${error.message}');
               _adFailures['native'] = (_adFailures['native'] ?? 0) + 1;
               throw error;
             },
             onAdOpened: (ad) {
-              debugPrint('Native ad opened');
+              debugPrint('🎯 Native ad opened');
             },
             onAdClosed: (ad) {
-              debugPrint('Native ad closed');
+              debugPrint('🔒 Native ad closed');
             },
             onAdImpression: (ad) {
               _nativeAdImpressionCount++;
               debugPrint(
-                  'Native ad impression (total: $_nativeAdImpressionCount)');
+                  '👁️ Native ad impression (total: $_nativeAdImpressionCount)');
             },
             onAdClicked: (ad) {
               _nativeAdClickCount++;
-              debugPrint('Native ad clicked (total: $_nativeAdClickCount)');
+              debugPrint('🖱️ Native ad clicked (total: $_nativeAdClickCount)');
             },
           ),
         );
@@ -481,6 +490,11 @@ class AdService {
       },
       (success) {
         _isNativeAdLoaded = success;
+        if (success) {
+          debugPrint('✅ Native ad load completed successfully');
+        } else {
+          debugPrint('❌ Native ad load failed after retries');
+        }
       },
     );
   }
@@ -511,7 +525,7 @@ class AdService {
   Widget getNativeAd() {
     if (!_isNativeAdLoaded || _nativeAd == null) {
       return Container(
-        height: 100,
+        height: 250,
         decoration: BoxDecoration(
           color: Colors.grey[200],
           borderRadius: BorderRadius.circular(8),
@@ -562,7 +576,7 @@ class AdService {
     }
 
     return Container(
-      height: 100,
+      height: 250,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
@@ -610,26 +624,6 @@ class AdService {
                     );
                   }
                 },
-              ),
-            ),
-            // Ad label overlay with better positioning
-            Positioned(
-              top: 4,
-              left: 4,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black.withAlpha(179),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'Ad',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
               ),
             ),
             // Close button for better UX
@@ -888,5 +882,89 @@ class AdService {
     }
 
     return _rewardedAd;
+  }
+
+  // Test native ad functionality
+  Future<Map<String, dynamic>> testNativeAd() async {
+    final result = {
+      'success': false,
+      'message': '',
+      'details': <String, dynamic>{},
+    };
+
+    try {
+      debugPrint('🧪 Testing native ad functionality...');
+
+      // Check if platform supports native ads
+      if (kIsWeb) {
+        result['message'] = 'Native ads not supported on web';
+        return result;
+      }
+
+      final adUnitId = _getAdUnitId('native');
+      if (adUnitId.isEmpty) {
+        result['message'] = 'Invalid ad unit ID';
+        return result;
+      }
+
+      (result['details'] as Map<String, dynamic>)['ad_unit_id'] = adUnitId;
+      (result['details'] as Map<String, dynamic>)['platform'] =
+          Platform.isAndroid ? 'android' : 'ios';
+
+      // Try to load a test ad
+      await loadNativeAd();
+
+      if (_isNativeAdLoaded) {
+        result['success'] = true;
+        result['message'] = 'Native ad loaded successfully';
+        (result['details'] as Map<String, dynamic>)['load_time'] =
+            _nativeAdAverageLoadTime;
+        (result['details'] as Map<String, dynamic>)['load_count'] =
+            _nativeAdLoadCount;
+        (result['details'] as Map<String, dynamic>)['fail_count'] =
+            _nativeAdFailCount;
+      } else {
+        result['message'] = 'Native ad failed to load';
+        (result['details'] as Map<String, dynamic>)['fail_count'] =
+            _nativeAdFailCount;
+      }
+    } catch (e) {
+      result['message'] = 'Test failed: ${e.toString()}';
+      debugPrint('❌ Native ad test failed: $e');
+    }
+
+    return result;
+  }
+
+  // Validate native ad size and layout
+  Map<String, dynamic> validateNativeAdSize() {
+    final result = {
+      'container_height': 250,
+      'media_height': 150,
+      'button_height': 64,
+      'total_estimated_height': 250,
+      'recommendations': <String>[],
+    };
+
+    // Check if container height is sufficient
+    if ((result['container_height'] as int) < 200) {
+      (result['recommendations'] as List<String>)
+          .add('Container height should be at least 200px');
+    }
+
+    // Check if media height is appropriate
+    if ((result['media_height'] as int) < 120) {
+      (result['recommendations'] as List<String>)
+          .add('Media height should be at least 120dp');
+    }
+
+    // Check if button height is touch-friendly
+    if ((result['button_height'] as int) < 48) {
+      (result['recommendations'] as List<String>)
+          .add('Button height should be at least 48dp for touch targets');
+    }
+
+    debugPrint('📏 Native ad size validation: $result');
+    return result;
   }
 }

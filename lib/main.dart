@@ -13,9 +13,12 @@ import 'package:bitcoin_cloud_mining/screens/loading_user_data_screen.dart';
 import 'package:bitcoin_cloud_mining/screens/navigation_screen.dart';
 import 'package:bitcoin_cloud_mining/screens/notification_screen.dart';
 import 'package:bitcoin_cloud_mining/screens/wallet_screen.dart';
+import 'package:bitcoin_cloud_mining/services/analytics_service.dart';
 import 'package:bitcoin_cloud_mining/services/api_service.dart';
+import 'package:bitcoin_cloud_mining/services/mining_notification_service.dart';
 import 'package:bitcoin_cloud_mining/services/notification_service.dart';
 import 'package:bitcoin_cloud_mining/utils/enums.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -28,6 +31,7 @@ import 'package:workmanager/workmanager.dart';
 
 import 'fcm_service.dart';
 import 'services/audio_service.dart';
+import 'services/sound_notification_service.dart';
 import 'utils/storage_utils.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -51,6 +55,13 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     debugPrint('✅ Firebase initialized successfully');
+
+    // Initialize Firebase Analytics
+    await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(true);
+    debugPrint('✅ Firebase Analytics initialized successfully');
+
+    // Track app open event
+    await AnalyticsService.trackAppOpen();
 
     // Set up background message handler
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -159,6 +170,12 @@ class _MyAppState extends State<MyApp> with WindowListener {
         await sendTokenToBackend(token);
       }
       FcmService.listenFCM();
+
+      // Initialize mining notification service
+      await MiningNotificationService.initialize();
+
+      // Initialize sound notification service
+      await SoundNotificationService.initialize();
     } catch (e) {
       debugPrint('FCM setup failed: $e');
     }
@@ -312,6 +329,9 @@ class _MyAppState extends State<MyApp> with WindowListener {
         ),
         initialRoute: '/launch',
         debugShowCheckedModeBanner: false,
+        navigatorObservers: [
+          FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
+        ],
         routes: {
           '/': (context) => const LaunchScreen(),
           '/launch': (context) => const LaunchScreen(),

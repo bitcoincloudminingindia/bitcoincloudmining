@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -20,6 +22,17 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
   final BehaviorSubject<String?> selectNotificationSubject =
       BehaviorSubject<String?>();
+  static final AudioPlayer _audioPlayer = AudioPlayer();
+
+  static Timer? _updateTimer;
+  static bool _isNotificationActive = false;
+  static const int _notificationId = 1001; // Unique ID for mining notification
+
+  // Mining stats
+  static String _currentBalance = '0.00000000';
+  static String _currentHashRate = '0.0';
+  static String _miningStatus = '⛏️ Mining in progress...';
+  static DateTime? _miningStartTime;
 
   NotificationService({
     required this.baseUrl,
@@ -52,6 +65,11 @@ class NotificationService {
 
     // Request permissions
     await _requestPermissions();
+
+    // Initialize mining notification
+    await _initializeMiningNotification();
+
+    debugPrint('✅ Notification service initialized');
   }
 
   Future<void> _createNotificationChannels() async {
@@ -125,6 +143,148 @@ class NotificationService {
             sound: true,
           );
     }
+  }
+
+  // Mandatory notification permission request
+  Future<bool> requestMandatoryPermission(BuildContext context) async {
+    bool permissionGranted = false;
+
+    if (Platform.isAndroid) {
+      final status = await Permission.notification.status;
+
+      if (status.isGranted) {
+        permissionGranted = true;
+      } else {
+        // Show mandatory dialog for Android
+        final result = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text(
+                '🔔 Notification Permission Required',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange,
+                ),
+              ),
+              content: const Text(
+                'This app requires notification permission to:\n\n'
+                '• Send you important updates about your wallet\n'
+                '• Notify you about game rewards and bonuses\n'
+                '• Keep you informed about mining activities\n'
+                '• Alert you about security updates\n\n'
+                'Please allow notifications to continue using the app.',
+                style: TextStyle(fontSize: 16),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    Navigator.of(context).pop(false);
+                    // Open app settings if permission denied
+                    await openAppSettings();
+                  },
+                  child: const Text(
+                    'Open Settings',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(context).pop(true);
+                    final newStatus = await Permission.notification.request();
+                    permissionGranted = newStatus.isGranted;
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Allow Notifications'),
+                ),
+              ],
+            );
+          },
+        );
+
+        if (result == true) {
+          final newStatus = await Permission.notification.request();
+          permissionGranted = newStatus.isGranted;
+        }
+      }
+    } else if (Platform.isIOS) {
+      // For iOS, show similar dialog
+      final result = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text(
+              '🔔 Notification Permission Required',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.orange,
+              ),
+            ),
+            content: const Text(
+              'This app requires notification permission to:\n\n'
+              '• Send you important updates about your wallet\n'
+              '• Notify you about game rewards and bonuses\n'
+              '• Keep you informed about mining activities\n'
+              '• Alert you about security updates\n\n'
+              'Please allow notifications to continue using the app.',
+              style: TextStyle(fontSize: 16),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop(false);
+                  await openAppSettings();
+                },
+                child: const Text(
+                  'Open Settings',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.of(context).pop(true);
+                  await _notifications
+                      .resolvePlatformSpecificImplementation<
+                          IOSFlutterLocalNotificationsPlugin>()
+                      ?.requestPermissions(
+                        alert: true,
+                        badge: true,
+                        sound: true,
+                      );
+                  permissionGranted = true;
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Allow Notifications'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (result == true) {
+        await _notifications
+            .resolvePlatformSpecificImplementation<
+                IOSFlutterLocalNotificationsPlugin>()
+            ?.requestPermissions(
+              alert: true,
+              badge: true,
+              sound: true,
+            );
+        permissionGranted = true;
+      }
+    }
+
+    return permissionGranted;
   }
 
   Future<void> showNotification({
@@ -303,5 +463,167 @@ class NotificationService {
 
   void dispose() {
     selectNotificationSubject.close();
+    _audioPlayer.dispose();
   }
+
+  Future<void> _initializeMiningNotification() async {
+    try {
+      // Create mining notification channel
+      await _createMiningChannel();
+
+      // Show initial notification
+      await _showMiningNotification();
+
+      // Start periodic updates
+      _updateTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        _updateMiningNotification();
+      });
+
+      debugPrint('✅ Mining notification started');
+    } catch (e) {
+      debugPrint('❌ Failed to start mining notification: $e');
+    }
+  }
+
+  Future<void> _createMiningChannel() async {
+    if (Platform.isAndroid) {
+      const miningChannel = AndroidNotificationChannel(
+        'mining_channel',
+        'Mining Status',
+        description: 'Shows current mining stats and status',
+        importance: Importance.max,
+        enableVibration: false,
+        enableLights: true,
+        playSound: true,
+        showBadge: true,
+        sound: RawResourceAndroidNotificationSound('mining_notification'),
+      );
+
+      await _notifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(miningChannel);
+    }
+  }
+
+  Future<void> _showMiningNotification() async {
+    if (!_isNotificationActive) return;
+
+    try {
+      final duration = _getMiningDuration();
+
+      final content = _buildNotificationContent(duration);
+
+      final androidDetails = AndroidNotificationDetails(
+        'mining_channel',
+        'Mining Status',
+        channelDescription: 'Shows current mining stats and status',
+        importance: Importance.max,
+        ongoing: true, // 🔒 Makes it non-dismissible
+        showWhen: false,
+        enableVibration: false,
+        enableLights: true,
+        playSound: true,
+        color: const Color(0xFFFFC107), // Gold/Yellow (brand color)
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        styleInformation: BigTextStyleInformation(
+          '$content\n\n🚀 Keep mining, keep earning! 💸',
+          contentTitle: '⛏️ Bitcoin Cloud Mining - Mining in Progress',
+          summaryText: 'Mining is active. Don\'t close the app!',
+        ),
+        category: AndroidNotificationCategory.service,
+        visibility: NotificationVisibility.public,
+      );
+
+      final notificationDetails = NotificationDetails(android: androidDetails);
+
+      await _notifications.show(
+        _notificationId,
+        '⛏️ Bitcoin Cloud Mining - Mining in Progress',
+        null, // body is handled by BigTextStyleInformation
+        notificationDetails,
+      );
+
+      debugPrint('📱 Mining notification updated: $content');
+    } catch (e) {
+      debugPrint('❌ Failed to show mining notification: $e');
+    }
+  }
+
+  Future<void> _updateMiningNotification() async {
+    if (!_isNotificationActive) return;
+
+    try {
+      // Update stats (in real app, these would come from your mining service)
+      await _showMiningNotification();
+    } catch (e) {
+      debugPrint('❌ Failed to update mining notification: $e');
+    }
+  }
+
+  Future<void> updateMiningStats({
+    String? balance,
+    String? hashRate,
+    String? status,
+  }) async {
+    if (balance != null) _currentBalance = balance;
+    if (hashRate != null) _currentHashRate = hashRate;
+    if (status != null) _miningStatus = status;
+
+    if (_isNotificationActive) {
+      await _showMiningNotification();
+    }
+  }
+
+  String _buildNotificationContent(String duration) {
+    return '''
+💰 Balance: $_currentBalance BTC
+⚡ Hashrate: $_currentHashRate H/s
+⏱️ Duration: $duration
+🔒 App is running in background''';
+  }
+
+  String _getMiningDuration() {
+    if (_miningStartTime == null) return '0m 0s';
+
+    final now = DateTime.now();
+    final difference = now.difference(_miningStartTime!);
+
+    final hours = difference.inHours;
+    final minutes = difference.inMinutes % 60;
+    final seconds = difference.inSeconds % 60;
+
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    } else if (minutes > 0) {
+      return '${minutes}m ${seconds}s';
+    } else {
+      return '${seconds}s';
+    }
+  }
+
+  Future<void> stopMiningNotification() async {
+    try {
+      _isNotificationActive = false;
+      _updateTimer?.cancel();
+      _updateTimer = null;
+      _miningStartTime = null;
+
+      // Remove the notification
+      await _notifications.cancel(_notificationId);
+
+      debugPrint('✅ Mining notification stopped');
+    } catch (e) {
+      debugPrint('❌ Failed to stop mining notification: $e');
+    }
+  }
+
+  bool get isActive => _isNotificationActive;
+
+  Map<String, String> get currentStats => {
+        'balance': _currentBalance,
+        'hashRate': _currentHashRate,
+        'status': _miningStatus,
+        'duration': _getMiningDuration(),
+      };
 }

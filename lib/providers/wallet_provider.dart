@@ -4,7 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/transaction.dart';
+import '../services/analytics_service.dart';
 import '../services/api_service.dart';
+import '../services/sound_notification_service.dart';
 import '../services/wallet_service.dart';
 import '../utils/number_formatter.dart';
 import '../utils/storage_utils.dart';
@@ -93,6 +95,18 @@ class WalletProvider extends ChangeNotifier {
       // Save to local storage
       final formattedBalance = NumberFormatter.formatBTCAmount(_btcBalance);
       await StorageUtils.saveWalletBalance(formattedBalance);
+
+      // Track wallet initialization
+      AnalyticsService.trackCustomEvent(
+        eventName: 'wallet_initialized',
+        parameters: {
+          'initial_balance': _btcBalance,
+          'formatted_balance': formattedBalance,
+        },
+      );
+
+      // Show welcome notification with sound
+      SoundNotificationService.showWelcomeNotification();
 
       debugPrint('✅ Wallet initialized successfully');
     } catch (e) {
@@ -228,6 +242,13 @@ class WalletProvider extends ChangeNotifier {
       debugPrint('Type: $type');
       debugPrint('Description: $description');
 
+      // Track earning event
+      AnalyticsService.trackTransaction(
+        type: type,
+        amount: amount,
+        currency: 'BTC',
+      );
+
       // Always fetch the latest balance from backend before adding
       await loadWallet();
       final latestBalance = _btcBalance;
@@ -251,6 +272,13 @@ class WalletProvider extends ChangeNotifier {
         await updateBalance(newBalance);
         // Add to total earned
         updateTotalEarned(amount);
+
+        // Show reward notification with sound
+        SoundNotificationService.showRewardNotification(
+          amount: amount,
+          type: type,
+        );
+
         debugPrint('✅ Earning added successfully');
       } else {
         debugPrint('❌ Failed to add earning: ${result['message']}');
@@ -456,6 +484,13 @@ class WalletProvider extends ChangeNotifier {
       debugPrint('Amount: $amount $currency');
       debugPrint('BTC Amount: $btcAmount');
 
+      // Track withdrawal event
+      AnalyticsService.trackTransaction(
+        type: 'withdrawal',
+        amount: btcAmount,
+        currency: 'BTC',
+      );
+
       // Ensure wallet is initialized
       try {
         await initializeWallet();
@@ -509,6 +544,12 @@ class WalletProvider extends ChangeNotifier {
         updateTotalWithdrawn(btcAmount);
         // Refresh transactions to show the new withdrawal
         await refreshTransactions();
+
+        // Show withdrawal notification with sound
+        SoundNotificationService.showWithdrawalNotification(
+          amount: btcAmount,
+          method: method,
+        );
 
         debugPrint('✅ Withdrawal processed successfully');
         return true;
