@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:animated_text_kit/animated_text_kit.dart';
+import 'package:bitcoin_cloud_mining/providers/network_provider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class NetworkStatusWidget extends StatefulWidget {
   final bool isMining;
@@ -64,6 +66,12 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
     _selectRandomServer();
     _startConnectionSimulation();
     _setupConnectivityListener();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<NetworkProvider>(context, listen: false).currentServer =
+            _currentServer;
+      }
+    });
   }
 
   void _initializeAnimations() {
@@ -86,6 +94,12 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
   void _selectRandomServer() {
     final random = Random();
     _currentServer = _servers[random.nextInt(_servers.length)];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<NetworkProvider>(context, listen: false).currentServer =
+            _currentServer;
+      }
+    });
   }
 
   void _startConnectionSimulation() async {
@@ -338,40 +352,6 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
             ),
           ),
           const SizedBox(height: 12),
-
-          // Mining status
-          if (widget.isMining) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green.withAlpha((0.1 * 255).toInt()),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.green.withAlpha((255 * 0.3).toInt()),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.memory,
-                    color: Colors.green,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Hashrate: ${widget.hashRate.toStringAsFixed(1)} H/s',
-                    style: GoogleFonts.orbitron(
-                      fontSize: 12,
-                      color: Colors.green,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
 
           // Network info
           Row(

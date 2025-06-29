@@ -3,6 +3,7 @@ import 'dart:io' show exit, Platform;
 
 import 'package:audioplayers/audioplayers.dart'; // For AudioPlayer
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
+import 'package:bitcoin_cloud_mining/providers/network_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:bitcoin_cloud_mining/services/mining_notification_service.dart';
@@ -84,7 +85,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // Network connection state
   bool _isConnectingToServer = false;
   bool _isServerConnected = false;
-  final String _currentServer = 'Dubai';
 
   @override
   void initState() {
@@ -333,6 +333,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         initialHashRate: _hashRate.toStringAsFixed(1),
       );
 
+      // Floating bubble show karo
+      await MiningNotificationService.showFloatingBubble();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -352,8 +355,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // End/reset the mining session
   Future<void> _resetMiningState() async {
-    // Stop mining notification
-    await MiningNotificationService.stopMiningNotification();
+    // Mining complete par notification update karo (remove mat karo)
+    await MiningNotificationService.completeMiningNotification();
+    // Floating bubble hide karo
+    await MiningNotificationService.hideFloatingBubble();
 
     _cancelAllTimers();
     _uiUpdateTimer?.cancel();
@@ -724,6 +729,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final networkProvider = Provider.of<NetworkProvider>(context);
+    final currentServer = networkProvider.currentServer;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -777,11 +784,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           }
         }
       },
-      child: _buildHomeScaffold(),
+      child: _buildHomeScaffold(currentServer),
     );
   }
 
-  Widget _buildHomeScaffold() {
+  Widget _buildHomeScaffold(String currentServer) {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -991,14 +998,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               isMining: _isMining,
               hashRate: _hashRate,
               onServerChange: () {
-                // Optional: Handle server change
                 setState(() {});
               },
             ),
             const SizedBox(height: 16),
             // Add Server Connection Animation
             ServerConnectionAnimation(
-              serverName: _currentServer,
+              serverName: currentServer,
               isConnecting: _isConnectingToServer,
               isConnected: _isServerConnected,
               onConnectionComplete: () {
@@ -1010,11 +1016,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             const SizedBox(height: 16),
             // Add World Map Widget
             WorldMapWidget(
-              serverLocation: _currentServer,
+              serverLocation: currentServer,
               isConnected: _isServerConnected,
-              onTap: () {
-                // Optional: Handle map tap
-              },
+              onTap: () {},
             ),
             const SizedBox(height: 16),
             buildGameSection(),
@@ -1533,27 +1537,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             // Start power boost timer
             _powerBoostTimer?.cancel();
             _powerBoostTimer = Timer(
-                const Duration(minutes: POWER_BOOST_DURATION_MINUTES), () {
-              if (!mounted) return;
-
-              setState(() {
-                _isPowerBoostActive = false;
-                _currentPowerBoostMultiplier = 0.0;
-              });
-
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Power Boost ended! Mining rate back to normal',
-                      style: TextStyle(fontSize: 16),
+              const Duration(minutes: POWER_BOOST_DURATION_MINUTES),
+              () {
+                if (!mounted) return;
+                setState(() {
+                  _isPowerBoostActive = false;
+                  _currentPowerBoostMultiplier = 0.0;
+                });
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Power Boost ended! Mining rate back to normal',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      backgroundColor: Colors.orange,
+                      duration: Duration(seconds: 3),
                     ),
-                    backgroundColor: Colors.orange,
-                    duration: Duration(seconds: 3),
-                  ),
-                );
-              }
-            });
+                  );
+                }
+              },
+            );
           },
         );
       }
@@ -1606,31 +1610,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
           // Start power boost timer
           _powerBoostTimer?.cancel();
-          _powerBoostTimer =
-              Timer(const Duration(minutes: POWER_BOOST_DURATION_MINUTES), () {
-            if (!mounted) return;
-
-            setState(() {
-              _isPowerBoostActive = false;
-              _currentPowerBoostMultiplier = 0.0;
-              _powerBoostClickCount = 0;
-              _currentMiningRate = BASE_MINING_RATE;
-              _hashRate = 2.5;
-              _powerBoostStartTime = null;
-            });
-
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Power Boost ended! Mining rate back to normal',
-                  style: TextStyle(fontSize: 16),
-                ),
-                backgroundColor: Colors.orange,
-                duration: Duration(seconds: 3),
-              ),
-            );
-          });
+          _powerBoostTimer = Timer(
+            const Duration(minutes: POWER_BOOST_DURATION_MINUTES),
+            () {
+              if (!mounted) return;
+              setState(() {
+                _isPowerBoostActive = false;
+                _currentPowerBoostMultiplier = 0.0;
+              });
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Power Boost ended! Mining rate back to normal',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    backgroundColor: Colors.orange,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              }
+            },
+          );
 
           // Save state immediately after power boost activation
           await _saveMiningState();
