@@ -18,6 +18,8 @@ class MiningNotificationService {
   static String _currentHashRate = '0.0';
   static String _miningStatus = '⛏️ Mining in progress...';
   static DateTime? _miningStartTime;
+  static DateTime? _lastUpdateTime;
+  static String? _lastDuration; // Track last duration for change detection
 
   // Initialize the service
   static Future<void> initialize() async {
@@ -73,9 +75,9 @@ class MiningNotificationService {
       // Show initial notification
       await _showMiningNotification();
 
-      // Start periodic updates (every 1s for live timer)
+      // Start periodic updates (every 5 minutes to reduce notification spam)
       _updateTimer?.cancel();
-      _updateTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _updateTimer = Timer.periodic(const Duration(seconds: 300), (_) {
         _updateMiningNotification();
       });
 
@@ -156,10 +158,26 @@ class MiningNotificationService {
   // Update mining notification with new data
   static Future<void> _updateMiningNotification() async {
     if (!_isNotificationActive) return;
-    await _showMiningNotification();
+
+    // Only update if content has changed significantly
+    final newDuration = _getMiningDuration();
+    final lastUpdateTime =
+        _lastUpdateTime ?? DateTime.now().subtract(const Duration(minutes: 1));
+    final timeSinceLastUpdate =
+        DateTime.now().difference(lastUpdateTime).inSeconds;
+
+    // Minimum 5 minutes between updates to prevent spam
+    if (timeSinceLastUpdate < 300) return;
+
+    // Update every 5 minutes or if duration changed significantly
+    if (timeSinceLastUpdate >= 300 || _hasSignificantChange(newDuration)) {
+      await _showMiningNotification();
+      _lastUpdateTime = DateTime.now();
+      debugPrint('📱 Mining notification updated (timer-based)');
+    }
   }
 
-  // Update mining stats
+  // Update mining stats (called from UI updates)
   static void updateMiningStats({
     required String balance,
     required String hashRate,
@@ -168,6 +186,16 @@ class MiningNotificationService {
     _currentBalance = balance;
     _currentHashRate = hashRate;
     _miningStatus = status;
+
+    // Don't automatically update notification here
+    // Let the timer handle updates to prevent spam
+  }
+
+  // Manual update method for important changes
+  static Future<void> updateMiningNotification() async {
+    if (!_isNotificationActive) return;
+    await _showMiningNotification();
+    _lastUpdateTime = DateTime.now();
   }
 
   // Format balance to exactly 18 decimal places
@@ -252,5 +280,49 @@ class MiningNotificationService {
     if (Platform.isAndroid) {
       await overlay.FlutterOverlayWindow.closeOverlay();
     }
+  }
+
+  static bool _hasSignificantChange(String newDuration) {
+    // Check if duration has changed by at least 1 minute
+    // This prevents unnecessary updates for small time changes
+
+    if (_lastDuration == null) {
+      _lastDuration = newDuration;
+      return true; // First update
+    }
+
+    // Parse duration to check if it's significantly different
+    final currentMinutes = _parseDurationToMinutes(newDuration);
+    final lastMinutes = _parseDurationToMinutes(_lastDuration!);
+
+    // Update if difference is more than 1 minute
+    if ((currentMinutes - lastMinutes).abs() >= 1) {
+      _lastDuration = newDuration;
+      return true;
+    }
+
+    return false;
+  }
+
+  static int _parseDurationToMinutes(String duration) {
+    // Parse duration string like "5m 30s" or "1h 15m" to total minutes
+    try {
+      if (duration.contains('h')) {
+        final parts = duration.split('h');
+        final hours = int.parse(parts[0].trim());
+        final minutes = parts.length > 1
+            ? int.parse(parts[1].replaceAll('m', '').trim())
+            : 0;
+        return hours * 60 + minutes;
+      } else if (duration.contains('m')) {
+        final parts = duration.split('m');
+        return int.parse(parts[0].trim());
+      } else if (duration.contains('s')) {
+        return 0; // Less than 1 minute
+      }
+    } catch (e) {
+      debugPrint('Error parsing duration: $e');
+    }
+    return 0;
   }
 }

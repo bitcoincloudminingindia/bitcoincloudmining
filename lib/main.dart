@@ -23,6 +23,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -38,7 +39,11 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 // Background message handler
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Firebase is already initialized in main(), but check for safety
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
+  }
   debugPrint('📩 Background Message: ${message.messageId}');
 }
 
@@ -153,13 +158,16 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> with WindowListener {
+class _MyAppState extends State<MyApp>
+    with WindowListener, WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
     windowManager.addListener(this);
+    WidgetsBinding.instance.addObserver(this);
     _setupFCM();
     _setupNotificationListeners();
+    _requestOverlayPermission();
   }
 
   Future<void> _setupFCM() async {
@@ -261,12 +269,41 @@ class _MyAppState extends State<MyApp> with WindowListener {
     }
   }
 
+  Future<void> _requestOverlayPermission() async {
+    if (Platform.isAndroid) {
+      bool? isGranted = await FlutterOverlayWindow.isPermissionGranted();
+      if (isGranted != true) {
+        await FlutterOverlayWindow.requestPermission();
+      }
+    }
+  }
+
   @override
   void dispose() {
     windowManager.removeListener(this);
+    WidgetsBinding.instance.removeObserver(this);
     // Dispose audio service
     AudioService.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!Platform.isAndroid) return;
+    if (state == AppLifecycleState.paused) {
+      // App background me gaya, bubble show karo
+      FlutterOverlayWindow.showOverlay(
+        height: 100,
+        width: 100,
+        alignment: OverlayAlignment.centerLeft,
+        flag: OverlayFlag.defaultFlag,
+        visibility: NotificationVisibility.visibilityPublic,
+        enableDrag: true,
+      );
+    } else if (state == AppLifecycleState.resumed) {
+      // App foreground me aaya, bubble band karo
+      FlutterOverlayWindow.closeOverlay();
+    }
   }
 
   @override

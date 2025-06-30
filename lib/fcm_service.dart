@@ -145,7 +145,9 @@ class FcmService {
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
-    await Firebase.initializeApp();
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp();
+    }
     debugPrint('Handling a background message: ${message.messageId}');
   } catch (e) {
     debugPrint('Background message handler failed: $e');

@@ -121,6 +121,15 @@ class SoundNotificationService {
         case 'alert':
           soundPath = 'sounds/notification_alert.mp3';
           break;
+        case 'earning':
+          soundPath = 'sounds/earning_notification.mp3';
+          break;
+        case 'coin_drop':
+          soundPath = 'sounds/coin_drop.mp3';
+          break;
+        case 'success_chime':
+          soundPath = 'sounds/success_chime.mp3';
+          break;
         default:
           soundPath = 'sounds/notification_alert.mp3';
       }
@@ -129,6 +138,43 @@ class SoundNotificationService {
       debugPrint('🔊 Playing notification sound: $soundType');
     } catch (e) {
       debugPrint('❌ Error playing notification sound: $e');
+    }
+  }
+
+  // Play earning notification sound specifically
+  static Future<void> playEarningSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('sounds/earning_notification.mp3'));
+      debugPrint('💰 Playing earning notification sound');
+    } catch (e) {
+      debugPrint('❌ Error playing earning sound: $e');
+      // Fallback to coin drop sound
+      try {
+        await _audioPlayer.play(AssetSource('sounds/coin_drop.mp3'));
+        debugPrint('🪙 Playing fallback coin drop sound');
+      } catch (e2) {
+        debugPrint('❌ Error playing fallback sound: $e2');
+      }
+    }
+  }
+
+  // Play coin drop sound for immediate feedback
+  static Future<void> playCoinDropSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('sounds/coin_drop.mp3'));
+      debugPrint('🪙 Playing coin drop sound');
+    } catch (e) {
+      debugPrint('❌ Error playing coin drop sound: $e');
+    }
+  }
+
+  // Play success chime for achievements
+  static Future<void> playSuccessChime() async {
+    try {
+      await _audioPlayer.play(AssetSource('sounds/success_chime.mp3'));
+      debugPrint('🎵 Playing success chime');
+    } catch (e) {
+      debugPrint('❌ Error playing success chime: $e');
     }
   }
 

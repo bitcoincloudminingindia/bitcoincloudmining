@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/wallet_provider.dart';
+import '../services/sound_notification_service.dart';
 import '../utils/color_constants.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/game_timer_widget.dart';
@@ -257,6 +258,9 @@ class _CryptoRunnerGameScreenState extends State<CryptoRunnerGameScreen>
         type: 'game_reward',
         description: 'Crypto Runner',
       );
+
+      // Play earning sound for game completion
+      SoundNotificationService.playEarningSound();
     }
 
     _showGameOverDialog(finalReward);

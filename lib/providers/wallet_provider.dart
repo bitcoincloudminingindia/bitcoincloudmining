@@ -279,6 +279,9 @@ class WalletProvider extends ChangeNotifier {
           type: type,
         );
 
+        // Play earning sound for immediate feedback
+        await SoundNotificationService.playEarningSound();
+
         debugPrint('✅ Earning added successfully');
       } else {
         debugPrint('❌ Failed to add earning: ${result['message']}');

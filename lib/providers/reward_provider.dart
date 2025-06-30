@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../config/api_config.dart';
 import '../services/api_service.dart';
+import '../services/sound_notification_service.dart';
 // import 'package:http/http.dart' as http;
 // import 'dart:convert';
 
@@ -270,6 +271,10 @@ class RewardProvider with ChangeNotifier {
         type: 'social_reward',
         description: 'YouTube Subscribe Bonus',
       );
+
+      // Play earning sound for social media reward
+      SoundNotificationService.playEarningSound();
+
       _balance += reward;
       _saveData();
       notifyListeners();
@@ -287,6 +292,10 @@ class RewardProvider with ChangeNotifier {
         type: 'tap_reward',
         description: '${source ?? 'Sci-Fi Objects'} - 100 Taps Bonus',
       );
+
+      // Play success chime for tap milestone
+      SoundNotificationService.playSuccessChime();
+
       _balance += reward;
     }
     _saveData();
@@ -310,6 +319,10 @@ class RewardProvider with ChangeNotifier {
         type: 'ad_reward',
         description: 'Video Ads - 10 Ads Bonus',
       );
+
+      // Play earning sound for ad bonus
+      SoundNotificationService.playEarningSound();
+
       _balance += reward;
       _saveData();
       notifyListeners();
@@ -345,6 +358,10 @@ class RewardProvider with ChangeNotifier {
         type: 'daily_reward',
         description: 'Daily Gaming Reward',
       );
+
+      // Play earning sound for daily reward
+      SoundNotificationService.playEarningSound();
+
       _balance += reward;
       _saveData();
       notifyListeners();
@@ -370,6 +387,10 @@ class RewardProvider with ChangeNotifier {
         type: 'daily_reward',
         description: 'Daily Mining Reward',
       );
+
+      // Play earning sound for daily mining reward
+      SoundNotificationService.playEarningSound();
+
       _balance += reward;
       _saveData();
       notifyListeners();
@@ -400,6 +421,10 @@ class RewardProvider with ChangeNotifier {
         type: 'hourly_reward',
         description: 'Hourly Mining Bonus',
       );
+
+      // Play earning sound for hourly reward
+      SoundNotificationService.playEarningSound();
+
       _balance += reward;
       _saveData();
       notifyListeners();
@@ -424,6 +449,10 @@ class RewardProvider with ChangeNotifier {
         type: 'tap_reward',
         description: 'Sci-Fi Objects - 1000 Taps Milestone',
       );
+
+      // Play success chime for milestone achievement
+      SoundNotificationService.playSuccessChime();
+
       _balance += reward;
       _saveData();
       notifyListeners();
@@ -474,6 +503,10 @@ class RewardProvider with ChangeNotifier {
           type: 'social_reward',
           description: '$platformName Follow Reward',
         );
+
+        // Play earning sound for social media reward
+        SoundNotificationService.playEarningSound();
+
         _balance += reward;
         _saveData();
         notifyListeners();
@@ -487,6 +520,10 @@ class RewardProvider with ChangeNotifier {
       type: 'bulk_reward',
       description: 'All Rewards Bulk Claim',
     );
+
+    // Play earning sound for bulk reward claim
+    SoundNotificationService.playEarningSound();
+
     _balance += _pendingRewards;
     _pendingRewards = 0.0;
     _saveData();
@@ -502,6 +539,10 @@ class RewardProvider with ChangeNotifier {
         type: 'double_reward',
         description: 'Double Rewards Bonus',
       );
+
+      // Play success chime for double reward
+      SoundNotificationService.playSuccessChime();
+
       _balance += additionalReward;
       _canDoubleReward = false;
       _saveData();
@@ -519,6 +560,10 @@ class RewardProvider with ChangeNotifier {
       type: 'ad_reward',
       description: '${source ?? 'Video Ad'} View Reward',
     );
+
+    // Play earning sound for ad reward
+    SoundNotificationService.playEarningSound();
+
     _balance += reward;
     _saveData();
     notifyListeners();
@@ -561,6 +606,10 @@ class RewardProvider with ChangeNotifier {
         type: 'streak_reward',
         description: 'Daily Streak Bonus',
       );
+
+      // Play success chime for streak bonus
+      SoundNotificationService.playSuccessChime();
+
       _balance += reward;
       _saveData();
       notifyListeners();
@@ -577,6 +626,10 @@ class RewardProvider with ChangeNotifier {
       type: 'daily_reward',
       description: '${source ?? 'Daily'} Login Bonus',
     );
+    
+    // Play earning sound for daily bonus
+    SoundNotificationService.playEarningSound();
+    
     _balance += reward;
     _saveData();
     notifyListeners();

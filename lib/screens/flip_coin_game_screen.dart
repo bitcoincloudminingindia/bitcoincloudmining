@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:decimal/decimal.dart';
@@ -7,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/wallet_provider.dart';
 import '../services/ad_service.dart';
+import '../services/sound_notification_service.dart';
 import '../utils/color_constants.dart';
 import '../widgets/custom_app_bar.dart';
 
@@ -193,6 +195,9 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
         type: 'game',
         description: 'Flip Coin Game Earnings',
       );
+
+      // Play earning sound for game completion
+      await SoundNotificationService.playEarningSound();
 
       debugPrint('✅ Flip Coin earnings transferred successfully');
 

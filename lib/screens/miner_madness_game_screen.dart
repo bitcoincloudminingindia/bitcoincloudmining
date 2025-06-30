@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../providers/wallet_provider.dart';
 import '../services/ad_service.dart';
+import '../services/sound_notification_service.dart';
 
 class MinerMadnessGameScreen extends StatefulWidget {
   final String gameTitle;
@@ -339,6 +340,9 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
     try {
       await walletProvider.addEarning(widget.baseWinAmount,
           type: 'game', description: 'Miner Madness - 1000 Spins Bonus');
+
+      // Play success chime for achievement
+      await SoundNotificationService.playSuccessChime();
 
       // Show bonus notification
       if (mounted) {

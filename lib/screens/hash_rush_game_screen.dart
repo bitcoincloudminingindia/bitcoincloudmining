@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
+import 'package:bitcoin_cloud_mining/services/sound_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -37,6 +38,9 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
   Timer? periodicSaveTimer;
   final AdService _adService = AdService();
 
+  // New: Ad required state
+  bool isRewardedAdRequired = false;
+
   List<Task> taskList = [
     Task(title: '200 Taps', target: 200),
     Task(title: 'Boost Mining 200 Tap Count', target: 200),
@@ -51,6 +55,20 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
     _initializeAds();
     loadTaskData();
     _startPeriodicSaveTimer();
+    // New: Check if ad was required from previous session
+    _loadAdRequiredState();
+  }
+
+  Future<void> _loadAdRequiredState() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      isRewardedAdRequired = prefs.getBool('hashrush_ad_required') ?? false;
+    });
+  }
+
+  Future<void> _saveAdRequiredState(bool required) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hashrush_ad_required', required);
   }
 
   Future<void> _initializeAds() async {
@@ -117,6 +135,8 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
 
   @override
   void dispose() {
+    // Save ad required state
+    _saveAdRequiredState(isRewardedAdRequired);
     // Save any pending earnings before disposing
     if (earnedBTC > 0) {
       try {
@@ -284,11 +304,30 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
 
   Widget? countdownWidget;
 
-  void handleTap() {
+  void handleTap() async {
+    if (isRewardedAdRequired) {
+      // Show ad first, then allow tap
+      await showRewardedAd(() {
+        setState(() {
+          isRewardedAdRequired = false;
+        });
+        _saveAdRequiredState(false);
+      });
+      return;
+    }
     tapCount++;
-
     if (tapCount % 25 == 0) {
-      showRewardedAd(executeTapLogic);
+      setState(() {
+        isRewardedAdRequired = true;
+      });
+      _saveAdRequiredState(true);
+      await showRewardedAd(() {
+        setState(() {
+          isRewardedAdRequired = false;
+        });
+        _saveAdRequiredState(false);
+        executeTapLogic();
+      });
     } else {
       executeTapLogic();
     }
@@ -429,6 +468,9 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
           description: 'Hash Rush - Game Earnings',
         );
 
+        // Play earning sound for game completion
+        await SoundNotificationService.playEarningSound();
+
         debugPrint('✅ Hash Rush earnings saved successfully');
 
         if (mounted) {
@@ -500,6 +542,9 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
         type: 'game',
         description: 'Hash Rush - Periodic Save',
       );
+
+      // Play coin drop sound for periodic save
+      await SoundNotificationService.playCoinDropSound();
 
       // Reset earned BTC after saving
       setState(() {
@@ -604,32 +649,51 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               GestureDetector(
-                                onTap: handleTap,
-                                child: Container(
-                                  height: 150,
-                                  width: 150,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(
-                                      colors: [Colors.amber, Colors.deepOrange],
+                                onTap: isRewardedAdRequired ? null : handleTap,
+                                child: Opacity(
+                                  opacity: isRewardedAdRequired ? 0.5 : 1.0,
+                                  child: Container(
+                                    height: 150,
+                                    width: 150,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.amber,
+                                          Colors.deepOrange
+                                        ],
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color:
+                                              Color.fromRGBO(255, 255, 0, 0.5),
+                                          blurRadius: 12,
+                                          offset: Offset(0, 8),
+                                        )
+                                      ],
                                     ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Color.fromRGBO(255, 255, 0, 0.5),
-                                        blurRadius: 12,
-                                        offset: Offset(0, 8),
-                                      )
-                                    ],
-                                  ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.flash_on,
-                                      color: Colors.white,
-                                      size: 70,
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.flash_on,
+                                        color: Colors.white,
+                                        size: 70,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
+                              if (isRewardedAdRequired)
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 12.0),
+                                  child: Text(
+                                    'Watch rewarded ad to continue!',
+                                    style: TextStyle(
+                                      color: Colors.redAccent,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
                               const SizedBox(height: 24),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,

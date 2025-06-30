@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
+import 'package:bitcoin_cloud_mining/services/sound_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -537,6 +538,9 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
           type: 'game',
           description: 'Crypto Craze Game Earnings - Level $_currentLevel',
         );
+
+        // Play earning sound for game completion
+        await SoundNotificationService.playEarningSound();
 
         debugPrint('✅ Crypto Craze earnings saved successfully');
 

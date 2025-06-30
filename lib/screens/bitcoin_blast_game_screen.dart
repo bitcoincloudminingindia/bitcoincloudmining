@@ -4,11 +4,10 @@ import 'dart:math';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
+import 'package:bitcoin_cloud_mining/services/sound_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-
-
 
 class BitcoinBlastGameScreen extends StatefulWidget {
   final String gameTitle;
@@ -174,6 +173,10 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
               type: 'tap',
               description: 'Bitcoin Blast - Ad Reward',
             );
+
+            // Play earning sound for ad reward
+            SoundNotificationService.playEarningSound();
+
             onRewarded();
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -464,6 +467,9 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
         type: 'game',
         description: 'Bitcoin Blast - Game Earnings',
       );
+
+      // Play earning sound for game completion
+      SoundNotificationService.playEarningSound();
     }
 
     Navigator.pop(context, gameEarnings);

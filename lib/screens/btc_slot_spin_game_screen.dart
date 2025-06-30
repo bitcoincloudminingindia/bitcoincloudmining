@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
+import 'package:bitcoin_cloud_mining/services/sound_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -128,7 +129,16 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
         _showInterstitialAd();
       }
 
-      spinTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+      // Total spin duration: 5 seconds (5000 ms)
+      const int totalSpinDurationMs = 5000;
+      const int fastSpinMs = 200;
+      const int slowSpinMs = 400;
+      const int fastSpinCount = totalSpinDurationMs * 0.7 ~/ fastSpinMs;
+      const int slowSpinCount = totalSpinDurationMs * 0.3 ~/ slowSpinMs;
+      const int maxSpinCount = fastSpinCount + slowSpinCount;
+
+      spinTimer =
+          Timer.periodic(const Duration(milliseconds: fastSpinMs), (timer) {
         setState(() {
           for (int i = 0; i < 3; i++) {
             // Move symbols down
@@ -139,9 +149,10 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
           }
           spinCount++;
 
-          if (spinCount > maxSpins * 0.7) {
+          if (spinCount >= fastSpinCount) {
             timer.cancel();
-            Timer.periodic(const Duration(milliseconds: 400), (slowTimer) {
+            Timer.periodic(const Duration(milliseconds: slowSpinMs),
+                (slowTimer) {
               setState(() {
                 for (int i = 0; i < 3; i++) {
                   // Move symbols down slowly
@@ -152,7 +163,7 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
                 }
                 spinCount++;
 
-                if (spinCount >= maxSpins) {
+                if (spinCount >= maxSpinCount) {
                   slowTimer.cancel();
                   isSpinning = false;
                   currentResults = reels.map((reel) => reel[2]).toList();
@@ -250,6 +261,9 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
         type: 'game',
         description: 'Won from ${widget.gameTitle}',
       );
+
+      // Play earning sound for game completion
+      SoundNotificationService.playEarningSound();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

@@ -156,13 +156,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _updateMiningProgressFromElapsed();
           _startMiningUiTimer();
 
-          // Resume mining notification if it was active
-          if (!MiningNotificationService.isActive) {
+          // Don't start notification here as it's already active from _startMiningProcess
+          // Just update the existing notification if needed
+          if (MiningNotificationService.isActive) {
             final walletProvider = context.read<WalletProvider>();
             final currentBalance = walletProvider.balance.toStringAsFixed(18);
-            MiningNotificationService.startMiningNotification(
-              initialBalance: currentBalance,
-              initialHashRate: _hashRate.toStringAsFixed(1),
+            MiningNotificationService.updateMiningStats(
+              balance: currentBalance,
+              hashRate: _hashRate.toStringAsFixed(1),
+              status: _isPowerBoostActive
+                  ? '⛏️ Mining with Power Boost!'
+                  : '⛏️ Mining in progress...',
             );
           }
         }
@@ -425,6 +429,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           type: 'mining',
         );
 
+        // Play earning sound for mining completion
+        await SoundNotificationService.playEarningSound();
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -482,7 +489,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (_miningProgress > 100) _miningProgress = 100;
     });
 
-    // Update mining notification with new stats
+    // Update mining notification stats (but don't trigger immediate update)
+    // Let the timer handle notification updates to prevent spam
     if (MiningNotificationService.isActive) {
       final walletProvider = context.read<WalletProvider>();
       final currentBalance = walletProvider.balance.toStringAsFixed(18);
@@ -1001,6 +1009,37 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 setState(() {});
               },
             ),
+            // Native Ad Container (same as contract screen)
+            Container(
+              height: 250,
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              child: _adService.isNativeAdLoaded
+                  ? _adService.getNativeAd()
+                  : Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.ads_click, color: Colors.grey, size: 24),
+                            SizedBox(height: 4),
+                            Text(
+                              'Ad Loading...',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+            ),
             const SizedBox(height: 16),
             // Add Server Connection Animation
             ServerConnectionAnimation(
@@ -1515,7 +1554,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _startAdTimer() {
     _adTimer?.cancel();
-    _adTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+    _adTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
       if (mounted && _isMining) {
         _showRewardedAd();
       }
@@ -1528,11 +1567,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (rewardedAd != null && mounted) {
         await rewardedAd.show(
           onUserEarnedReward: (_, reward) {
-            // Apply mining boost
+            // Apply mining boost with incremental logic (same as manual boost)
             setState(() {
               _isPowerBoostActive = true;
-              _currentPowerBoostMultiplier = 2.0;
+              _powerBoostClickCount++;
+
+              // Calculate new multiplier (same logic as manual boost)
+              if (_powerBoostClickCount == 1) {
+                _currentPowerBoostMultiplier = INITIAL_POWER_BOOST_RATE;
+              } else {
+                _currentPowerBoostMultiplier += POWER_BOOST_INCREMENT;
+              }
+
+              // Update mining rate with new multiplier
+              _currentMiningRate =
+                  BASE_MINING_RATE * (1 + _currentPowerBoostMultiplier);
+              _hashRate = 2.5 * (1 + _currentPowerBoostMultiplier);
+              _powerBoostStartTime = DateTime.now();
             });
+
+            // Show boost activation message
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Auto Power Boost activated! Mining rate increased by ${(_currentPowerBoostMultiplier * 100).toStringAsFixed(0)}%\n'
+                    'New rate: ${_currentMiningRate.toStringAsFixed(18)} BTC/sec\n'
+                    'New hash rate: ${_hashRate.toStringAsFixed(1)} GH/s\n'
+                    'Duration: 5 minutes',
+                  ),
+                  backgroundColor: Colors.green,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            }
 
             // Start power boost timer
             _powerBoostTimer?.cancel();
@@ -1543,6 +1611,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 setState(() {
                   _isPowerBoostActive = false;
                   _currentPowerBoostMultiplier = 0.0;
+                  _hashRate = 2.5;
                 });
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -1558,6 +1627,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 }
               },
             );
+
+            // Save state immediately after power boost activation
+            _saveMiningState();
           },
         );
       }
@@ -1617,6 +1689,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               setState(() {
                 _isPowerBoostActive = false;
                 _currentPowerBoostMultiplier = 0.0;
+                _hashRate = 2.5;
               });
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1693,6 +1766,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         description: 'Tap reward',
       );
 
+      // Play coin drop sound for tap reward
+      await SoundNotificationService.playCoinDropSound();
+
       if (mounted) {
         Fluttertoast.showToast(
           msg: 'Magic tapped! +${TAP_REWARD_RATE.toStringAsFixed(18)} BTC',
@@ -1732,6 +1808,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 type: 'ad_reward',
                 description: 'Sci-Fi Ad Reward (5x Bonus)',
               );
+
+              // Play earning sound for ad reward
+              await SoundNotificationService.playEarningSound();
 
               if (mounted) {
                 Fluttertoast.showToast(

@@ -650,48 +650,58 @@ class _ContractScreenState extends State<ContractScreen>
           }
         });
 
+        // 3 ad positions: after 3rd, 6th, 9th contract
+        final adPositions = <int>{3, 6, 9};
+        final totalItems = contracts.length + adPositions.length;
+
         return ListView.builder(
           padding: const EdgeInsets.all(16.0),
-          itemCount: contracts.length *
-              2, // Double the count to add ads between contracts
+          itemCount: totalItems,
           itemBuilder: (context, index) {
-            // If index is odd, show ad
-            if (index.isOdd) {
-              return Container(
-                height: 250,
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                child: _adService.isNativeAdLoaded
-                    ? _adService.getNativeAd()
-                    : Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[300]!),
-                        ),
-                        child: const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.ads_click,
-                                  color: Colors.grey, size: 24),
-                              SizedBox(height: 4),
-                              Text(
-                                'Ad Loading...',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
+            // Agar index ad position hai, to ad dikhayein
+            int adsShown = 0;
+            for (final pos in adPositions) {
+              if (index == pos + adsShown) {
+                adsShown++;
+                return Container(
+                  height: 250,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: _adService.isNativeAdLoaded
+                      ? _adService.getNativeAd()
+                      : Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.ads_click,
+                                    color: Colors.grey, size: 24),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Ad Loading...',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-              );
+                );
+              }
             }
 
-            // If index is even, show contract
-            final contractIndex = index ~/ 2;
+            // Contract index nikalna (ads ke hisab se adjust kar ke)
+            int contractIndex = index;
+            for (final pos in adPositions) {
+              if (index > pos) contractIndex--;
+            }
             final contract = contracts[contractIndex];
             final bool isCompleted = contract['isCompleted'] ?? false;
             final bool canWatchAd = _canWatchAd() && _isAdInitialized;

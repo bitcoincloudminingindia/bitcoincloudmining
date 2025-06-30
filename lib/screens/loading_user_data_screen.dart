@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
@@ -20,6 +23,54 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
   @override
   void initState() {
     super.initState();
+    _checkAndRequestPermissions();
+  }
+
+  Future<void> _checkAndRequestPermissions() async {
+    setState(() {
+      _loadingMessage = 'Checking permissions...';
+    });
+    // 1. Location permission
+    bool locationGranted = false;
+    LocationPermission locPerm = await Geolocator.checkPermission();
+    if (locPerm == LocationPermission.denied ||
+        locPerm == LocationPermission.deniedForever) {
+      locPerm = await Geolocator.requestPermission();
+    }
+    locationGranted = locPerm == LocationPermission.always ||
+        locPerm == LocationPermission.whileInUse;
+
+    // 2. Notification permission
+    bool notificationGranted = false;
+    if (await Permission.notification.isGranted) {
+      notificationGranted = true;
+    } else {
+      final notifStatus = await Permission.notification.request();
+      notificationGranted = notifStatus.isGranted;
+    }
+
+    // 3. Overlay permission (Android only)
+    bool overlayGranted = true;
+    try {
+      overlayGranted = await FlutterOverlayWindow.isPermissionGranted();
+      if (!overlayGranted) {
+        await FlutterOverlayWindow.requestPermission();
+        overlayGranted = await FlutterOverlayWindow.isPermissionGranted();
+      }
+    } catch (e) {
+      // ignore overlay check on iOS/web
+      overlayGranted = true;
+    }
+
+    if (!locationGranted || !notificationGranted || !overlayGranted) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage =
+            'App ko chalane ke liye location, notification, aur display overlay permissions required hain.\n\nKripya sabhi permissions allow karein.';
+      });
+      return;
+    }
+    // Sari permissions mil gayi, ab data load karo
     _loadUserData();
   }
 
@@ -153,7 +204,7 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
                       _isLoading = true;
                       _errorMessage = null;
                     });
-                    _loadUserData();
+                    _checkAndRequestPermissions();
                   },
                   child: const Text('Retry'),
                 ),

@@ -4,6 +4,7 @@ import 'package:bitcoin_cloud_mining/providers/reward_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/screens/referral_screen.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
+import 'package:bitcoin_cloud_mining/services/sound_notification_service.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -514,8 +515,9 @@ class DailyRewardSection extends StatelessWidget {
                   amount: rewardProvider.dailyPlayReward,
                   requiresAd:
                       rewardProvider.requiresAdForReward('daily_reward'),
-                  onSuccess: () {
-                    // No additional action needed after claiming
+                  onSuccess: () async {
+                    // Play earning sound for daily reward
+                    await SoundNotificationService.playEarningSound();
                   },
                 );
               },
@@ -535,8 +537,9 @@ class DailyRewardSection extends StatelessWidget {
                   amount: rewardProvider.dailyMineReward,
                   requiresAd:
                       rewardProvider.requiresAdForReward('daily_mine_reward'),
-                  onSuccess: () {
-                    // No additional action needed after claiming
+                  onSuccess: () async {
+                    // Play earning sound for daily mining reward
+                    await SoundNotificationService.playEarningSound();
                   },
                 );
               },
@@ -571,8 +574,9 @@ class DailyRewardSection extends StatelessWidget {
                         rewardType: 'social_media_reward',
                         amount: rewardProvider.socialMediaReward,
                         requiresAd: false, // Set to false to skip ad
-                        onSuccess: () {
-                          // No additional action needed after claiming
+                        onSuccess: () async {
+                          // Play earning sound for social media reward
+                          await SoundNotificationService.playEarningSound();
                         },
                       );
                     }
@@ -596,8 +600,9 @@ class DailyRewardSection extends StatelessWidget {
                   rewardType: 'ad_reward',
                   amount: rewardProvider.adReward,
                   requiresAd: true,
-                  onSuccess: () {
-                    // No additional action needed after claiming
+                  onSuccess: () async {
+                    // Play earning sound for ad reward
+                    await SoundNotificationService.playEarningSound();
                   },
                 );
               },
@@ -820,7 +825,9 @@ class _HourlyRewardSectionState extends State<HourlyRewardSection> {
                   rewardType: 'streak_reward',
                   amount: rewardProvider.streakBonusReward,
                   requiresAd: rewardProvider.canClaimStreakBonus,
-                  onSuccess: () {
+                  onSuccess: () async {
+                    // Play success chime for streak bonus
+                    await SoundNotificationService.playSuccessChime();
                     // Optionally trigger confetti here
                     // widget.rewardClaimHandler.confettiController?.play();
                   },
