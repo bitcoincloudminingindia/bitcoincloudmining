@@ -249,12 +249,12 @@ class _MyAppState extends State<MyApp>
       final headers = ApiConfig.getHeaders(token: jwtToken);
 
       debugPrint(
-          '📤 Sending FCM token to backend: ${token.substring(0, 20)}...');
+          '📤 Sending FCM token to backend: [33m${token.substring(0, 20)}...[0m');
 
       final response = await http.post(
         url,
         headers: headers,
-        body: '{"token": "$token"}',
+        body: '{"fcmToken": "$token"}',
       );
 
       if (response.statusCode == 200) {

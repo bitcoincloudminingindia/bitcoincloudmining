@@ -1,14 +1,18 @@
 import 'dart:io' show exit, Platform;
 
+import 'package:bitcoin_cloud_mining/fcm_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
+import '../config/api_config.dart';
 import '../providers/auth_provider.dart';
 import '../screens/auth/reset_password_screen.dart';
 import '../screens/loading_user_data_screen.dart';
 import '../services/notification_service.dart';
 import '../utils/constants.dart';
+import '../utils/storage_utils.dart';
 import '../utils/validators.dart' as form_validators;
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
@@ -83,18 +87,26 @@ class _LoginDialogState extends State<LoginDialog> {
 
       if (result['success'] == true) {
         // Request mandatory notification permission after successful login
-        final notificationService = Provider.of<NotificationService>(context, listen: false);
-        final permissionGranted = await notificationService.requestMandatoryPermission(context);
-        
+        final notificationService =
+            Provider.of<NotificationService>(context, listen: false);
+        final permissionGranted =
+            await notificationService.requestMandatoryPermission(context);
+
         if (!permissionGranted) {
           // If permission not granted, show error and stay on login screen
           setState(() {
-            _errorMessage = 'Notification permission is required to use this app. Please allow notifications and try again.';
+            _errorMessage =
+                'Notification permission is required to use this app. Please allow notifications and try again.';
             _isLoading = false;
           });
           return;
         }
-        
+
+        // FCM token ko login ke turant baad backend ko bhejo
+        final token = await FcmService.getFcmToken();
+        if (token != null) {
+          await _sendTokenToBackend(token);
+        }
         // Close login dialog
         Navigator.of(context).pop();
 
@@ -117,6 +129,28 @@ class _LoginDialogState extends State<LoginDialog> {
         _errorMessage = 'An error occurred during login. Please try again.';
         _isLoading = false;
       });
+    }
+  }
+
+  // Helper function to send FCM token to backend
+  Future<void> _sendTokenToBackend(String token) async {
+    try {
+      final jwtToken = await StorageUtils.getToken();
+      final url = Uri.parse(ApiConfig.fcmTokenUrl);
+      final headers = ApiConfig.getHeaders(token: jwtToken);
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: '{"fcmToken": "$token"}',
+      );
+      if (response.statusCode == 200) {
+        debugPrint('✅ FCM token sent to backend successfully (login)');
+      } else {
+        debugPrint(
+            '❌ Failed to send FCM token to backend (login): \\${response.body}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error sending FCM token to backend (login): $e');
     }
   }
 
