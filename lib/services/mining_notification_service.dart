@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_overlay_window/flutter_overlay_window.dart' as overlay;
 
 class MiningNotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
@@ -257,29 +256,6 @@ class MiningNotificationService {
   static void dispose() {
     _updateTimer?.cancel();
     _updateTimer = null;
-  }
-
-  // Android floating bubble (show)
-  static Future<void> showFloatingBubble() async {
-    if (Platform.isAndroid) {
-      if (!await overlay.FlutterOverlayWindow.isPermissionGranted()) {
-        await overlay.FlutterOverlayWindow.requestPermission();
-      }
-      await overlay.FlutterOverlayWindow.showOverlay(
-        height: 80,
-        width: 80,
-        alignment: overlay.OverlayAlignment.centerLeft,
-        flag: overlay.OverlayFlag.defaultFlag,
-        visibility: overlay.NotificationVisibility.visibilityPublic,
-      );
-    }
-  }
-
-  // Android floating bubble (hide)
-  static Future<void> hideFloatingBubble() async {
-    if (Platform.isAndroid) {
-      await overlay.FlutterOverlayWindow.closeOverlay();
-    }
   }
 
   static bool _hasSignificantChange(String newDuration) {

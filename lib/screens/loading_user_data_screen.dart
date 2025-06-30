@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
@@ -49,24 +48,11 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
       notificationGranted = notifStatus.isGranted;
     }
 
-    // 3. Overlay permission (Android only)
-    bool overlayGranted = true;
-    try {
-      overlayGranted = await FlutterOverlayWindow.isPermissionGranted();
-      if (!overlayGranted) {
-        await FlutterOverlayWindow.requestPermission();
-        overlayGranted = await FlutterOverlayWindow.isPermissionGranted();
-      }
-    } catch (e) {
-      // ignore overlay check on iOS/web
-      overlayGranted = true;
-    }
-
-    if (!locationGranted || !notificationGranted || !overlayGranted) {
+    if (!locationGranted || !notificationGranted) {
       setState(() {
         _isLoading = false;
         _errorMessage =
-            'App ko chalane ke liye location, notification, aur display overlay permissions required hain.\n\nKripya sabhi permissions allow karein.';
+            'Permissions required. Please allow location and notification permissions.';
       });
       return;
     }

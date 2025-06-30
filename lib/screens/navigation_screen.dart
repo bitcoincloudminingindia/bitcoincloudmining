@@ -294,20 +294,28 @@ class _NavigationScreenState extends State<NavigationScreen>
                       // Network status indicator between contract and wallet
                       BottomNavigationBarItem(
                         icon: Container(
-                          padding: const EdgeInsets.all(4), // Chhota kiya
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
+                          padding: const EdgeInsets.all(0),
+                          child: CircleAvatar(
+                            radius: 22, // Bada kiya
+                            backgroundColor: Colors.white,
+                            child: Image.asset(
+                              'assets/images/app_logo.png',
+                              width: 32,
+                              height: 32,
+                            ),
                           ),
-                          child: _getNetworkIcon(networkProvider),
                         ),
                         activeIcon: Container(
-                          padding: const EdgeInsets.all(4), // Chhota kiya
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
+                          padding: const EdgeInsets.all(0),
+                          child: CircleAvatar(
+                            radius: 24, // Bada kiya
+                            backgroundColor: Colors.amber.withAlpha(60),
+                            child: Image.asset(
+                              'assets/images/app_logo.png',
+                              width: 36,
+                              height: 36,
+                            ),
                           ),
-                          child: _getNetworkIcon(networkProvider),
                         ),
                         label: '', // Empty label
                       ),

@@ -337,9 +337,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         initialHashRate: _hashRate.toStringAsFixed(1),
       );
 
-      // Floating bubble show karo
-      await MiningNotificationService.showFloatingBubble();
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -361,8 +358,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _resetMiningState() async {
     // Mining complete par notification update karo (remove mat karo)
     await MiningNotificationService.completeMiningNotification();
-    // Floating bubble hide karo
-    await MiningNotificationService.hideFloatingBubble();
 
     _cancelAllTimers();
     _uiUpdateTimer?.cancel();

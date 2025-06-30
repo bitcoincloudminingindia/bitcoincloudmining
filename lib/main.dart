@@ -167,12 +167,10 @@ class _MyAppState extends State<MyApp>
     WidgetsBinding.instance.addObserver(this);
     _setupFCM();
     _setupNotificationListeners();
-    _requestOverlayPermission();
   }
 
   Future<void> _setupFCM() async {
     try {
-      await FcmService.requestPermission();
       final token = await FcmService.getFcmToken();
       if (token != null) {
         await sendTokenToBackend(token);
@@ -266,15 +264,6 @@ class _MyAppState extends State<MyApp>
       }
     } catch (e) {
       debugPrint('❌ Error sending FCM token to backend: $e');
-    }
-  }
-
-  Future<void> _requestOverlayPermission() async {
-    if (Platform.isAndroid) {
-      bool? isGranted = await FlutterOverlayWindow.isPermissionGranted();
-      if (isGranted != true) {
-        await FlutterOverlayWindow.requestPermission();
-      }
     }
   }
 
