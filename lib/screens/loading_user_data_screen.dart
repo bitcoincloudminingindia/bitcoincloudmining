@@ -4,6 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../providers/network_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../services/api_service.dart';
 
@@ -56,6 +57,19 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
       });
       return;
     }
+
+    // Location granted, ab current location fetch karo aur NetworkProvider me set karo
+    try {
+      final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      final networkProvider =
+          Provider.of<NetworkProvider>(context, listen: false);
+      await networkProvider.setUserLocationFromCoordinates(
+          position.latitude, position.longitude);
+    } catch (e) {
+      // Agar location fetch na ho paye to ignore karo, Unknown dikhega
+    }
+
     // Sari permissions mil gayi, ab data load karo
     _loadUserData();
   }

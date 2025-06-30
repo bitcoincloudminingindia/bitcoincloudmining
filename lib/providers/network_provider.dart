@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:bitcoin_cloud_mining/services/network_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:geocoding/geocoding.dart';
 
 class NetworkProvider extends ChangeNotifier {
   final NetworkService _networkService = NetworkService();
@@ -10,6 +11,7 @@ class NetworkProvider extends ChangeNotifier {
   String _connectionType = 'Unknown';
   bool _isInitialized = false;
   String _currentServer = 'Singapore';
+  String? _userLocation;
 
   // Getters
   bool get isConnected => _isConnected;
@@ -17,6 +19,7 @@ class NetworkProvider extends ChangeNotifier {
   bool get isInitialized => _isInitialized;
   Stream<bool> get connectionStatus => _networkService.connectionStatus;
   String get currentServer => _currentServer;
+  String? get userLocation => _userLocation;
   set currentServer(String value) {
     _currentServer = value;
     notifyListeners();
@@ -138,6 +141,28 @@ class NetworkProvider extends ChangeNotifier {
   // Get offline message
   String getOfflineMessage() {
     return 'This app requires an internet connection to function properly. Please check your connection and try again.';
+  }
+
+  // Set user location from coordinates (reverse geocode)
+  Future<void> setUserLocationFromCoordinates(
+      double latitude, double longitude) async {
+    try {
+      final List<Placemark> placemarks =
+          await placemarkFromCoordinates(latitude, longitude);
+      if (placemarks.isNotEmpty) {
+        final Placemark place = placemarks.first;
+        _userLocation = [
+          if (place.locality != null && place.locality!.isNotEmpty)
+            place.locality,
+          if (place.country != null && place.country!.isNotEmpty) place.country
+        ].whereType<String>().join(', ');
+      } else {
+        _userLocation = 'Unknown';
+      }
+    } catch (e) {
+      _userLocation = 'Unknown';
+    }
+    notifyListeners();
   }
 
   @override

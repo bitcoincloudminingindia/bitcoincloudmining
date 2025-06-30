@@ -3,7 +3,6 @@ import 'package:bitcoin_cloud_mining/screens/home_screen.dart'; // Import HomeSc
 // import 'package:bitcoin_cloud_mining/screens/rewards_screen.dart'; // रिवॉर्ड्स स्क्रीन को हटा दिया
 import 'package:bitcoin_cloud_mining/screens/setting_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
 import 'contract_screen.dart';
@@ -105,65 +104,337 @@ class _NavigationScreenState extends State<NavigationScreen>
     _rgbController.forward(from: 0);
   }
 
-  void _showNetworkStatusDialog(NetworkProvider networkProvider) {
+  void _showNetworkStatusDialog(NetworkProvider networkProvider,
+      {String? server, int? ping}) {
+    // Network level badge logic
+    final int actualPing = ping ?? 42;
+    String networkLevel = 'Excellent';
+    Color badgeColor = Colors.greenAccent;
+    IconData badgeIcon = Icons.emoji_events_rounded;
+    if (actualPing > 80) {
+      networkLevel = 'Poor';
+      badgeColor = Colors.redAccent;
+      badgeIcon = Icons.warning_amber_rounded;
+    } else if (actualPing > 60) {
+      networkLevel = 'Average';
+      badgeColor = Colors.orangeAccent;
+      badgeIcon = Icons.network_check_rounded;
+    } else if (actualPing > 50) {
+      networkLevel = 'Good';
+      badgeColor = Colors.lightGreen;
+      badgeIcon = Icons.thumb_up_alt_rounded;
+    }
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            _getNetworkIcon(networkProvider),
-            const SizedBox(width: 8),
-            const Text('Network Status'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Status: ${networkProvider.getNetworkStatusMessage()}'),
-            const SizedBox(height: 8),
-            Text('Connection Type: ${networkProvider.connectionType}'),
-            if (!networkProvider.isConnected) ...[
-              const SizedBox(height: 16),
-              const Text(
-                'Please check your internet connection and try again.',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontSize: 12,
+      barrierColor: Colors.black.withAlpha((255 * 0.5).toInt()),
+      builder: (context) => Center(
+        child: AnimatedScale(
+          scale: 1.0,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.elasticOut,
+          child: Dialog(
+            backgroundColor: Colors.white.withAlpha((255 * 0.12).toInt()),
+            elevation: 0,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
+            child: Container(
+              width: 340,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(32),
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withAlpha((255 * 0.18).toInt()),
+                    Colors.blue.withAlpha((255 * 0.10).toInt()),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                border: Border.all(
+                  color: Colors.white.withAlpha((255 * 0.25).toInt()),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.withAlpha((255 * 0.18).toInt()),
+                    blurRadius: 24,
+                    spreadRadius: 2,
+                  ),
+                ],
+                backgroundBlendMode: BlendMode.overlay,
               ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-          if (!networkProvider.isConnected)
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                final isConnected = await networkProvider.checkConnection();
-                if (isConnected && mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Row(
-                        children: [
-                          Icon(Icons.wifi, color: Colors.white),
-                          SizedBox(width: 8),
-                          Text('Internet connection restored!'),
-                        ],
-                      ),
-                      backgroundColor: Colors.green,
-                      duration: Duration(seconds: 2),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Animated glowing logo
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.amber.withAlpha((255 * 0.5).toInt()),
+                          blurRadius: 24,
+                          spreadRadius: 4,
+                        ),
+                        BoxShadow(
+                          color: Colors.blue.withAlpha((255 * 0.2).toInt()),
+                          blurRadius: 40,
+                          spreadRadius: 8,
+                        ),
+                      ],
                     ),
-                  );
-                }
-              },
-              child: const Text('Retry'),
+                    child: Image.asset('assets/images/app_logo.png',
+                        width: 64, height: 64),
+                  ),
+                  const SizedBox(height: 16),
+                  // Title: Solvex Network
+                  const Text(
+                    'Solvex Network',
+                    style: TextStyle(
+                      fontSize: 22,
+                      color: Colors.amber,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Status message
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _getNetworkIcon(networkProvider),
+                      const SizedBox(width: 8),
+                      Text(
+                        networkProvider.getNetworkStatusMessage(),
+                        style: TextStyle(
+                          color: networkProvider.isConnected
+                              ? Colors.greenAccent
+                              : Colors.redAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Connection type
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.cable_rounded,
+                          color: Colors.cyan, size: 20),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Connection: ${networkProvider.connectionType}',
+                        style: const TextStyle(
+                          color: Colors.cyan,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Server info
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.cloud_rounded,
+                          color: Colors.cyan, size: 24),
+                      const SizedBox(width: 8),
+                      Text('Server:',
+                          style: TextStyle(
+                              color: Colors.cyan[200],
+                              fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 6),
+                      Text(server ?? networkProvider.currentServer,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Ping info + animated bar
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.flash_on_rounded,
+                          color: Colors.greenAccent, size: 24),
+                      const SizedBox(width: 8),
+                      const Text('Ping:',
+                          style: TextStyle(
+                              color: Colors.greenAccent,
+                              fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 6),
+                      Text('${ping ?? 42} ms',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  // Animated RGB ping bar
+                  TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0, end: (ping ?? 42) / 120),
+                    duration: const Duration(milliseconds: 800),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, value, child) {
+                      return Stack(
+                        children: [
+                          Container(
+                            width: 220,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color:
+                                  Colors.white.withAlpha((255 * 0.08).toInt()),
+                            ),
+                          ),
+                          Container(
+                            width: 220 * value,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Colors.greenAccent,
+                                  Colors.yellowAccent,
+                                  Colors.orangeAccent,
+                                  Colors.redAccent,
+                                ],
+                                stops: [0.0, 0.5, 0.8, 1.0],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.greenAccent
+                                      .withAlpha((255 * 0.2).toInt()),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  // Network level badge
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: badgeColor.withAlpha((255 * 0.18).toInt()),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: badgeColor, width: 1.2),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(badgeIcon, color: badgeColor, size: 20),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Network Level: $networkLevel',
+                          style: TextStyle(
+                            color: badgeColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  // Location info
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.location_on_rounded,
+                          color: Colors.orangeAccent, size: 24),
+                      const SizedBox(width: 8),
+                      const Text('Location:',
+                          style: TextStyle(
+                              color: Colors.orangeAccent,
+                              fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          networkProvider.userLocation ?? 'Unknown',
+                          style: const TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  // Close & Retry buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () => Navigator.pop(context),
+                        icon:
+                            const Icon(Icons.check_circle, color: Colors.amber),
+                        label: const Text('Close',
+                            style: TextStyle(color: Colors.amber)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              Colors.black.withAlpha((255 * 0.7).toInt()),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 12),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      if (!networkProvider.isConnected)
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            final isConnected =
+                                await networkProvider.checkConnection();
+                            if (isConnected && mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Row(
+                                    children: [
+                                      Icon(Icons.wifi, color: Colors.white),
+                                      SizedBox(width: 8),
+                                      Text('Internet connection restored!'),
+                                    ],
+                                  ),
+                                  backgroundColor: Colors.green,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.refresh,
+                              color: Colors.greenAccent),
+                          label: const Text('Retry',
+                              style: TextStyle(color: Colors.greenAccent)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                Colors.black.withAlpha((255 * 0.7).toInt()),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16)),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 32, vertical: 12),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
@@ -461,7 +732,7 @@ class _NavigationScreenState extends State<NavigationScreen>
   Widget _getNetworkIcon(NetworkProvider networkProvider) {
     // App logo as network indicator (small, circular)
     return GestureDetector(
-      onTap: () => _showGamifiedNetworkDialog(networkProvider),
+      onTap: () => _showNetworkStatusDialog(networkProvider),
       child: Container(
         width: 36,
         height: 36,
@@ -480,270 +751,6 @@ class _NavigationScreenState extends State<NavigationScreen>
           padding: const EdgeInsets.all(2.0),
           child:
               Image.asset('assets/images/app_logo.png', width: 32, height: 32),
-        ),
-      ),
-    );
-  }
-
-  void _showGamifiedNetworkDialog(NetworkProvider networkProvider) async {
-    // HomeScreen ka current server fetch karo
-    final String server = networkProvider.currentServer;
-    final ping = 42 + (DateTime.now().second % 10); // Mock ping
-    String userLocation = 'Unknown';
-    try {
-      final Position pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.low);
-      userLocation =
-          'Lat: ${pos.latitude.toStringAsFixed(2)}, Long: ${pos.longitude.toStringAsFixed(2)}';
-    } catch (e) {
-      userLocation = 'Location permission denied';
-    }
-    // Network level badge
-    String networkLevel = 'Excellent';
-    Color badgeColor = Colors.greenAccent;
-    IconData badgeIcon = Icons.emoji_events_rounded;
-    if (ping > 80) {
-      networkLevel = 'Poor';
-      badgeColor = Colors.redAccent;
-      badgeIcon = Icons.warning_amber_rounded;
-    } else if (ping > 60) {
-      networkLevel = 'Average';
-      badgeColor = Colors.orangeAccent;
-      badgeIcon = Icons.network_check_rounded;
-    } else if (ping > 50) {
-      networkLevel = 'Good';
-      badgeColor = Colors.lightGreen;
-      badgeIcon = Icons.thumb_up_alt_rounded;
-    }
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withAlpha((255 * 0.5).toInt()),
-      builder: (context) => Center(
-        child: AnimatedScale(
-          scale: 1.0,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.elasticOut,
-          child: Dialog(
-            backgroundColor: Colors.white.withAlpha((255 * 0.12).toInt()),
-            elevation: 0,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-            child: Container(
-              width: 340,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(32),
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white.withAlpha((255 * 0.18).toInt()),
-                    Colors.blue.withAlpha((255 * 0.10).toInt()),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                border: Border.all(
-                  color: Colors.white.withAlpha((255 * 0.25).toInt()),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.withAlpha((255 * 0.18).toInt()),
-                    blurRadius: 24,
-                    spreadRadius: 2,
-                  ),
-                ],
-                // Glassmorphism blur
-                backgroundBlendMode: BlendMode.overlay,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Animated glowing logo
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.amber.withAlpha((255 * 0.5).toInt()),
-                          blurRadius: 24,
-                          spreadRadius: 4,
-                        ),
-                        BoxShadow(
-                          color: Colors.blue.withAlpha((255 * 0.2).toInt()),
-                          blurRadius: 40,
-                          spreadRadius: 8,
-                        ),
-                      ],
-                    ),
-                    child: Image.asset('assets/images/app_logo.png',
-                        width: 64, height: 64),
-                  ),
-                  const SizedBox(height: 16),
-                  // Title: Solvex Network
-                  const Text(
-                    'Solvex Network',
-                    style: TextStyle(
-                      fontSize: 22,
-                      color: Colors.amber,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Server info
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.cloud_rounded,
-                          color: Colors.cyan, size: 24),
-                      const SizedBox(width: 8),
-                      Text('Server:',
-                          style: TextStyle(
-                              color: Colors.cyan[200],
-                              fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 6),
-                      Text(server,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  // Ping info + animated bar
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.flash_on_rounded,
-                          color: Colors.greenAccent, size: 24),
-                      const SizedBox(width: 8),
-                      const Text('Ping:',
-                          style: TextStyle(
-                              color: Colors.greenAccent,
-                              fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 6),
-                      Text('$ping ms',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  // Animated RGB ping bar
-                  TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0, end: ping / 120),
-                    duration: const Duration(milliseconds: 800),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, value, child) {
-                      return Stack(
-                        children: [
-                          Container(
-                            width: 220,
-                            height: 14,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              color:
-                                  Colors.white.withAlpha((255 * 0.08).toInt()),
-                            ),
-                          ),
-                          Container(
-                            width: 220 * value,
-                            height: 14,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              gradient: const LinearGradient(
-                                colors: [
-                                  Colors.greenAccent,
-                                  Colors.yellowAccent,
-                                  Colors.orangeAccent,
-                                  Colors.redAccent,
-                                ],
-                                stops: [0.0, 0.5, 0.8, 1.0],
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.greenAccent
-                                      .withAlpha((255 * 0.2).toInt()),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  // Network level badge
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: badgeColor.withAlpha((255 * 0.18).toInt()),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: badgeColor, width: 1.2),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(badgeIcon, color: badgeColor, size: 20),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Network Level: $networkLevel',
-                          style: TextStyle(
-                            color: badgeColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  // Location info
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.location_on_rounded,
-                          color: Colors.orangeAccent, size: 24),
-                      const SizedBox(width: 8),
-                      const Text('Location:',
-                          style: TextStyle(
-                              color: Colors.orangeAccent,
-                              fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(userLocation,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600),
-                            overflow: TextOverflow.ellipsis),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  // Close button
-                  ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.check_circle, color: Colors.amber),
-                    label: const Text('Close',
-                        style: TextStyle(color: Colors.amber)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          Colors.black.withAlpha((255 * 0.7).toInt()),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 32, vertical: 12),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ),
       ),
     );
