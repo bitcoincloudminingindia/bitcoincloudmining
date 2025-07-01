@@ -124,9 +124,6 @@ class SoundNotificationService {
         case 'earning':
           soundPath = 'sounds/earning_notification.mp3';
           break;
-        case 'coin_drop':
-          soundPath = 'sounds/coin_drop.mp3';
-          break;
         case 'success_chime':
           soundPath = 'sounds/success_chime.mp3';
           break;
@@ -148,45 +145,10 @@ class SoundNotificationService {
       debugPrint('💰 Playing earning notification sound');
     } catch (e) {
       debugPrint('❌ Error playing earning sound: $e');
-      // Fallback to coin drop sound
+      // Fallback to success chime
       try {
-        await _audioPlayer.play(AssetSource('sounds/coin_drop.mp3'));
-        debugPrint('🪙 Playing fallback coin drop sound');
-      } catch (e2) {
-        debugPrint('❌ Error playing fallback sound: $e2');
-      }
-    }
-  }
-
-  // Play coin drop sound for immediate feedback
-  static Future<void> playCoinDropSound() async {
-    try {
-      await _audioPlayer.play(AssetSource('sounds/tap_sound.wav'));
-      debugPrint('🪙 Playing new tap sound');
-    } catch (e) {
-      debugPrint('❌ Error playing new tap sound: $e');
-      // Fallback to old coin drop sound
-      try {
-        await _audioPlayer.play(AssetSource('sounds/coin_drop.mp3'));
-        debugPrint('🪙 Playing fallback coin drop sound');
-      } catch (e2) {
-        debugPrint('❌ Error playing fallback sound: $e2');
-      }
-    }
-  }
-
-  // Play sci-fi tap sound for cool feedback
-  static Future<void> playSciFiTapSound() async {
-    try {
-      // Try to play a cool sci-fi sound, fallback to existing sounds
-      await _audioPlayer.play(AssetSource('sounds/success_chime.mp3'));
-      debugPrint('🚀 Playing sci-fi tap sound');
-    } catch (e) {
-      debugPrint('❌ Error playing sci-fi tap sound: $e');
-      // Fallback to coin drop sound
-      try {
-        await _audioPlayer.play(AssetSource('sounds/coin_drop.mp3'));
-        debugPrint('🪙 Playing fallback coin drop sound');
+        await _audioPlayer.play(AssetSource('sounds/success_chime.mp3'));
+        debugPrint('🎵 Playing fallback success chime');
       } catch (e2) {
         debugPrint('❌ Error playing fallback sound: $e2');
       }

@@ -469,7 +469,7 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
         );
 
         // Play earning sound for game completion
-        await SoundNotificationService.playEarningSound();
+        await SoundNotificationService.playNotificationSound('success_chime');
 
         debugPrint('✅ Hash Rush earnings saved successfully');
 
@@ -544,7 +544,7 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
       );
 
       // Play coin drop sound for periodic save
-      await SoundNotificationService.playCoinDropSound();
+      await SoundNotificationService.playNotificationSound('success_chime');
 
       // Reset earned BTC after saving
       setState(() {

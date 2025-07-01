@@ -210,7 +210,7 @@ class _NavigationScreenState extends State<NavigationScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _getNetworkIcon(networkProvider),
+                      _getNetworkIcon(networkProvider, showNetworkIcon: true),
                       const SizedBox(width: 8),
                       Text(
                         networkProvider.getNetworkStatusMessage(),
@@ -571,34 +571,20 @@ class _NavigationScreenState extends State<NavigationScreen>
                       BottomNavigationBarItem(
                         icon: Container(
                           padding: const EdgeInsets.all(0),
-                          child: CircleAvatar(
+                          child: const CircleAvatar(
                             radius: 24,
-                            backgroundColor: networkProvider.isConnected
-                                ? Colors.green.withAlpha(60)
-                                : Colors.red.withAlpha(60),
-                            child: Icon(
-                              _getConnectionIcon(networkProvider),
-                              color: networkProvider.isConnected
-                                  ? Colors.green
-                                  : Colors.red,
-                              size: 36,
-                            ),
+                            backgroundColor: Colors.white,
+                            backgroundImage:
+                                AssetImage('assets/images/app_logo.png'),
                           ),
                         ),
                         activeIcon: Container(
                           padding: const EdgeInsets.all(0),
-                          child: CircleAvatar(
+                          child: const CircleAvatar(
                             radius: 26,
-                            backgroundColor: networkProvider.isConnected
-                                ? Colors.green.withAlpha(80)
-                                : Colors.red.withAlpha(80),
-                            child: Icon(
-                              _getConnectionIcon(networkProvider),
-                              color: networkProvider.isConnected
-                                  ? Colors.green
-                                  : Colors.red,
-                              size: 40,
-                            ),
+                            backgroundColor: Colors.white,
+                            backgroundImage:
+                                AssetImage('assets/images/app_logo.png'),
                           ),
                         ),
                         label: '', // Empty label
@@ -765,13 +751,13 @@ class _NavigationScreenState extends State<NavigationScreen>
     }
   }
 
-  Widget _getNetworkIcon(NetworkProvider networkProvider) {
-    // Network status icon (small, circular)
-    return GestureDetector(
-      onTap: () => _showNetworkStatusDialog(networkProvider),
-      child: Container(
-        width: 36,
-        height: 36,
+  Widget _getNetworkIcon(NetworkProvider networkProvider,
+      {bool showNetworkIcon = false}) {
+    // अगर showNetworkIcon true है तो network icon दिखाओ, वरना app logo
+    if (showNetworkIcon) {
+      return Container(
+        width: 28,
+        height: 28,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: networkProvider.isConnected
@@ -790,10 +776,23 @@ class _NavigationScreenState extends State<NavigationScreen>
         child: Icon(
           _getConnectionIcon(networkProvider),
           color: networkProvider.isConnected ? Colors.green : Colors.red,
-          size: 28,
+          size: 20,
         ),
-      ),
-    );
+      );
+    } else {
+      return Container(
+        width: 36,
+        height: 36,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+        ),
+        child: const CircleAvatar(
+          backgroundColor: Colors.white,
+          backgroundImage: AssetImage('assets/images/app_logo.png'),
+        ),
+      );
+    }
   }
 
   Widget _buildOfflineOverlay(NetworkProvider networkProvider) {

@@ -23,7 +23,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -32,6 +31,7 @@ import 'package:workmanager/workmanager.dart';
 
 import 'fcm_service.dart';
 import 'services/audio_service.dart';
+import 'services/overlay_service.dart';
 import 'services/sound_notification_service.dart';
 import 'utils/storage_utils.dart';
 
@@ -281,17 +281,10 @@ class _MyAppState extends State<MyApp>
     if (!Platform.isAndroid) return;
     if (state == AppLifecycleState.paused) {
       // App background me gaya, bubble show karo
-      FlutterOverlayWindow.showOverlay(
-        height: 100,
-        width: 100,
-        alignment: OverlayAlignment.centerLeft,
-        flag: OverlayFlag.defaultFlag,
-        visibility: NotificationVisibility.visibilityPublic,
-        enableDrag: true,
-      );
+      OverlayService.showFloatingBubble();
     } else if (state == AppLifecycleState.resumed) {
       // App foreground me aaya, bubble band karo
-      FlutterOverlayWindow.closeOverlay();
+      OverlayService.hideFloatingBubble();
     }
   }
 

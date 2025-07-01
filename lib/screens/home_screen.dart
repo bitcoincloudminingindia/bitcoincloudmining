@@ -1591,12 +1591,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (rewardedAd != null && mounted) {
         await rewardedAd.show(
           onUserEarnedReward: (_, reward) {
-            // Apply mining boost with incremental logic (same as manual boost)
+            // Power up sound बजाओ
+            SoundNotificationService.playSciFiPowerUpSound();
+
             setState(() {
               _isPowerBoostActive = true;
               _powerBoostClickCount++;
 
-              // Calculate new multiplier (same logic as manual boost)
+              // Calculate new multiplier
               if (_powerBoostClickCount == 1) {
                 _currentPowerBoostMultiplier = INITIAL_POWER_BOOST_RATE;
               } else {
@@ -1670,6 +1672,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final bool adWatched = await _adService.showRewardedAd(
         onRewarded: (double amount) async {
           if (!mounted) return;
+
+          // Power up sound बजाओ
+          await SoundNotificationService.playSciFiPowerUpSound();
 
           setState(() {
             _isPowerBoostActive = true;
@@ -1804,9 +1809,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           } else if (_sciFiTapCount % 5 == 0) {
             // Every 5th tap - power up sound
             await SoundNotificationService.playSciFiPowerUpSound();
-          } else {
-            // Regular tap - normal sci-fi sound
-            await SoundNotificationService.playSciFiTapSound();
           }
         } catch (soundError) {
           debugPrint('❌ Sound error: $soundError');
@@ -1814,8 +1816,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         // Show different messages based on tap count
         if (mounted) {
-          String message;
-          Color backgroundColor;
+          String message =
+              '🚀 Magic tapped! +${TAP_REWARD_RATE.toStringAsFixed(18)} BTC';
+          Color backgroundColor = Colors.green;
 
           if (_sciFiTapCount % 10 == 0) {
             message =
@@ -1824,10 +1827,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           } else if (_sciFiTapCount % 5 == 0) {
             message = '⚡ Power Up! +${TAP_REWARD_RATE.toStringAsFixed(18)} BTC';
             backgroundColor = Colors.orange;
-          } else {
-            message =
-                '🚀 Magic tapped! +${TAP_REWARD_RATE.toStringAsFixed(18)} BTC';
-            backgroundColor = Colors.green;
           }
 
           Fluttertoast.showToast(

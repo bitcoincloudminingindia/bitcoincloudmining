@@ -183,7 +183,7 @@ class _GameScreenState extends State<GameScreen> {
                       crossAxisCount: 2,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
-                      childAspectRatio: 1.2,
+                      childAspectRatio: 1.0,
                     ),
                     itemCount: gameOptions.length,
                     itemBuilder: (context, index) {
@@ -216,7 +216,7 @@ class _GameScreenState extends State<GameScreen> {
                             children: [
                               CircleAvatar(
                                 backgroundColor: Colors.white,
-                                radius: 40,
+                                radius: 28,
                                 child: Text(
                                   game['icon'],
                                   style: const TextStyle(

@@ -97,20 +97,14 @@ flutter:
     - assets/images/
     - assets/audio/
     - assets/sounds/
-    - assets/images/team_member1.png.webp
-    - assets/images/team_member2.png.webp
-    - assets/images/default_avatar.png.webp
-    - assets/images/app_logo.png
    
-    - assets/audio/coin_sound.mp3
-    - assets/audio/reward_sound.mp3
-    - assets/audio/error_sound.mp3
-    - assets/audio/background.mp3
-    - assets/audio/collect.mp3
+    - assets/images/app_logo.png
+    # Explicit sound files
+    - assets/sounds/success_chime.mp3
+    - assets/sounds/earning_notification.mp3
     - assets/sounds/notification_alert.mp3
-    - assets/sounds/mining_notification.mp3
-    - assets/sounds/reward_notification.mp3
-    - assets/sounds/withdrawal_notification.mp3
+    - assets/sounds/power_up_sound.wav
+   
 
   fonts:
     - family: Poppins

@@ -17,6 +17,16 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
+    tasks.withType<JavaCompile> {
+        options.compilerArgs.addAll(listOf("-Xlint:none"))
+    }
+    
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+        kotlinOptions {
+            freeCompilerArgs += listOf("-Xsuppress-version-warnings")
+        }
+    }
+
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
