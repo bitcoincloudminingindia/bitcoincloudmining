@@ -57,7 +57,7 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
   ];
 
   Timer? _statusTimer;
-  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
+  StreamSubscription<List<ConnectivityResult>>? _subscription;
 
   @override
   void initState() {
@@ -148,9 +148,9 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
   }
 
   void _setupConnectivityListener() {
-    _connectivitySubscription = Connectivity()
-        .onConnectivityChanged
-        .listen((ConnectivityResult result) {
+    _subscription = Connectivity().onConnectivityChanged.listen((results) {
+      final result =
+          results.isNotEmpty ? results.first : ConnectivityResult.none;
       if (result == ConnectivityResult.none) {
         _handleDisconnection();
       } else if (_isReconnecting) {
@@ -190,7 +190,7 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
     _pulseController.dispose();
     _typingController.dispose();
     _statusTimer?.cancel();
-    _connectivitySubscription?.cancel();
+    _subscription?.cancel();
     super.dispose();
   }
 

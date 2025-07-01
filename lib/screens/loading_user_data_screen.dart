@@ -61,7 +61,10 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
     // Location granted, ab current location fetch karo aur NetworkProvider me set karo
     try {
       final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
       final networkProvider =
           Provider.of<NetworkProvider>(context, listen: false);
       await networkProvider.setUserLocationFromCoordinates(

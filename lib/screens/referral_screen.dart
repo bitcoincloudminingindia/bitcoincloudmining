@@ -118,9 +118,10 @@ class _ReferralScreenState extends State<ReferralScreen> {
     final message =
         'Join me on Bitcoin Cloud Mining! Use my referral code: $referralCode';
     try {
-      await Share.share(
-        message,
-        subject: 'Bitcoin Cloud Mining Referral',
+      await SharePlus.instance.share(
+        ShareParams(
+          text: message,
+        ),
       );
     } catch (e) {
       if (!mounted) return;

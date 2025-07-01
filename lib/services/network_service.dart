@@ -15,7 +15,7 @@ class NetworkService {
 
   bool _isConnected = true;
   Timer? _connectionCheckTimer;
-  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   // Getters
   bool get isConnected => _isConnected;
@@ -29,7 +29,11 @@ class NetworkService {
 
       // Listen to connectivity changes
       _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
-        _handleConnectivityChange,
+        (results) async {
+          final result =
+              results.isNotEmpty ? results.first : ConnectivityResult.none;
+          await _handleConnectivityChange(result);
+        },
       );
 
       // Start periodic connection check
@@ -44,8 +48,10 @@ class NetworkService {
   // Check current connection status
   Future<void> _checkConnectionStatus() async {
     try {
-      final connectivityResult = await _connectivity.checkConnectivity();
-      await _handleConnectivityChange(connectivityResult);
+      final results = await _connectivity.checkConnectivity();
+      final result =
+          results.isNotEmpty ? results.first : ConnectivityResult.none;
+      await _handleConnectivityChange(result);
     } catch (e) {
       debugPrint('❌ Error checking connection status: $e');
       _updateConnectionStatus(false);
@@ -55,21 +61,16 @@ class NetworkService {
   // Handle connectivity changes
   Future<void> _handleConnectivityChange(ConnectivityResult result) async {
     bool isConnected = false;
-
     switch (result) {
       case ConnectivityResult.wifi:
       case ConnectivityResult.mobile:
       case ConnectivityResult.ethernet:
-        // Check if we can actually reach the internet
         isConnected = await _canReachInternet();
         break;
       case ConnectivityResult.none:
-        isConnected = false;
-        break;
       default:
         isConnected = false;
     }
-
     _updateConnectionStatus(isConnected);
   }
 
@@ -120,8 +121,10 @@ class NetworkService {
   // Get connection type
   Future<String> getConnectionType() async {
     try {
-      final connectivityResult = await _connectivity.checkConnectivity();
-      switch (connectivityResult) {
+      final results = await _connectivity.checkConnectivity();
+      final result =
+          results.isNotEmpty ? results.first : ConnectivityResult.none;
+      switch (result) {
         case ConnectivityResult.wifi:
           return 'WiFi';
         case ConnectivityResult.mobile:
