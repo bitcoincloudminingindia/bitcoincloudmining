@@ -161,10 +161,71 @@ class SoundNotificationService {
   // Play coin drop sound for immediate feedback
   static Future<void> playCoinDropSound() async {
     try {
-      await _audioPlayer.play(AssetSource('sounds/coin_drop.mp3'));
-      debugPrint('🪙 Playing coin drop sound');
+      await _audioPlayer.play(AssetSource('sounds/tap_sound.wav'));
+      debugPrint('🪙 Playing new tap sound');
     } catch (e) {
-      debugPrint('❌ Error playing coin drop sound: $e');
+      debugPrint('❌ Error playing new tap sound: $e');
+      // Fallback to old coin drop sound
+      try {
+        await _audioPlayer.play(AssetSource('sounds/coin_drop.mp3'));
+        debugPrint('🪙 Playing fallback coin drop sound');
+      } catch (e2) {
+        debugPrint('❌ Error playing fallback sound: $e2');
+      }
+    }
+  }
+
+  // Play sci-fi tap sound for cool feedback
+  static Future<void> playSciFiTapSound() async {
+    try {
+      // Try to play a cool sci-fi sound, fallback to existing sounds
+      await _audioPlayer.play(AssetSource('sounds/success_chime.mp3'));
+      debugPrint('🚀 Playing sci-fi tap sound');
+    } catch (e) {
+      debugPrint('❌ Error playing sci-fi tap sound: $e');
+      // Fallback to coin drop sound
+      try {
+        await _audioPlayer.play(AssetSource('sounds/coin_drop.mp3'));
+        debugPrint('🪙 Playing fallback coin drop sound');
+      } catch (e2) {
+        debugPrint('❌ Error playing fallback sound: $e2');
+      }
+    }
+  }
+
+  // Play sci-fi power up sound
+  static Future<void> playSciFiPowerUpSound() async {
+    try {
+      // Use a different existing sound for power up effect
+      await _audioPlayer.play(AssetSource('sounds/earning_notification.mp3'));
+      debugPrint('⚡ Playing sci-fi power up sound');
+    } catch (e) {
+      debugPrint('❌ Error playing sci-fi power up sound: $e');
+      // Fallback to success chime
+      try {
+        await _audioPlayer.play(AssetSource('sounds/success_chime.mp3'));
+        debugPrint('🎵 Playing fallback success chime');
+      } catch (e2) {
+        debugPrint('❌ Error playing fallback sound: $e2');
+      }
+    }
+  }
+
+  // Play sci-fi achievement sound
+  static Future<void> playSciFiAchievementSound() async {
+    try {
+      // Use notification alert for achievement sound (more dramatic)
+      await _audioPlayer.play(AssetSource('sounds/notification_alert.mp3'));
+      debugPrint('🏆 Playing sci-fi achievement sound');
+    } catch (e) {
+      debugPrint('❌ Error playing sci-fi achievement sound: $e');
+      // Fallback to success chime
+      try {
+        await _audioPlayer.play(AssetSource('sounds/success_chime.mp3'));
+        debugPrint('🎵 Playing fallback success chime');
+      } catch (e2) {
+        debugPrint('❌ Error playing fallback sound: $e2');
+      }
     }
   }
 

@@ -167,27 +167,32 @@ class _NavigationScreenState extends State<NavigationScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Animated glowing logo
+                  // Network status icon
                   Container(
                     width: 72,
                     height: 72,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
+                      color: networkProvider.isConnected
+                          ? Colors.green.withAlpha((255 * 0.2).toInt())
+                          : Colors.red.withAlpha((255 * 0.2).toInt()),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.amber.withAlpha((255 * 0.5).toInt()),
+                          color: networkProvider.isConnected
+                              ? Colors.green.withAlpha((255 * 0.5).toInt())
+                              : Colors.red.withAlpha((255 * 0.5).toInt()),
                           blurRadius: 24,
                           spreadRadius: 4,
                         ),
-                        BoxShadow(
-                          color: Colors.blue.withAlpha((255 * 0.2).toInt()),
-                          blurRadius: 40,
-                          spreadRadius: 8,
-                        ),
                       ],
                     ),
-                    child: Image.asset('assets/images/app_logo.png',
-                        width: 64, height: 64),
+                    child: Icon(
+                      _getConnectionIcon(networkProvider),
+                      size: 48,
+                      color: networkProvider.isConnected
+                          ? Colors.green
+                          : Colors.red,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   // Title: Solvex Network
@@ -567,24 +572,32 @@ class _NavigationScreenState extends State<NavigationScreen>
                         icon: Container(
                           padding: const EdgeInsets.all(0),
                           child: CircleAvatar(
-                            radius: 22, // Bada kiya
-                            backgroundColor: Colors.white,
-                            child: Image.asset(
-                              'assets/images/app_logo.png',
-                              width: 32,
-                              height: 32,
+                            radius: 24,
+                            backgroundColor: networkProvider.isConnected
+                                ? Colors.green.withAlpha(60)
+                                : Colors.red.withAlpha(60),
+                            child: Icon(
+                              _getConnectionIcon(networkProvider),
+                              color: networkProvider.isConnected
+                                  ? Colors.green
+                                  : Colors.red,
+                              size: 36,
                             ),
                           ),
                         ),
                         activeIcon: Container(
                           padding: const EdgeInsets.all(0),
                           child: CircleAvatar(
-                            radius: 24, // Bada kiya
-                            backgroundColor: Colors.amber.withAlpha(60),
-                            child: Image.asset(
-                              'assets/images/app_logo.png',
-                              width: 36,
-                              height: 36,
+                            radius: 26,
+                            backgroundColor: networkProvider.isConnected
+                                ? Colors.green.withAlpha(80)
+                                : Colors.red.withAlpha(80),
+                            child: Icon(
+                              _getConnectionIcon(networkProvider),
+                              color: networkProvider.isConnected
+                                  ? Colors.green
+                                  : Colors.red,
+                              size: 40,
                             ),
                           ),
                         ),
@@ -693,19 +706,24 @@ class _NavigationScreenState extends State<NavigationScreen>
                   height: 28,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.black.withAlpha(31),
+                    color: networkProvider.isConnected
+                        ? Colors.green.withAlpha(60)
+                        : Colors.red.withAlpha(60),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.amber.withAlpha(60),
+                        color: networkProvider.isConnected
+                            ? Colors.green.withAlpha(60)
+                            : Colors.red.withAlpha(60),
                         blurRadius: 4,
                         spreadRadius: 1,
                       ),
                     ],
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(2.0),
-                    child: Image.asset('assets/images/app_logo.png',
-                        width: 24, height: 24),
+                  child: Icon(
+                    _getConnectionIcon(networkProvider),
+                    color:
+                        networkProvider.isConnected ? Colors.green : Colors.red,
+                    size: 20,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -729,8 +747,26 @@ class _NavigationScreenState extends State<NavigationScreen>
     );
   }
 
+  // Helper function to get connection icon based on connection type
+  IconData _getConnectionIcon(NetworkProvider networkProvider) {
+    if (!networkProvider.isConnected) {
+      return Icons.wifi_off;
+    }
+
+    switch (networkProvider.connectionType) {
+      case 'WiFi':
+        return Icons.wifi;
+      case 'Mobile Data':
+        return Icons.signal_cellular_4_bar;
+      case 'Ethernet':
+        return Icons.cable;
+      default:
+        return Icons.wifi;
+    }
+  }
+
   Widget _getNetworkIcon(NetworkProvider networkProvider) {
-    // App logo as network indicator (small, circular)
+    // Network status icon (small, circular)
     return GestureDetector(
       onTap: () => _showNetworkStatusDialog(networkProvider),
       child: Container(
@@ -738,19 +774,23 @@ class _NavigationScreenState extends State<NavigationScreen>
         height: 36,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.black.withAlpha(31),
+          color: networkProvider.isConnected
+              ? Colors.green.withAlpha(60)
+              : Colors.red.withAlpha(60),
           boxShadow: [
             BoxShadow(
-              color: Colors.amber.withAlpha(60),
+              color: networkProvider.isConnected
+                  ? Colors.green.withAlpha(60)
+                  : Colors.red.withAlpha(60),
               blurRadius: 4,
               spreadRadius: 1,
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(2.0),
-          child:
-              Image.asset('assets/images/app_logo.png', width: 32, height: 32),
+        child: Icon(
+          _getConnectionIcon(networkProvider),
+          color: networkProvider.isConnected ? Colors.green : Colors.red,
+          size: 28,
         ),
       ),
     );

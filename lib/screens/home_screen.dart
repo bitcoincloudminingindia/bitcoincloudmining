@@ -44,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       0.000000000000001000; // 5x increased reward
 
   // Variables
-  final AdService _adService = AdService();
+  late final AdService _adService;
   double _hashRate = 2.5;
   bool _isMining = false;
   Timer? _miningTimer;
@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late AudioPlayer _audioPlayer;
   DateTime? _miningStartTime;
   DateTime? _powerBoostStartTime;
-  Color? _currentColor;
+  Color _currentColor = Colors.purple;
   double _miningProgress = 0.0;
   bool _isSoundEnabled = true;
   int _lastMiningTime = 0;
@@ -92,6 +92,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
 
     _audioPlayer = AudioPlayer();
+    _adService = AdService();
     _initializeData();
     _loadUserProfile();
     _loadPercentage();
@@ -726,7 +727,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('percentage', _percentage);
     } catch (e) {
-      // Optionally log error
+      debugPrint('❌ Error saving percentage: $e');
     }
   }
 
@@ -1161,17 +1162,45 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             blurRadius: 20,
                             spreadRadius: 5,
                           ),
+                          // Add pulsing effect for sci-fi feel
+                          BoxShadow(
+                            color: _currentColor == Colors.blue
+                                ? const Color.fromRGBO(0, 255, 255, 0.3)
+                                : const Color.fromRGBO(255, 0, 255, 0.3),
+                            blurRadius: 30,
+                            spreadRadius: 2,
+                          ),
                         ],
                       ),
                       child: _isSciFiLoading
                           ? const Center(
                               child: CircularProgressIndicator(
                                   color: Colors.white))
-                          : const Center(
-                              child: Icon(
-                                Icons.memory,
-                                size: 60,
-                                color: Colors.white,
+                          : Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    _sciFiTapCount % 10 == 0
+                                        ? Icons.emoji_events
+                                        : _sciFiTapCount % 5 == 0
+                                            ? Icons.flash_on
+                                            : Icons.memory,
+                                    size: 60,
+                                    color: Colors.white,
+                                  ),
+                                  if (_sciFiTapCount > 0) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '$_sciFiTapCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                     ),
@@ -1742,120 +1771,173 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _onSciFiObjectTapped() async {
+    // Prevent multiple taps while loading
     if (_isSciFiLoading) return;
 
-    setState(() {
-      _isSciFiLoading = true;
-      _percentage = (_percentage + 1) % 100;
-      _currentColor =
-          _currentColor == Colors.blue ? Colors.purple : Colors.blue;
-      _sciFiTapCount++;
-    });
+    // Check if widget is still mounted
+    if (!mounted) return;
 
-    // तुरंत reward add करें
     try {
-      final walletProvider = context.read<WalletProvider>();
-      await walletProvider.addEarning(
-        TAP_REWARD_RATE,
-        type: 'tap',
-        description: 'Tap reward',
-      );
+      setState(() {
+        _isSciFiLoading = true;
+        _percentage = (_percentage + 1) % 100;
+        _currentColor =
+            _currentColor == Colors.blue ? Colors.purple : Colors.blue;
+        _sciFiTapCount++;
+      });
 
-      // Play coin drop sound for tap reward
-      await SoundNotificationService.playCoinDropSound();
-
-      if (mounted) {
-        Fluttertoast.showToast(
-          msg: 'Magic tapped! +${TAP_REWARD_RATE.toStringAsFixed(18)} BTC',
-          backgroundColor: Colors.green,
-          textColor: Colors.white,
-        );
-      }
-    } catch (e) {
-      debugPrint('❌ Error adding tap reward: $e');
-      if (mounted) {
-        Fluttertoast.showToast(
-          msg: 'Failed to add tap reward: ${e.toString()}',
-          backgroundColor: Colors.red,
-        );
-      }
-    }
-
-    // Percentage save करें
-    _savePercentage();
-
-    // Show rewarded ad every 5 taps with proper reward
-    if (_sciFiTapCount >= 5) {
-      _sciFiTapCount = 0;
-
+      // Add reward safely
       try {
-        debugPrint('🎬 Showing rewarded ad for sci-fi tap...');
-        final bool adWatched = await _adService.showRewardedAd(
-          onRewarded: (double amount) async {
-            if (!mounted) return;
-
-            try {
-              // Ad reward add करें (5x normal reward)
-              const double adReward = 0.000000000000000500;
-              final walletProvider = context.read<WalletProvider>();
-              await walletProvider.addEarning(
-                adReward,
-                type: 'ad_reward',
-                description: 'Sci-Fi Ad Reward (5x Bonus)',
-              );
-
-              // Play earning sound for ad reward
-              await SoundNotificationService.playEarningSound();
-
-              if (mounted) {
-                Fluttertoast.showToast(
-                  msg:
-                      '🎉 Ad reward earned! +${adReward.toStringAsFixed(18)} BTC',
-                  backgroundColor: Colors.green,
-                  textColor: Colors.white,
-                );
-              }
-            } catch (e) {
-              debugPrint('❌ Error adding ad reward: $e');
-              if (mounted) {
-                Fluttertoast.showToast(
-                  msg: 'Failed to add ad reward: ${e.toString()}',
-                  backgroundColor: Colors.red,
-                );
-              }
-            }
-          },
-          onAdDismissed: () {
-            if (!mounted) return;
-            Fluttertoast.showToast(
-              msg: 'Watch the full ad to get a bonus!',
-              backgroundColor: Colors.orange,
-            );
-          },
+        final walletProvider =
+            Provider.of<WalletProvider>(context, listen: false);
+        await walletProvider.addEarning(
+          TAP_REWARD_RATE,
+          type: 'tap',
+          description: 'Tap reward',
         );
 
-        if (!adWatched && mounted) {
+        // Play different sci-fi sounds based on tap count
+        try {
+          if (_sciFiTapCount % 10 == 0) {
+            // Every 10th tap - achievement sound
+            await SoundNotificationService.playSciFiAchievementSound();
+          } else if (_sciFiTapCount % 5 == 0) {
+            // Every 5th tap - power up sound
+            await SoundNotificationService.playSciFiPowerUpSound();
+          } else {
+            // Regular tap - normal sci-fi sound
+            await SoundNotificationService.playSciFiTapSound();
+          }
+        } catch (soundError) {
+          debugPrint('❌ Sound error: $soundError');
+        }
+
+        // Show different messages based on tap count
+        if (mounted) {
+          String message;
+          Color backgroundColor;
+
+          if (_sciFiTapCount % 10 == 0) {
+            message =
+                '🏆 Achievement Unlocked! +${TAP_REWARD_RATE.toStringAsFixed(18)} BTC';
+            backgroundColor = Colors.amber;
+          } else if (_sciFiTapCount % 5 == 0) {
+            message = '⚡ Power Up! +${TAP_REWARD_RATE.toStringAsFixed(18)} BTC';
+            backgroundColor = Colors.orange;
+          } else {
+            message =
+                '🚀 Magic tapped! +${TAP_REWARD_RATE.toStringAsFixed(18)} BTC';
+            backgroundColor = Colors.green;
+          }
+
           Fluttertoast.showToast(
-            msg: 'Ad not available. Please try again later.',
-            backgroundColor: Colors.orange,
+            msg: message,
+            backgroundColor: backgroundColor,
+            textColor: Colors.white,
           );
         }
-      } catch (e) {
-        debugPrint('❌ Error showing rewarded ad: $e');
+      } catch (rewardError) {
+        debugPrint('❌ Error adding tap reward: $rewardError');
         if (mounted) {
           Fluttertoast.showToast(
-            msg: 'Error showing ad: ${e.toString()}',
+            msg: 'Failed to add tap reward. Please try again.',
             backgroundColor: Colors.red,
           );
         }
       }
-    }
 
-    // Loading को बंद करें
-    if (mounted) {
-      setState(() {
-        _isSciFiLoading = false;
-      });
+      // Save percentage safely
+      try {
+        await _savePercentage();
+      } catch (saveError) {
+        debugPrint('❌ Error saving percentage: $saveError');
+      }
+
+      // Show rewarded ad every 5 taps
+      if (_sciFiTapCount >= 5) {
+        _sciFiTapCount = 0;
+
+        try {
+          debugPrint('🎬 Showing rewarded ad for sci-fi tap...');
+          final bool adWatched = await _adService.showRewardedAd(
+            onRewarded: (double amount) async {
+              if (!mounted) return;
+
+              try {
+                const double adReward = 0.000000000000000500;
+                final walletProvider =
+                    Provider.of<WalletProvider>(context, listen: false);
+                await walletProvider.addEarning(
+                  adReward,
+                  type: 'ad_reward',
+                  description: 'Sci-Fi Ad Reward (5x Bonus)',
+                );
+
+                // Play sci-fi achievement sound safely
+                try {
+                  await SoundNotificationService.playSciFiAchievementSound();
+                } catch (soundError) {
+                  debugPrint('❌ Sound error: $soundError');
+                }
+
+                if (mounted) {
+                  Fluttertoast.showToast(
+                    msg:
+                        '🎉 Ad reward earned! +${adReward.toStringAsFixed(18)} BTC',
+                    backgroundColor: Colors.green,
+                    textColor: Colors.white,
+                  );
+                }
+              } catch (adRewardError) {
+                debugPrint('❌ Error adding ad reward: $adRewardError');
+                if (mounted) {
+                  Fluttertoast.showToast(
+                    msg: 'Failed to add ad reward. Please try again.',
+                    backgroundColor: Colors.red,
+                  );
+                }
+              }
+            },
+            onAdDismissed: () {
+              if (!mounted) return;
+              Fluttertoast.showToast(
+                msg: 'Watch the full ad to get a bonus!',
+                backgroundColor: Colors.orange,
+              );
+            },
+          );
+
+          if (!adWatched && mounted) {
+            Fluttertoast.showToast(
+              msg: 'Ad not available. Please try again later.',
+              backgroundColor: Colors.orange,
+            );
+          }
+        } catch (adError) {
+          debugPrint('❌ Error showing rewarded ad: $adError');
+          if (mounted) {
+            Fluttertoast.showToast(
+              msg: 'Error showing ad. Please try again.',
+              backgroundColor: Colors.red,
+            );
+          }
+        }
+      }
+    } catch (generalError) {
+      debugPrint('❌ General error in sci-fi tap: $generalError');
+      if (mounted) {
+        Fluttertoast.showToast(
+          msg: 'Something went wrong. Please try again.',
+          backgroundColor: Colors.red,
+        );
+      }
+    } finally {
+      // Always reset loading state
+      if (mounted) {
+        setState(() {
+          _isSciFiLoading = false;
+        });
+      }
     }
   }
 
