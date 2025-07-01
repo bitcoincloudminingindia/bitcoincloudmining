@@ -510,16 +510,39 @@ class DailyRewardSection extends StatelessWidget {
                   '${rewardProvider.dailyPlayReward.toStringAsFixed(16)} BTC',
               canClaim: rewardProvider.canClaimDailyPlay,
               onClaim: () async {
-                await rewardClaimHandler.handleRewardClaim(
-                  rewardType: 'daily_reward',
-                  amount: rewardProvider.dailyPlayReward,
-                  requiresAd:
-                      rewardProvider.requiresAdForReward('daily_reward'),
-                  onSuccess: () async {
-                    // Play earning sound for daily reward
-                    await SoundNotificationService.playEarningSound();
-                  },
-                );
+                try {
+                  await rewardClaimHandler.handleRewardClaim(
+                    rewardType: 'daily_reward',
+                    amount: rewardProvider.dailyPlayReward,
+                    requiresAd:
+                        rewardProvider.requiresAdForReward('daily_reward'),
+                    onSuccess: () async {
+                      await SoundNotificationService.playEarningSound();
+                      // Wallet balance reload
+                      await rewardClaimHandler.walletProvider.loadWallet();
+                      if (rewardClaimHandler.context.mounted) {
+                        ScaffoldMessenger.of(rewardClaimHandler.context)
+                            .showSnackBar(
+                          const SnackBar(
+                            content: Text('Reward added to wallet!'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    },
+                  );
+                } catch (e) {
+                  if (rewardClaimHandler.context.mounted) {
+                    ScaffoldMessenger.of(rewardClaimHandler.context)
+                        .showSnackBar(
+                      SnackBar(
+                        content:
+                            Text('Failed to add reward: \\${e.toString()}'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
               },
               gradientStart: const Color(0xFF00B4DB),
               gradientEnd: const Color(0xFF0083B0),

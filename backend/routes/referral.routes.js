@@ -38,4 +38,7 @@ router.get('/info', authenticate, getReferrals);
 // Get referred users
 router.get('/users', authenticate, getReferrals);
 
+// Add referral statistics route
+router.get('/statistics', authenticate, referralController.getReferralStatistics);
+
 module.exports = router;

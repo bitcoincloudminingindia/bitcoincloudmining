@@ -86,6 +86,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isConnectingToServer = false;
   bool _isServerConnected = false;
 
+  // New variables
+  double _totalEarnings = 0.0;
+  DateTime? _lastEarningUpdateTime;
+  double _lastPowerBoostMultiplier = 0.0;
+  bool _wasPowerBoostActive = false;
+
   @override
   void initState() {
     super.initState();
@@ -291,8 +297,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           );
           return;
         } else {
-          // Don't call _resetMiningState() here as it will add earnings prematurely
-          // Just reset the state without adding earnings
           debugPrint(
               '⏰ Previous mining session completed, resetting state without adding earnings');
           if (mounted) {
@@ -309,6 +313,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               _lastMiningTime = 0;
               _powerBoostClickCount = 0;
               _powerBoostStartTime = null;
+              _totalEarnings = 0.0;
+              _lastEarningUpdateTime = null;
+              _lastPowerBoostMultiplier = 0.0;
+              _wasPowerBoostActive = false;
             });
           }
           await _saveMiningState();
@@ -326,6 +334,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _totalMiningTime = 0;
         _isPowerBoostActive = false;
         _hashRate = 2.5;
+        _totalEarnings = 0.0;
+        _lastEarningUpdateTime = now;
+        _lastPowerBoostMultiplier = 0.0;
+        _wasPowerBoostActive = false;
       });
       await _saveMiningState();
       _startMiningUiTimer();
@@ -473,14 +485,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _updateMiningProgressFromElapsed() {
     if (!_isMining || _miningStartTime == null) return;
     final now = DateTime.now();
-    final elapsedSeconds = now.difference(_miningStartTime!).inSeconds;
-    final elapsedMinutes = now.difference(_miningStartTime!).inMinutes;
-    final miningRate = BASE_MINING_RATE *
-        (1 + (_isPowerBoostActive ? _currentPowerBoostMultiplier : 0.0));
-    final earnings = miningRate * elapsedSeconds;
+    if (_lastEarningUpdateTime == null) {
+      _lastEarningUpdateTime = now;
+      _lastPowerBoostMultiplier = _currentPowerBoostMultiplier;
+      _wasPowerBoostActive = _isPowerBoostActive;
+      return;
+    }
+    final secondsElapsed = now.difference(_lastEarningUpdateTime!).inSeconds;
+    if (secondsElapsed > 0) {
+      double rate = BASE_MINING_RATE;
+      if (_wasPowerBoostActive) {
+        rate = BASE_MINING_RATE * (1 + _lastPowerBoostMultiplier);
+      }
+      final earningToAdd = rate * secondsElapsed;
+      _totalEarnings += earningToAdd;
+      _lastEarningUpdateTime = now;
+      _lastPowerBoostMultiplier = _currentPowerBoostMultiplier;
+      _wasPowerBoostActive = _isPowerBoostActive;
+    }
     setState(() {
-      _currentMiningRate = miningRate;
-      _miningEarnings = double.parse(earnings.toStringAsFixed(18));
+      _currentMiningRate = _isPowerBoostActive
+          ? BASE_MINING_RATE * (1 + _currentPowerBoostMultiplier)
+          : BASE_MINING_RATE;
+      _miningEarnings = double.parse(_totalEarnings.toStringAsFixed(18));
+      final elapsedMinutes = now.difference(_miningStartTime!).inMinutes;
       _miningProgress = (elapsedMinutes / MINING_DURATION_MINUTES) * 100;
       if (_miningProgress > 100) _miningProgress = 100;
     });
@@ -1666,35 +1694,44 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _startPowerBoost() async {
     if (!mounted || !_isMining) return;
-
     try {
       // Show rewarded ad using AdService
       final bool adWatched = await _adService.showRewardedAd(
         onRewarded: (double amount) async {
           if (!mounted) return;
-
-          // Power up sound बजाओ
+          // Power up sound bajao
           await SoundNotificationService.playSciFiPowerUpSound();
-
+          // Power boost start hone se pehle earning update karo
+          _updateMiningProgressFromElapsed();
           setState(() {
             _isPowerBoostActive = true;
             _powerBoostClickCount++;
-
-            // Calculate new multiplier
             if (_powerBoostClickCount == 1) {
               _currentPowerBoostMultiplier = INITIAL_POWER_BOOST_RATE;
             } else {
               _currentPowerBoostMultiplier += POWER_BOOST_INCREMENT;
             }
-
-            // Update mining rate with new multiplier
             _currentMiningRate =
                 BASE_MINING_RATE * (1 + _currentPowerBoostMultiplier);
             _hashRate = 2.5 * (1 + _currentPowerBoostMultiplier);
             _powerBoostStartTime = DateTime.now();
           });
-
-          // Show boost activation message
+          // Power Boost Start Notification
+          await SoundNotificationService.showAlertNotification(
+            title: '⚡ Power Boost Active!',
+            message:
+                'Mining rate increased! New hash rate: \\${_hashRate.toStringAsFixed(1)} GH/s',
+          );
+          // Mining notification update with new hash rate
+          if (MiningNotificationService.isActive) {
+            final walletProvider = context.read<WalletProvider>();
+            final currentBalance = walletProvider.balance.toStringAsFixed(18);
+            MiningNotificationService.updateMiningStats(
+              balance: currentBalance,
+              hashRate: _hashRate.toStringAsFixed(1),
+              status: '⛏️ Mining with Power Boost!',
+            );
+          }
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1708,18 +1745,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               duration: const Duration(seconds: 3),
             ),
           );
-
-          // Start power boost timer
           _powerBoostTimer?.cancel();
           _powerBoostTimer = Timer(
             const Duration(minutes: POWER_BOOST_DURATION_MINUTES),
-            () {
+            () async {
               if (!mounted) return;
+              // Power boost khatam hone se pehle earning update karo
+              _updateMiningProgressFromElapsed();
               setState(() {
                 _isPowerBoostActive = false;
                 _currentPowerBoostMultiplier = 0.0;
                 _hashRate = 2.5;
               });
+              // Power Boost End Notification
+              await SoundNotificationService.showAlertNotification(
+                title: '⚡ Power Boost Ended',
+                message: 'Mining rate back to normal. Hash rate: 2.5 GH/s',
+              );
+              // Mining notification update with normal hash rate
+              if (MiningNotificationService.isActive) {
+                final walletProvider = context.read<WalletProvider>();
+                final currentBalance =
+                    walletProvider.balance.toStringAsFixed(18);
+                MiningNotificationService.updateMiningStats(
+                  balance: currentBalance,
+                  hashRate: '2.5',
+                  status: '⛏️ Mining in progress...',
+                );
+              }
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -1734,8 +1787,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               }
             },
           );
-
-          // Save state immediately after power boost activation
           await _saveMiningState();
         },
         onAdDismissed: () {
@@ -1748,7 +1799,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           );
         },
       );
-
       if (!adWatched) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

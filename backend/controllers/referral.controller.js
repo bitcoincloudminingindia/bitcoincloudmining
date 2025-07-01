@@ -290,4 +290,29 @@ function calculateReferralRewards(referral) {
   return { referredId };
 }
 
+// Add referral statistics controller
+exports.getReferralStatistics = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const referrals = await Referral.find({ referrerId: userId });
+    const totalReferrals = referrals.length;
+    const totalEarnings = referrals.reduce((sum, ref) => sum + (ref.earnings || 0), 0);
+    const activeReferrals = referrals.filter(ref => ref.status === 'active').length;
+    res.status(200).json({
+      success: true,
+      data: {
+        totalReferrals,
+        totalEarnings: Number(totalEarnings).toFixed(18),
+        activeReferrals
+      }
+    });
+  } catch (error) {
+    logger.error('Error getting referral statistics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving referral statistics'
+    });
+  }
+};
+
 module.exports = exports;
