@@ -7,6 +7,7 @@ import '../providers/auth_provider.dart';
 import '../providers/network_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../services/api_service.dart';
+import '../services/version_check_service.dart';
 
 class LoadingUserDataScreen extends StatefulWidget {
   const LoadingUserDataScreen({super.key});
@@ -23,6 +24,7 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
   @override
   void initState() {
     super.initState();
+    VersionCheckService.checkForUpdate(context);
     _checkAndRequestPermissions();
   }
 
@@ -58,7 +60,7 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
       return;
     }
 
-    // Location granted, ab current location fetch karo aur NetworkProvider me set karo
+    // Location granted, now fetch current location and set in NetworkProvider
     try {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
@@ -70,10 +72,10 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
       await networkProvider.setUserLocationFromCoordinates(
           position.latitude, position.longitude);
     } catch (e) {
-      // Agar location fetch na ho paye to ignore karo, Unknown dikhega
+      // If location can't be fetched, ignore, will show as Unknown
     }
 
-    // Sari permissions mil gayi, ab data load karo
+    // All permissions granted, now load user data
     _loadUserData();
   }
 
