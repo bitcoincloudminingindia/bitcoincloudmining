@@ -56,11 +56,14 @@ void main() async {
 
   // Initialize Firebase with proper configuration
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    debugPrint('✅ Firebase initialized successfully');
-
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      debugPrint('✅ Firebase initialized successfully');
+    } else {
+      debugPrint('⚠️ Firebase already initialized');
+    }
     // Initialize Firebase Analytics
     await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(true);
     debugPrint('✅ Firebase Analytics initialized successfully');
@@ -74,7 +77,17 @@ void main() async {
     // Initialize FCM after Firebase is ready
     await FcmService.initializeFCM();
   } catch (e) {
-    debugPrint('❌ Firebase initialization failed: $e');
+    // Ignore duplicate app error more robustly
+    if ((e is FirebaseException && e.code == 'duplicate-app') ||
+        e
+            .toString()
+            .contains('A Firebase App named "[DEFAULT]" already exists') ||
+        e.toString().contains('already exists')) {
+      debugPrint(
+          '⚠️ Firebase already initialized (duplicate app error ignored)');
+    } else {
+      debugPrint('❌ Firebase initialization failed: $e');
+    }
     // Continue without Firebase if initialization fails
   }
 

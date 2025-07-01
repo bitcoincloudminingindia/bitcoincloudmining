@@ -25,7 +25,7 @@ class OverlayService {
         flag: OverlayFlag.defaultFlag,
         visibility: NotificationVisibility.visibilityPublic,
         enableDrag: true,
-        overlayTitle: 'Bitcoin Mining',
+        overlayTitle: 'Bitcoin Cloud Mining',
         overlayContent: 'Tap to open app',
       );
 

@@ -64,13 +64,15 @@ class _FloatingBubbleWidgetState extends State<FloatingBubbleWidget>
       _bounceController.reverse();
     });
 
-    // Toggle expanded state
-    setState(() {
-      _isExpanded = !_isExpanded;
-    });
-
-    // Close overlay and bring app to foreground
-    await FlutterOverlayWindow.closeOverlay();
+    if (!_isExpanded) {
+      // First tap: expand the bubble
+      setState(() {
+        _isExpanded = true;
+      });
+    } else {
+      // Second tap: close overlay and bring app to foreground
+      await FlutterOverlayWindow.closeOverlay();
+    }
   }
 
   @override

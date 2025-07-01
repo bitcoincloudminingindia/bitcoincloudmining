@@ -4,16 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../config/api_config.dart';
-import '../services/api_service.dart';
 import '../services/sound_notification_service.dart';
-// import 'package:http/http.dart' as http;
-// import 'dart:convert';
-
 import 'wallet_provider.dart';
 
 class RewardProvider with ChangeNotifier {
-  final ApiService _apiService = ApiService();
   int _sciFiTaps = 0;
   int _adsWatched = 0;
   double _pendingRewards = 0.0;
@@ -92,13 +86,13 @@ class RewardProvider with ChangeNotifier {
       'platform': 'telegram',
       'handle': '@bitcoin_cloud_mining',
       'url': 'https://t.me/+v6K5Agkb5r8wMjhl',
-      'rewardAmount': '0.000000000000100000'
+      'rewardAmount': '0.000000000000010000'
     },
     {
       'platform': 'facebook',
       'handle': 'Bitcoin Cloud Mining',
       'url': 'https://www.facebook.com/groups/1743859249846928',
-      'rewardAmount': '0.000000000000100000'
+      'rewardAmount': '0.000000000000010000'
     },
     {
       'platform': 'youtube',
@@ -138,11 +132,11 @@ class RewardProvider with ChangeNotifier {
 
   // Add reward amount getters
   double get dailyPlayReward => 0.000000000000010000;
-  double get dailyMineReward => 0.000000000000100000;
-  double get hourlyReward => 0.000000000008000000;
-  double get streakBonusReward => 0.000000000002000000;
-  double get adReward => 0.000000000000500000;
-  double get referralReward => 0.000000000000500000;
+  double get dailyMineReward => 0.000000000000005000;
+  double get hourlyReward => 0.000000000000005000;
+  double get streakBonusReward => 0.000000000000005000;
+  double get adReward => 0.000000000000005000;
+  double get referralReward => 0.000000000000005000;
   double get socialMediaReward => 0.000000000000010000;
 
   RewardProvider() {
@@ -263,7 +257,7 @@ class RewardProvider with ChangeNotifier {
 
   void setSubscribeYouTube(bool value, WalletProvider wallet) {
     if (!_subscribeYouTube) {
-      const double reward = 0.000000000020000000;
+      const double reward = 0.000000000000010000;
       _pendingRewards += reward;
       _subscribeYouTube = value;
       wallet.addEarning(
@@ -284,7 +278,7 @@ class RewardProvider with ChangeNotifier {
   void tapSciFiObject(WalletProvider wallet, {String? source}) {
     _sciFiTaps++;
     if (_sciFiTaps >= 100 && !_claimedSciFiReward) {
-      const double reward = 0.000000000000010000;
+      const double reward = 0.000000000000005000;
       _pendingRewards += reward;
       _claimedSciFiReward = true;
       wallet.addEarning(
@@ -311,7 +305,7 @@ class RewardProvider with ChangeNotifier {
 
   void claimAdBonus(WalletProvider wallet) {
     if (_adsWatched >= 10) {
-      const double reward = 0.000000000000100000;
+      const double reward = 0.000000000000001000;
       _pendingRewards += reward;
       _adsWatched = 0;
       wallet.addEarning(
@@ -346,7 +340,7 @@ class RewardProvider with ChangeNotifier {
         return true; // Ad required
       }
 
-      const double reward = 0.000000000000010000;
+      const double reward = 0.000000000000005000;
       _pendingRewards += reward;
       _claimedDailyPlay = true;
       _lastReset = DateTime.now(); // Update last reset time when claiming
@@ -375,7 +369,8 @@ class RewardProvider with ChangeNotifier {
         return true; // Ad required
       }
 
-      const double reward = 0.000000000000100000;
+      const double reward =
+          0.000000000000005000; // Fixed: was 0.0000000000000005000
       _pendingRewards += reward;
       _claimedDailyMine = true;
       _lastReset = DateTime.now(); // Update last reset time when claiming
@@ -404,7 +399,7 @@ class RewardProvider with ChangeNotifier {
         return true; // Ad required
       }
 
-      const double reward = 0.000000000008000000;
+      const double reward = 0.000000000000005000;
       _pendingRewards += reward;
       _lastHourlyClaim = DateTime.now();
 
@@ -438,7 +433,7 @@ class RewardProvider with ChangeNotifier {
         return true; // Ad required
       }
 
-      const double reward = 0.000000000005000000;
+      const double reward = 0.000000000000005000;
       _pendingRewards += reward;
       _sciFiTaps = 0;
       _updateRewards(reward,
@@ -477,11 +472,11 @@ class RewardProvider with ChangeNotifier {
           platformName = 'Twitter';
           break;
         case 'telegram':
-          reward = 0.000000000000100000;
+          reward = 0.000000000000010000;
           platformName = 'Telegram';
           break;
         case 'facebook':
-          reward = 0.000000000000100000;
+          reward = 0.000000000000010000;
           platformName = 'Facebook';
           break;
         case 'youtube':
@@ -551,7 +546,7 @@ class RewardProvider with ChangeNotifier {
   }
 
   Future<void> claimAdReward(WalletProvider wallet, {String? source}) async {
-    const double reward = 0.000000000000500000;
+    const double reward = 0.000000000000005000;
     _pendingRewards += reward;
     _updateRewards(reward,
         type: 'ad_reward', description: '${source ?? 'Video Ad'} View Reward');
@@ -596,7 +591,7 @@ class RewardProvider with ChangeNotifier {
         return true; // Ad required
       }
 
-      const double reward = 0.000000000002000000;
+      const double reward = 0.000000000000005000;
       _pendingRewards += reward;
       _claimedStreakBonus = true;
       _updateRewards(reward,
@@ -619,17 +614,17 @@ class RewardProvider with ChangeNotifier {
 
   // Added claimDailyBonus method for the daily bonus reward.
   Future<void> claimDailyBonus(WalletProvider wallet, {String? source}) async {
-    const double reward = 0.000000000005000000;
+    const double reward = 0.000000000000005000;
     _pendingRewards += reward;
     wallet.addEarning(
       reward,
       type: 'daily_reward',
       description: '${source ?? 'Daily'} Login Bonus',
     );
-    
+
     // Play earning sound for daily bonus
     SoundNotificationService.playEarningSound();
-    
+
     _balance += reward;
     _saveData();
     notifyListeners();
@@ -709,15 +704,6 @@ class RewardProvider with ChangeNotifier {
           }
         }
 
-        // For now, we'll use a simple verification
-        // In production, you should implement proper verification:
-        // 1. For Instagram: Use Instagram Graph API
-        // 2. For Twitter: Use Twitter API
-        // 3. For Telegram: Use Telegram Bot API
-        // 4. For Facebook: Use Facebook Graph API
-        // 5. For YouTube: Use YouTube Data API
-        // 6. For TikTok: Use TikTok API
-
         // For demo purposes, we'll verify based on time spent
         final timeSpent = DateTime.now()
             .difference(_verificationAttempts[platform]!)
@@ -747,22 +733,6 @@ class RewardProvider with ChangeNotifier {
   // Modified loadSocialMediaPlatforms to handle API errors better
   Future<void> loadSocialMediaPlatforms() async {
     try {
-      // For now, we'll use default values since backend is not ready
-      // When backend is ready, uncomment this code:
-      /*
-      final response = await http.get(
-        Uri.parse('YOUR_BACKEND_API_URL/platforms'),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          _socialMediaPlatforms = List<Map<String, dynamic>>.from(data['data']);
-        }
-      }
-      */
-
       // Using default values for now
       _socialMediaPlatforms = [
         {
@@ -781,13 +751,13 @@ class RewardProvider with ChangeNotifier {
           'platform': 'telegram',
           'handle': '@bitcoin_cloud_mining',
           'url': 'https://t.me/+v6K5Agkb5r8wMjhl',
-          'rewardAmount': '0.000000000000100000'
+          'rewardAmount': '0.000000000000010000'
         },
         {
           'platform': 'facebook',
           'handle': 'Bitcoin Cloud Mining',
           'url': 'https://www.facebook.com/groups/1743859249846928',
-          'rewardAmount': '0.000000000000100000'
+          'rewardAmount': '0.000000000000010000'
         },
         {
           'platform': 'youtube',
@@ -827,7 +797,7 @@ class RewardProvider with ChangeNotifier {
     return platformData['rewardAmount'] ?? '0.000000000000000000';
   }
 
-  // Modified claim methods to update rewards
+  // Modified _updateRewards to only update local state, not call API
   Future<void> _updateRewards(double amount,
       {String type = 'reward', String description = 'Reward claimed'}) async {
     try {
@@ -845,64 +815,22 @@ class RewardProvider with ChangeNotifier {
       // Update today's rewards
       _todayRewards += amount;
 
-      // Update on server
-      final response = await _apiService.updateRewards(
-          amount: amount, type: type, description: description);
-
-      if (response['success']) {
-        // Update local state with server data if needed
-        if (response['data'] != null) {
-          final claimedInfo = response['data'];
-          if (claimedInfo['claimedRewards'] != null) {
-            final rewards = claimedInfo['claimedRewards'] as List;
-            for (var reward in rewards) {
-              if (reward['type'] == 'total') {
-                _lifetimeRewards =
-                    double.tryParse(reward['amount'].toString()) ??
-                        _lifetimeRewards;
-              } else if (reward['type'] == 'today') {
-                _todayRewards = double.tryParse(reward['amount'].toString()) ??
-                    _todayRewards;
-              }
-            }
-          }
-        }
-      } else {
-        debugPrint(
-            '❌ Failed to update rewards on server: ${response['message']}');
-      }
-
+      // No API call, just save local state
       _saveData();
       notifyListeners();
     } catch (e) {
       debugPrint('❌ Error updating rewards: $e');
-      // Keep local state even if server update fails
+      // Keep local state even if something fails
       _saveData();
       notifyListeners();
     }
   }
 
-  // Add method to sync rewards with server
+  // Remove syncRewards, it is now a no-op
   Future<void> syncRewards() async {
-    debugPrint('🔄 syncRewards() called');
-    try {
-      final response = await _apiService.getClaimedRewardsInfo();
-      debugPrint('🔄 getClaimedRewardsInfo response: $response');
-      if (response['success'] && response['data'] != null) {
-        final claimedInfo = response['data'];
-        if (claimedInfo['claimedRewards'] != null) {
-          // Convert string to double
-          final claimedRewards =
-              double.tryParse(claimedInfo['claimedRewards'].toString()) ?? 0.0;
-          _lifetimeRewards = claimedRewards;
-          _todayRewards = claimedRewards;
-        }
-        _saveData();
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint('❌ Error syncing rewards: $e');
-    }
+    debugPrint('🔄 syncRewards() called (no-op, API removed)');
+    // No API call, just notify
+    notifyListeners();
   }
 
   // Add method to update streak
@@ -926,57 +854,10 @@ class RewardProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Comment out backend API methods for now
-  /*
-  Future<void> fetchTotalRewards() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/rewards/total'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          _lifetimeRewards = double.parse(data['total_rewards'].toString());
-          _saveData();
-          notifyListeners();
-        }
-      }
-    } catch (e) {
-      debugPrint('Error fetching total rewards: $e');
-    }
-  }
-  */
-
   // Add method to reset verification state
   void resetVerificationState(String platform) {
     _verificationInProgress[platform] = false;
     _verificationAttempts.remove(platform);
     notifyListeners();
-  }
-
-  Future<List<Map<String, dynamic>>> getRewardsHistory() async {
-    try {
-      final response = await ApiService.get(ApiConfig.rewardsHistory);
-      if (response['success'] == true) {
-        final List<dynamic> rewards = response['data'] ?? [];
-        return rewards.map((reward) {
-          return {
-            'amount': reward['amount'] ?? 0.0,
-            'type': reward['type'] ?? 'unknown',
-            'timestamp': DateTime.parse(
-                reward['timestamp'] ?? DateTime.now().toIso8601String()),
-            'status': reward['status'] ?? 'pending',
-          };
-        }).toList();
-      }
-      return [];
-    } catch (e) {
-      debugPrint('Error getting rewards history: $e');
-      return [];
-    }
   }
 }

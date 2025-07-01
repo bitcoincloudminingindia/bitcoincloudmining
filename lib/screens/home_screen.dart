@@ -99,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     _audioPlayer = AudioPlayer();
     _adService = AdService();
+    _adService.loadNativeAd(); // Ensure native ad is loaded
     _initializeData();
     _loadUserProfile();
     _loadPercentage();
