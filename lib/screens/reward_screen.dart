@@ -27,6 +27,9 @@ class _RewardScreenState extends State<RewardScreen>
       _rewardClaimHandler; // यहाँ RewardClaimHandler की जगह dynamic का उपयोग किया गया है ताकि undefined class error न आए।
   Timer? _countdownTimer;
 
+  // Banner ad future
+  Future<Widget?>? _bannerAdFuture;
+
   @override
   void initState() {
     super.initState();
@@ -42,6 +45,7 @@ class _RewardScreenState extends State<RewardScreen>
       walletProvider: Provider.of<WalletProvider>(context, listen: false),
       adService: _adService, // Pass the shared instance
     );
+    _bannerAdFuture = _adService.getBannerAdWidget();
   }
 
   @override
@@ -134,6 +138,21 @@ class _RewardScreenState extends State<RewardScreen>
                     // ),
                   ],
                 ),
+              ),
+              // Banner Ad Box (rewards ke upar)
+              FutureBuilder<Widget?>(
+                future: _bannerAdFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.done &&
+                      snapshot.data != null) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: snapshot.data,
+                    );
+                  } else {
+                    return const SizedBox(height: 50);
+                  }
+                },
               ),
               // Yahan se rewards ka main content dalo
               Expanded(

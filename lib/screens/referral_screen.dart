@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bitcoin_cloud_mining/constants/color_constants.dart';
+import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:bitcoin_cloud_mining/services/api_service.dart';
 import 'package:bitcoin_cloud_mining/widgets/custom_app_bar.dart';
 import 'package:flutter/material.dart';
@@ -21,10 +22,14 @@ class _ReferralScreenState extends State<ReferralScreen> {
   String? _error;
   DateTime? _lastClaimDate;
 
+  // AdService instance for rewarded ad
+  final AdService _adService = AdService();
+
   @override
   void initState() {
     super.initState();
     _loadData();
+    _adService.loadRewardedAd();
   }
 
   Future<void> _loadData() async {
@@ -147,6 +152,45 @@ class _ReferralScreenState extends State<ReferralScreen> {
   }
 
   Future<void> _claimEarnings() async {
+    // Show rewarded ad before claim
+    if (!_adService.isRewardedAdLoaded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ad not loaded. Please try again.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      _adService.loadRewardedAd();
+      return;
+    }
+
+    final adSuccess = await _adService.showRewardedAd(
+      onRewarded: (reward) async {
+        // Ad watched fully, proceed to claim
+        await _claimEarningsAfterAd();
+      },
+      onAdDismissed: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please watch the full ad to claim earnings.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      },
+    );
+    if (!adSuccess) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to show ad. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+  }
+
+  // Actual claim logic after ad is watched
+  Future<void> _claimEarningsAfterAd() async {
     // Confirmation dialog before claim
     final confirm = await showDialog<bool>(
       context: context,

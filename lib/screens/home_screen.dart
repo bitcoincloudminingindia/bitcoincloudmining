@@ -7,6 +7,7 @@ import 'package:bitcoin_cloud_mining/providers/network_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:bitcoin_cloud_mining/services/mining_notification_service.dart';
+import 'package:bitcoin_cloud_mining/services/overlay_service.dart';
 import 'package:bitcoin_cloud_mining/services/sound_notification_service.dart';
 import 'package:bitcoin_cloud_mining/widgets/network_status_widget.dart';
 import 'package:bitcoin_cloud_mining/widgets/server_connection_animation.dart';
@@ -92,6 +93,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   double _lastPowerBoostMultiplier = 0.0;
   bool _wasPowerBoostActive = false;
 
+  Timer? _adUiUpdateTimer;
+
+  // Banner ad future
+  Future<Widget?>? _bannerAdFuture;
+
   @override
   void initState() {
     super.initState();
@@ -99,7 +105,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     _audioPlayer = AudioPlayer();
     _adService = AdService();
-    _adService.loadNativeAd(); // Ensure native ad is loaded
+    Future.microtask(() async {
+      await _initAds();
+    });
+    _bannerAdFuture = _adService.getBannerAdWidget();
+    _adUiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) setState(() {});
+    });
     _initializeData();
     _loadUserProfile();
     _loadPercentage();
@@ -186,6 +198,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         if (_isMining) {
           _saveMiningState();
           // Keep mining notification active in background
+          // Mining ke dauran hi floating bubble show karo
+          OverlayService.showFloatingBubble();
         }
         break;
       case AppLifecycleState.detached:
@@ -208,6 +222,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _cancelAllTimers();
     _uiUpdateTimer?.cancel();
     _periodicSaveTimer?.cancel();
+    _adUiUpdateTimer?.cancel();
 
     // Stop mining notification
     MiningNotificationService.stopMiningNotification();
@@ -1034,41 +1049,51 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 setState(() {});
               },
             ),
-            // Native Ad Container (same as contract screen)
-            Consumer<AdService>(
-              builder: (context, adService, _) {
-                return Container(
-                  height: 250,
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  child: adService.isNativeAdLoaded
-                      ? adService.getNativeAd()
-                      : Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.ads_click,
-                                    color: Colors.grey, size: 24),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Ad Loading...',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                );
+            // Banner Ad Box (mining state ke upar)
+            FutureBuilder<Widget?>(
+              future: _bannerAdFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.done &&
+                    snapshot.data != null) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: snapshot.data,
+                  );
+                } else {
+                  return const SizedBox(height: 50);
+                }
               },
+            ),
+            // Native Ad Box (banner ad ke neeche)
+            Container(
+              height: 250,
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              child: _adService.isNativeAdLoaded
+                  ? _adService.getNativeAd()
+                  : Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.ads_click, color: Colors.grey, size: 24),
+                            SizedBox(height: 4),
+                            Text(
+                              'Ad Loading...',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
             ),
             const SizedBox(height: 16),
             // Add Server Connection Animation
@@ -2069,5 +2094,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         });
       }
     });
+  }
+
+  // Contract screen ki tarah ad initialize karne wala function
+  Future<void> _initAds() async {
+    try {
+      await _adService.initialize();
+      await _loadNativeAd();
+    } catch (e) {
+      debugPrint('Error initializing ads: $e');
+    }
+  }
+
+  // Contract screen jaisa native ad load karne ka function
+  Future<void> _loadNativeAd() async {
+    try {
+      await _adService.loadNativeAd();
+    } catch (e) {
+      debugPrint('Error loading native ad: $e');
+    }
   }
 }

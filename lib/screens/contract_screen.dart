@@ -181,6 +181,12 @@ class _ContractScreenState extends State<ContractScreen>
       'ca-app-pub-3940256099942544/5224354917'; // Default test ID
   bool _isAdInitialized = false;
 
+  // Banner ad futures for 4 positions
+  Future<Widget?>? _bannerAdFuture1;
+  Future<Widget?>? _bannerAdFuture2;
+  Future<Widget?>? _bannerAdFuture3;
+  Future<Widget?>? _bannerAdFuture4;
+
   @override
   void initState() {
     super.initState();
@@ -192,6 +198,11 @@ class _ContractScreenState extends State<ContractScreen>
     _restoreContractStates();
     _startUiUpdateTimer();
     _loadNativeAd();
+    // Banner ad futures
+    _bannerAdFuture1 = _adService.getBannerAdWidget();
+    _bannerAdFuture2 = _adService.getBannerAdWidget();
+    _bannerAdFuture3 = _adService.getBannerAdWidget();
+    _bannerAdFuture4 = _adService.getBannerAdWidget();
   }
 
   @override
@@ -651,17 +662,53 @@ class _ContractScreenState extends State<ContractScreen>
         });
 
         // 3 ad positions: after 3rd, 6th, 9th contract
-        final adPositions = <int>{3, 6, 9};
-        final totalItems = contracts.length + adPositions.length;
+        final nativeAdPositions = <int>{3, 6, 9};
+        // 4 banner ad positions: after 2nd, 5th, 8th, 11th contract
+        final bannerAdPositions = <int>{2, 5, 8, 11};
+        final totalItems = contracts.length +
+            nativeAdPositions.length +
+            bannerAdPositions.length;
 
         return ListView.builder(
           padding: const EdgeInsets.all(16.0),
           itemCount: totalItems,
           itemBuilder: (context, index) {
-            // Agar index ad position hai, to ad dikhayein
+            // Banner ad positions
+            int bannersShown = 0;
+            for (final pos in bannerAdPositions) {
+              if (index == pos + bannersShown) {
+                bannersShown++;
+                Future<Widget?>? bannerAdFuture;
+                if (pos == 2) {
+                  bannerAdFuture = _bannerAdFuture1;
+                } else if (pos == 5) {
+                  bannerAdFuture = _bannerAdFuture2;
+                } else if (pos == 8) {
+                  bannerAdFuture = _bannerAdFuture3;
+                } else if (pos == 11) {
+                  bannerAdFuture = _bannerAdFuture4;
+                }
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: FutureBuilder<Widget?>(
+                    future: bannerAdFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.done &&
+                          snapshot.data != null) {
+                        return snapshot.data!;
+                      } else {
+                        return const SizedBox(height: 50);
+                      }
+                    },
+                  ),
+                );
+              }
+            }
+
+            // Native ad positions
             int adsShown = 0;
-            for (final pos in adPositions) {
-              if (index == pos + adsShown) {
+            for (final pos in nativeAdPositions) {
+              if (index == pos + bannersShown + adsShown) {
                 adsShown++;
                 return Container(
                   height: 250,
@@ -699,8 +746,12 @@ class _ContractScreenState extends State<ContractScreen>
 
             // Contract index nikalna (ads ke hisab se adjust kar ke)
             int contractIndex = index;
-            for (final pos in adPositions) {
+            for (final pos in bannerAdPositions) {
               if (index > pos) contractIndex--;
+            }
+            for (final pos in nativeAdPositions) {
+              if (index > pos + bannerAdPositions.where((b) => b < pos).length)
+                contractIndex--;
             }
             final contract = contracts[contractIndex];
             final bool isCompleted = contract['isCompleted'] ?? false;
