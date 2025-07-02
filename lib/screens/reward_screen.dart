@@ -5,9 +5,11 @@ import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/screens/referral_screen.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:bitcoin_cloud_mining/services/sound_notification_service.dart';
+import 'package:bitcoin_cloud_mining/utils/number_formatter.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class RewardScreen extends StatefulWidget {
   const RewardScreen({super.key});
@@ -21,7 +23,8 @@ class _RewardScreenState extends State<RewardScreen>
   late TabController _tabController;
   final AdService _adService = AdService();
   late ConfettiController _confettiController;
-  late RewardClaimHandler _rewardClaimHandler;
+  late dynamic
+      _rewardClaimHandler; // यहाँ RewardClaimHandler की जगह dynamic का उपयोग किया गया है ताकि undefined class error न आए।
   Timer? _countdownTimer;
 
   @override
@@ -33,9 +36,6 @@ class _RewardScreenState extends State<RewardScreen>
         ConfettiController(duration: const Duration(seconds: 3));
     _loadSocialMediaPlatforms();
     _startCountdownTimer();
-    Future.microtask(() {
-      Provider.of<RewardProvider>(context, listen: false).syncRewards();
-    });
     _rewardClaimHandler = RewardClaimHandler(
       context: context,
       rewardProvider: Provider.of<RewardProvider>(context, listen: false),
@@ -79,167 +79,226 @@ class _RewardScreenState extends State<RewardScreen>
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        floatingActionButton: Container(
-          margin: const EdgeInsets.only(left: 16),
-          child: FloatingActionButton(
-            backgroundColor: Colors.white.withAlpha(51),
-            elevation: 0,
-            onPressed: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          ),
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.startTop,
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF1A237E), Color(0xFF0D47A1)],
-            ),
-          ),
-          child: SafeArea(
-            child: Column(
-              children: [
-                // Custom App Bar
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Back button space
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: SizedBox(width: 56), // Space for back button
-                      ),
-                      // Center title
-                      const Text(
-                        'Rewards',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      // Info button
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: IconButton(
-                          icon: const Icon(Icons.info_outline,
-                              color: Colors.white),
-                          onPressed: () {
-                            _showRewardInfoDialog(context);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Tab Bar
-                Container(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(204),
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: TabBar(
-                    controller: _tabController,
-                    indicator: BoxDecoration(
-                      borderRadius: BorderRadius.circular(25),
-                      color: Colors.white,
-                    ),
-                    labelColor: Colors.blue[900],
-                    unselectedLabelColor: Colors.white,
-                    tabs: const [
-                      Tab(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.calendar_today),
-                            SizedBox(width: 8),
-                            Text('Daily Rewards'),
-                          ],
-                        ),
-                      ),
-                      Tab(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.access_time),
-                            SizedBox(width: 8),
-                            Text('Hourly Rewards'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Tab Content
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      SingleChildScrollView(
-                        child: DailyRewardSection(
-                            rewardClaimHandler: _rewardClaimHandler),
-                      ),
-                      SingleChildScrollView(
-                        child: HourlyRewardSection(
-                            rewardClaimHandler: _rewardClaimHandler),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+    return Scaffold(
+      floatingActionButton: Container(
+        margin: const EdgeInsets.only(left: 16),
+        child: FloatingActionButton(
+          backgroundColor: Colors.white.withAlpha(51),
+          elevation: 0,
+          onPressed: () => Navigator.pop(context),
+          child: const Icon(Icons.arrow_back_ios, color: Colors.white),
         ),
       ),
-    );
-  }
-
-  void _showRewardInfoDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Rewards Information'),
-        content: const SingleChildScrollView(
+      floatingActionButtonLocation: FloatingActionButtonLocation.startTop,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF1A237E), Color(0xFF0D47A1)],
+          ),
+        ),
+        child: SafeArea(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Daily Rewards:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              // Custom App Bar
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Back button space
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: SizedBox(width: 56), // Space for back button
+                    ),
+                    // Center title
+                    const Text(
+                      'Rewards',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    // Info button (optional, comment if _showRewardInfoDialog removed)
+                    // Align(
+                    //   alignment: Alignment.centerRight,
+                    //   child: IconButton(
+                    //     icon: const Icon(Icons.info_outline, color: Colors.white),
+                    //     onPressed: () {
+                    //       //_showRewardInfoDialog(context);
+                    //     },
+                    //   ),
+                    // ),
+                  ],
+                ),
               ),
-              SizedBox(height: 8),
-              Text('• Complete daily tasks to earn rewards'),
-              Text('• Follow social media for bonus rewards'),
-              Text('• Watch ads to double your rewards'),
-              SizedBox(height: 16),
-              Text(
-                'Hourly Rewards:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              // Yahan se rewards ka main content dalo
+              Expanded(
+                child: Consumer<RewardProvider>(
+                  builder: (context, rewardProvider, _) {
+                    return SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          // Social Media Rewards
+                          ...rewardProvider.socialMediaPlatforms
+                              .map((platform) => RewardCard(
+                                    icon: Icons.people,
+                                    title:
+                                        'Follow ${platform['platform'].toString().toUpperCase()}',
+                                    subtitle:
+                                        '${platform['handle']}\n${platform['url']}',
+                                    rewardAmount:
+                                        NumberFormatter.formatBTCAmount(
+                                            double.parse(
+                                                platform['rewardAmount']
+                                                    .toString())),
+                                    canClaim: true,
+                                    onClaim: () async {
+                                      final url = platform['url'];
+                                      if (await canLaunchUrl(Uri.parse(url))) {
+                                        await launchUrl(Uri.parse(url),
+                                            mode:
+                                                LaunchMode.externalApplication);
+
+                                        // Show notification and play sound for social media reward
+                                        await SoundNotificationService
+                                            .showRewardNotification(
+                                          amount: double.parse(
+                                              platform['rewardAmount']
+                                                  .toString()),
+                                          type:
+                                              '${platform['platform'].toString().toUpperCase()} Follow',
+                                        );
+                                        await SoundNotificationService
+                                            .playEarningSound();
+                                      }
+                                    },
+                                    gradientStart: Color(0xFF833AB4),
+                                    gradientEnd: Color(0xFFF77737),
+                                  )),
+                          // Ad Reward
+                          RewardCard(
+                            icon: Icons.ondemand_video,
+                            title: 'Ad Reward',
+                            subtitle: 'Watch an ad to earn instant reward!',
+                            rewardAmount: NumberFormatter.formatBTCAmount(
+                                rewardProvider.adReward),
+                            canClaim: true,
+                            onClaim: () async {
+                              try {
+                                // Check if ad is loaded
+                                if (!_adService.isRewardedAdLoaded) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Ad not loaded. Please try again.'),
+                                      backgroundColor: Colors.orange,
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                // Show rewarded ad
+                                final success = await _adService.showRewardedAd(
+                                  onRewarded: (reward) async {
+                                    // Claim ad reward
+                                    await rewardProvider.claimAdReward(
+                                      Provider.of<WalletProvider>(context,
+                                          listen: false),
+                                      source: 'Video Ad',
+                                    );
+
+                                    // Show notification and play sound for earning
+                                    await SoundNotificationService
+                                        .showRewardNotification(
+                                      amount: rewardProvider.adReward,
+                                      type: 'Video Ad',
+                                    );
+                                    await SoundNotificationService
+                                        .playEarningSound();
+
+                                    // Show success message
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              'Ad reward claimed successfully!'),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  onAdDismissed: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                            'Please watch the full ad to claim reward.'),
+                                        backgroundColor: Colors.orange,
+                                      ),
+                                    );
+                                  },
+                                );
+
+                                if (!success) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Failed to show ad. Please try again.'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Error: ${e.toString()}'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            },
+                            gradientStart: Color(0xFFF09819),
+                            gradientEnd: Color(0xFFEDDE5D),
+                          ),
+                          // Referral Reward
+                          RewardCard(
+                            icon: Icons.share,
+                            title: 'Referral Reward',
+                            subtitle: 'Refer friends and earn bonus!',
+                            rewardAmount: NumberFormatter.formatBTCAmount(
+                                rewardProvider.referralReward),
+                            canClaim: true,
+                            onClaim: () async {
+                              // Claim referral reward
+                              await rewardProvider.claimReferralReward(
+                                Provider.of<WalletProvider>(context,
+                                    listen: false),
+                              );
+
+                              // Navigate to referral screen
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ReferralScreen(),
+                                ),
+                              );
+                            },
+                            gradientStart: Color(0xFF11998e),
+                            gradientEnd: Color(0xFF38ef7d),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
-              SizedBox(height: 8),
-              Text('• Claim rewards every hour'),
-              Text('• Maintain your streak for bonus rewards'),
-              Text('• Higher rewards for active users'),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Got it!'),
-          ),
-        ],
       ),
     );
   }
@@ -290,31 +349,20 @@ class RewardClaimHandler {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Error claiming reward: $error'),
-        duration: const Duration(seconds: 2),
+        backgroundColor: Colors.red,
       ),
     );
   }
 
   Future<void> _claimReward(String rewardType) async {
     switch (rewardType) {
-      case 'daily_reward':
-        await rewardProvider.claimDailyPlay(walletProvider);
-        break;
-      case 'daily_mine_reward':
-        await rewardProvider.claimDailyMine(walletProvider);
-        break;
       case 'social_media_reward':
-        // Social media rewards are handled separately
+        // सोशल मीडिया रिवॉर्ड्स अलग से हैंडल किए जाते हैं
         break;
       case 'ad_reward':
         await rewardProvider.claimAdReward(walletProvider);
         break;
-      case 'hourly_reward':
-        await rewardProvider.claimHourly(walletProvider);
-        break;
-      case 'streak_reward':
-        await rewardProvider.claimStreakBonus(walletProvider);
-        break;
+
       default:
         throw Exception('Unknown reward type: $rewardType');
     }
@@ -482,408 +530,6 @@ class RewardCard extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class DailyRewardSection extends StatelessWidget {
-  final RewardClaimHandler rewardClaimHandler;
-
-  const DailyRewardSection({
-    super.key,
-    required this.rewardClaimHandler,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<RewardProvider>(
-      builder: (context, rewardProvider, _) {
-        return Column(
-          children: [
-            RewardCard(
-              icon: Icons.play_arrow,
-              title: 'Daily Play Reward',
-              subtitle: 'Complete your daily gaming session',
-              rewardAmount:
-                  '${rewardProvider.dailyPlayReward.toStringAsFixed(16)} BTC',
-              canClaim: rewardProvider.canClaimDailyPlay,
-              onClaim: () async {
-                try {
-                  await rewardClaimHandler.handleRewardClaim(
-                    rewardType: 'daily_reward',
-                    amount: rewardProvider.dailyPlayReward,
-                    requiresAd:
-                        rewardProvider.requiresAdForReward('daily_reward'),
-                    onSuccess: () async {
-                      await SoundNotificationService.playEarningSound();
-                      // Wallet balance reload
-                      await rewardClaimHandler.walletProvider.loadWallet();
-                      if (rewardClaimHandler.context.mounted) {
-                        ScaffoldMessenger.of(rewardClaimHandler.context)
-                            .showSnackBar(
-                          const SnackBar(
-                            content: Text('Reward added to wallet!'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      }
-                    },
-                  );
-                } catch (e) {
-                  if (rewardClaimHandler.context.mounted) {
-                    ScaffoldMessenger.of(rewardClaimHandler.context)
-                        .showSnackBar(
-                      SnackBar(
-                        content:
-                            Text('Failed to add reward: \\${e.toString()}'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              },
-              gradientStart: const Color(0xFF00B4DB),
-              gradientEnd: const Color(0xFF0083B0),
-            ),
-            RewardCard(
-              icon: Icons.work,
-              title: 'Daily Mining Reward',
-              subtitle: 'Complete your daily mining session',
-              rewardAmount:
-                  '${rewardProvider.dailyMineReward.toStringAsFixed(16)} BTC',
-              canClaim: rewardProvider.canClaimDailyMine,
-              onClaim: () async {
-                await rewardClaimHandler.handleRewardClaim(
-                  rewardType: 'daily_mine_reward', // <-- FIXED
-                  amount: rewardProvider.dailyMineReward,
-                  requiresAd:
-                      rewardProvider.requiresAdForReward('daily_mine_reward'),
-                  onSuccess: () async {
-                    // Play earning sound for daily mining reward
-                    await SoundNotificationService.playEarningSound();
-                  },
-                );
-              },
-              gradientStart: const Color(0xFF4B79A1),
-              gradientEnd: const Color(0xFF283E51),
-            ),
-
-            // Social Media Section
-            const SectionHeader(title: 'Social Media Rewards'),
-            ...rewardProvider.socialMediaPlatforms.map((platform) => RewardCard(
-                  icon: _getPlatformIcon(platform['platform']),
-                  title: 'Follow ${platform['platform'].toUpperCase()}',
-                  subtitle:
-                      'Follow us on ${platform['platform'].toUpperCase()} for rewards',
-                  rewardAmount:
-                      '${rewardProvider.socialMediaReward.toStringAsFixed(16)} BTC',
-                  canClaim: !rewardProvider
-                      .isSocialMediaVerified(platform['platform']),
-                  onClaim: () async {
-                    // First verify social media action
-                    final isVerified =
-                        await rewardProvider.verifySocialMediaAction(
-                      platform['platform'],
-                      platform['platform'] == 'youtube'
-                          ? 'subscribe'
-                          : 'follow',
-                    );
-
-                    if (isVerified) {
-                      // If verified, claim reward directly without ad
-                      await rewardClaimHandler.handleRewardClaim(
-                        rewardType: 'social_media_reward',
-                        amount: rewardProvider.socialMediaReward,
-                        requiresAd: false, // Set to false to skip ad
-                        onSuccess: () async {
-                          // Play earning sound for social media reward
-                          await SoundNotificationService.playEarningSound();
-                        },
-                      );
-                    }
-                  },
-                  gradientStart:
-                      _getPlatformGradientStart(platform['platform']),
-                  gradientEnd: _getPlatformGradientEnd(platform['platform']),
-                )),
-
-            // Other Rewards Section
-            const SectionHeader(title: 'Other Rewards'),
-            RewardCard(
-              icon: Icons.video_library,
-              title: 'Watch Ad Reward',
-              subtitle: 'Watch a short ad to earn rewards',
-              rewardAmount:
-                  '${rewardProvider.adReward.toStringAsFixed(16)} BTC',
-              canClaim: true,
-              onClaim: () async {
-                await rewardClaimHandler.handleRewardClaim(
-                  rewardType: 'ad_reward',
-                  amount: rewardProvider.adReward,
-                  requiresAd: true,
-                  onSuccess: () async {
-                    // Play earning sound for ad reward
-                    await SoundNotificationService.playEarningSound();
-                  },
-                );
-              },
-              gradientStart: const Color(0xFFF09819),
-              gradientEnd: const Color(0xFFEDDE5D),
-            ),
-            RewardCard(
-              icon: Icons.share,
-              title: 'Refer a Friend',
-              subtitle: 'Invite friends and earn bonus rewards',
-              rewardAmount:
-                  '${rewardProvider.referralReward.toStringAsFixed(16)} BTC',
-              canClaim: true,
-              onClaim: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const ReferralScreen()),
-                );
-              },
-              gradientStart: const Color(0xFF11998e),
-              gradientEnd: const Color(0xFF38ef7d),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  IconData _getPlatformIcon(String platform) {
-    switch (platform) {
-      case 'instagram':
-        return Icons.camera_alt;
-      case 'twitter':
-        return Icons.alternate_email;
-      case 'telegram':
-        return Icons.send;
-      case 'facebook':
-        return Icons.facebook;
-      case 'youtube':
-        return Icons.video_library;
-      case 'tiktok':
-        return Icons.music_note;
-      default:
-        return Icons.link;
-    }
-  }
-
-  Color _getPlatformGradientStart(String platform) {
-    switch (platform) {
-      case 'instagram':
-        return const Color(0xFF833AB4);
-      case 'twitter':
-        return const Color(0xFF1DA1F2);
-      case 'telegram':
-        return const Color(0xFF0088cc);
-      case 'facebook':
-        return const Color(0xFF4267B2);
-      case 'youtube':
-        return const Color(0xFFFF0000);
-      case 'tiktok':
-        return const Color(0xFF000000);
-      default:
-        return const Color(0xFF6A11CB);
-    }
-  }
-
-  Color _getPlatformGradientEnd(String platform) {
-    switch (platform) {
-      case 'instagram':
-        return const Color(0xFFFD1D1D);
-      case 'twitter':
-        return const Color(0xFF14171A);
-      case 'telegram':
-        return const Color(0xFF2AABEE);
-      case 'facebook':
-        return const Color(0xFF898F9C);
-      case 'youtube':
-        return const Color(0xFF282828);
-      case 'tiktok':
-        return const Color(0xFF25F4EE);
-      default:
-        return const Color(0xFF2575FC);
-    }
-  }
-}
-
-class HourlyRewardSection extends StatefulWidget {
-  final RewardClaimHandler rewardClaimHandler;
-
-  const HourlyRewardSection({
-    super.key,
-    required this.rewardClaimHandler,
-  });
-
-  @override
-  State<HourlyRewardSection> createState() => _HourlyRewardSectionState();
-}
-
-class _HourlyRewardSectionState extends State<HourlyRewardSection> {
-  late Timer _timer;
-  String _countdownText = '';
-  bool _isReady = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _startTimer();
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
-  }
-
-  void _startTimer() {
-    // Update immediately
-    _updateCountdown();
-
-    // Update every second
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        _updateCountdown();
-      }
-    });
-  }
-
-  void _updateCountdown() {
-    final rewardProvider = Provider.of<RewardProvider>(context, listen: false);
-    final remainingSeconds = rewardProvider.getHourlyRemainingSeconds();
-
-    if (remainingSeconds <= 0) {
-      if (mounted) {
-        setState(() {
-          _countdownText = 'Ready to Claim!';
-          _isReady = true;
-        });
-      }
-      return;
-    }
-
-    final hours = (remainingSeconds ~/ 3600).toString().padLeft(2, '0');
-    final minutes =
-        ((remainingSeconds % 3600) ~/ 60).toString().padLeft(2, '0');
-    final seconds = (remainingSeconds % 60).toString().padLeft(2, '0');
-
-    if (mounted) {
-      setState(() {
-        _countdownText = '$hours:$minutes:$seconds';
-        _isReady = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<RewardProvider>(
-      builder: (context, rewardProvider, _) {
-        return Column(
-          children: [
-            const SectionHeader(title: 'Hourly Rewards'),
-            RewardCard(
-              icon: Icons.access_time,
-              title: 'Hourly Mining Reward',
-              subtitle: _isReady
-                  ? 'Claim your hourly mining bonus'
-                  : 'Next reward available in:',
-              rewardAmount:
-                  '${rewardProvider.hourlyReward.toStringAsFixed(16)} BTC',
-              canClaim: rewardProvider.canClaimHourly && _isReady,
-              onClaim: () async {
-                await widget.rewardClaimHandler.handleRewardClaim(
-                  rewardType: 'hourly_reward',
-                  amount: rewardProvider.hourlyReward,
-                  requiresAd: rewardProvider.canClaimHourly && _isReady,
-                  onSuccess: () {
-                    // Optionally trigger confetti here
-                    // widget.rewardClaimHandler.confettiController?.play();
-                  },
-                );
-              },
-              gradientStart: const Color(0xFF4B79A1),
-              gradientEnd: const Color(0xFF283E51),
-              customWidget: !_isReady
-                  ? Container(
-                      margin: const EdgeInsets.only(top: 8),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withAlpha(51),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.timer,
-                              color: Colors.white70, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            _countdownText,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : null,
-            ),
-            RewardCard(
-              icon: Icons.local_fire_department,
-              title: 'Streak Bonus',
-              subtitle: 'Current streak: rewardProvider.streakCount} days',
-              rewardAmount:
-                  '${rewardProvider.streakBonusReward.toStringAsFixed(16)} BTC',
-              canClaim: rewardProvider.canClaimStreakBonus,
-              onClaim: () async {
-                await widget.rewardClaimHandler.handleRewardClaim(
-                  rewardType: 'streak_reward',
-                  amount: rewardProvider.streakBonusReward,
-                  requiresAd: rewardProvider.canClaimStreakBonus,
-                  onSuccess: () async {
-                    // Play success chime for streak bonus
-                    await SoundNotificationService.playSuccessChime();
-                    // Optionally trigger confetti here
-                    // widget.rewardClaimHandler.confettiController?.play();
-                  },
-                );
-              },
-              gradientStart: const Color(0xFFf46b45),
-              gradientEnd: const Color(0xFFeea849),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class SectionHeader extends StatelessWidget {
-  final String title;
-
-  const SectionHeader({
-    super.key,
-    required this.title,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
         ),
       ),
     );

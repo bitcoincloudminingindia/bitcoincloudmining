@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class AdService {
+class AdService extends ChangeNotifier {
   static final AdService _instance = AdService._internal();
   factory AdService() => _instance;
   AdService._internal();
@@ -432,6 +432,7 @@ class AdService {
         _nativeAd?.dispose();
         _nativeAd = null;
         _isNativeAdLoaded = false;
+        notifyListeners();
 
         _nativeAd = NativeAd(
           adUnitId: adUnitId,
@@ -456,6 +457,7 @@ class AdService {
 
               // Start auto-refresh timer
               _startNativeAdAutoRefresh();
+              notifyListeners();
             },
             onAdFailedToLoad: (ad, error) {
               _isNativeAdLoaded = false;
@@ -465,6 +467,7 @@ class AdService {
               debugPrint(
                   '📊 Native ad failure details: Code: ${error.code}, Message: ${error.message}');
               _adFailures['native'] = (_adFailures['native'] ?? 0) + 1;
+              notifyListeners();
               throw error;
             },
             onAdOpened: (ad) {
@@ -472,6 +475,7 @@ class AdService {
             },
             onAdClosed: (ad) {
               debugPrint('🔒 Native ad closed');
+              notifyListeners();
             },
             onAdImpression: (ad) {
               _nativeAdImpressionCount++;
@@ -490,6 +494,7 @@ class AdService {
       },
       (success) {
         _isNativeAdLoaded = success;
+        notifyListeners();
         if (success) {
           debugPrint('✅ Native ad load completed successfully');
         } else {
@@ -808,6 +813,7 @@ class AdService {
   }
 
   // Dispose ads
+  @override
   void dispose() {
     _bannerAd?.dispose();
     _interstitialAd?.dispose();
@@ -820,8 +826,10 @@ class AdService {
     _isRewardedAdLoaded = false;
     _isRewardedAdLoading = false;
     _isNativeAdLoaded = false;
+    notifyListeners();
 
     _saveMetrics();
+    super.dispose();
   }
 
   // Reset ad metrics

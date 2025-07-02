@@ -1035,35 +1035,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               },
             ),
             // Native Ad Container (same as contract screen)
-            Container(
-              height: 250,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              child: _adService.isNativeAdLoaded
-                  ? _adService.getNativeAd()
-                  : Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
-                      child: const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.ads_click, color: Colors.grey, size: 24),
-                            SizedBox(height: 4),
-                            Text(
-                              'Ad Loading...',
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
+            Consumer<AdService>(
+              builder: (context, adService, _) {
+                return Container(
+                  height: 250,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: adService.isNativeAdLoaded
+                      ? adService.getNativeAd()
+                      : Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.ads_click,
+                                    color: Colors.grey, size: 24),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Ad Loading...',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
+                );
+              },
             ),
             const SizedBox(height: 16),
             // Add Server Connection Animation
