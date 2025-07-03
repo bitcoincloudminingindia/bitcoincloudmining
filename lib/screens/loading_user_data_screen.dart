@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/network_provider.dart';
 import '../providers/wallet_provider.dart';
-import '../services/api_service.dart';
 import '../services/version_check_service.dart';
 
 class LoadingUserDataScreen extends StatefulWidget {
@@ -112,26 +111,6 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
       await walletProvider.loadWallet();
 
       if (!mounted) return;
-
-      // 4. Load referral data (optional)
-      try {
-        setState(() {
-          _loadingMessage = 'Loading referral data...';
-        });
-
-        final referralResult = await ApiService.get('/api/referral/statistics')
-            .timeout(const Duration(seconds: 10));
-
-        if (!mounted) return;
-
-        if (referralResult['success'] != true) {
-          debugPrint(
-              '⚠️ Error loading referral data: ${referralResult['message']}');
-        }
-      } catch (e) {
-        debugPrint('⚠️ Error loading referral data: $e');
-        // Continue even if referral data fails to load
-      }
 
       // 4. All data loaded, navigate to navigation screen
       if (mounted) {

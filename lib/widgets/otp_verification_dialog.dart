@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../config/api_config.dart';
 import '../services/api_service.dart';
+import 'login_dialog.dart';
 
 class OtpVerificationDialog extends StatefulWidget {
   final String email;
@@ -110,8 +111,24 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
               backgroundColor: Colors.green,
             ),
           );
-          // Close the dialog with success result
-          Navigator.of(context).pop(true);
+          // Close OTP dialog
+          Navigator.of(context).pop();
+          // Show DisclaimerScreen, then LoginDialog after OK
+          Future.delayed(const Duration(milliseconds: 300), () {
+            Navigator.of(context)
+                .push(
+              MaterialPageRoute(
+                builder: (context) => DisclaimerScreen(),
+              ),
+            )
+                .then((_) {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const LoginDialog(),
+              );
+            });
+          });
         }
       } else {
         setState(() {
@@ -238,6 +255,67 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class DisclaimerScreen extends StatelessWidget {
+  const DisclaimerScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.blue[900],
+      appBar: AppBar(
+        title: const Text('Disclaimer'),
+        backgroundColor: Colors.blue[900],
+        elevation: 0,
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Icon(Icons.info_outline, color: Colors.amber, size: 60),
+              const SizedBox(height: 24),
+              const Text(
+                'Disclaimer',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'This app simulates cloud mining. Rewards are virtual and based on ad interactions or in-app activities. It does not perform real Bitcoin mining.',
+                style: TextStyle(fontSize: 16, color: Colors.white70),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber,
+                  foregroundColor: Colors.black,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('OK',
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

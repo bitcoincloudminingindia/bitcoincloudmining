@@ -31,7 +31,6 @@ import 'package:workmanager/workmanager.dart';
 
 import 'fcm_service.dart';
 import 'services/audio_service.dart';
-import 'services/overlay_service.dart';
 import 'services/sound_notification_service.dart';
 import 'utils/storage_utils.dart';
 
@@ -291,14 +290,7 @@ class _MyAppState extends State<MyApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!Platform.isAndroid) return;
-    if (state == AppLifecycleState.paused) {
-      // App background me gaya, bubble show karo
-      OverlayService.showFloatingBubble();
-    } else if (state == AppLifecycleState.resumed) {
-      // App foreground me aaya, bubble band karo
-      OverlayService.hideFloatingBubble();
-    }
+    // OverlayService se related code hata diya gaya hai
   }
 
   @override

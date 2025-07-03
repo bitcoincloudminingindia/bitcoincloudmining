@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:flutter/material.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
@@ -162,8 +161,8 @@ class _ContractScreenState extends State<ContractScreen>
       'title': '365 Days Contract (Legendary)',
       'hashRate': 5000.0,
       'duration': 365,
-      'adsRequired': 1200,
-      'earnings': 0.00095,
+      'adsRequired': 1500,
+      'earnings': 0.000149,
       'currentEarnings': 0.0,
       'earningsPerSecond': 0.00000000000008197,
       'isMining': false,
@@ -172,13 +171,9 @@ class _ContractScreenState extends State<ContractScreen>
     },
   ];
 
-  RewardedAd? _rewardedAd;
-  bool _isAdLoading = false;
   DateTime? _lastAdWatchTime;
   Timer? _adCooldownTimer;
   int _remainingCooldownSeconds = 0;
-  String _rewardedAdUnitId =
-      'ca-app-pub-3940256099942544/5224354917'; // Default test ID
   bool _isAdInitialized = false;
 
   // Banner ad futures for 4 positions
@@ -186,6 +181,7 @@ class _ContractScreenState extends State<ContractScreen>
   Future<Widget?>? _bannerAdFuture2;
   Future<Widget?>? _bannerAdFuture3;
   Future<Widget?>? _bannerAdFuture4;
+  Future<Widget?>? _bannerAdFuture5; // Legendary contract ke niche ke liye
 
   @override
   void initState() {
@@ -203,6 +199,8 @@ class _ContractScreenState extends State<ContractScreen>
     _bannerAdFuture2 = _adService.getBannerAdWidget();
     _bannerAdFuture3 = _adService.getBannerAdWidget();
     _bannerAdFuture4 = _adService.getBannerAdWidget();
+    _bannerAdFuture5 =
+        _adService.getBannerAdWidget(); // Legendary contract ke niche ke liye
   }
 
   @override
@@ -210,7 +208,6 @@ class _ContractScreenState extends State<ContractScreen>
     WidgetsBinding.instance.removeObserver(this);
     _uiUpdateTimer?.cancel();
     _adCooldownTimer?.cancel();
-    _rewardedAd?.dispose();
     for (var contract in contracts) {
       contract['timer']?.cancel();
     }
@@ -241,8 +238,6 @@ class _ContractScreenState extends State<ContractScreen>
       setState(() {
         _isAdInitialized = true;
       });
-      await _loadAdUnitId();
-      await _loadRewardedAd();
     } catch (e) {
       debugPrint('Error initializing ad service: $e');
       // Retry after 5 seconds
@@ -453,54 +448,6 @@ class _ContractScreenState extends State<ContractScreen>
     Workmanager().cancelByUniqueName('mining_periodic_task_$index');
   }
 
-  Future<void> _loadAdUnitId() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final adUnitId = prefs.getString('rewarded_ad_unit_id');
-      if (adUnitId != null && adUnitId.isNotEmpty) {
-        setState(() {
-          _rewardedAdUnitId = adUnitId;
-        });
-        // Reload ad with new unit ID
-        await _loadRewardedAd();
-      }
-    } catch (e) {
-      debugPrint('Error loading ad unit ID: $e');
-    }
-  }
-
-  Future<void> _loadRewardedAd() async {
-    if (!_isAdInitialized || _isAdLoading) return;
-    _isAdLoading = true;
-
-    try {
-      await RewardedAd.load(
-        adUnitId: _rewardedAdUnitId,
-        request: const AdRequest(),
-        rewardedAdLoadCallback: RewardedAdLoadCallback(
-          onAdLoaded: (RewardedAd ad) {
-            _rewardedAd = ad;
-            _isAdLoading = false;
-            debugPrint('Rewarded ad loaded successfully');
-          },
-          onAdFailedToLoad: (LoadAdError error) {
-            debugPrint('Rewarded ad failed to load: $error');
-            _isAdLoading = false;
-            // Retry after 30 seconds if failed
-            Future.delayed(const Duration(seconds: 30), () {
-              if (mounted) {
-                _loadRewardedAd();
-              }
-            });
-          },
-        ),
-      );
-    } catch (e) {
-      debugPrint('Error in _loadRewardedAd: $e');
-      _isAdLoading = false;
-    }
-  }
-
   bool _canWatchAd() {
     if (_lastAdWatchTime == null) return true;
     final difference = DateTime.now().difference(_lastAdWatchTime!);
@@ -545,21 +492,10 @@ class _ContractScreenState extends State<ContractScreen>
       return;
     }
 
-    if (_rewardedAd == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ad not ready. Please try again in a moment.'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      await _loadRewardedAd();
-      return;
-    }
-
     try {
-      await _rewardedAd!.show(
-        onUserEarnedReward: (_, reward) {
-          debugPrint('User earned reward: ${reward.amount} ${reward.type}');
+      await _adService.showRewardedAd(
+        onRewarded: (double amount) async {
+          debugPrint('User earned reward: $amount');
           final contract = contracts[index];
           setState(() {
             if (contract['adsWatched'] < contract['adsRequired']) {
@@ -568,7 +504,14 @@ class _ContractScreenState extends State<ContractScreen>
           });
           _saveWatchAdsCount(index);
           _startAdCooldown();
-          _loadRewardedAd(); // Load next ad
+        },
+        onAdDismissed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Watch the full ad to claim earnings.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
         },
       );
     } catch (e) {
@@ -579,7 +522,6 @@ class _ContractScreenState extends State<ContractScreen>
           duration: Duration(seconds: 2),
         ),
       );
-      await _loadRewardedAd();
     }
   }
 
@@ -665,9 +607,11 @@ class _ContractScreenState extends State<ContractScreen>
         final nativeAdPositions = <int>{3, 6, 9};
         // 4 banner ad positions: after 2nd, 5th, 8th, 11th contract
         final bannerAdPositions = <int>{2, 5, 8, 11};
+        final legendaryIndex = 11; // Legendary contract ka index
         final totalItems = contracts.length +
             nativeAdPositions.length +
-            bannerAdPositions.length;
+            bannerAdPositions.length +
+            1; // +1 for banner ad after legendary
 
         return ListView.builder(
           padding: const EdgeInsets.all(16.0),
@@ -688,6 +632,10 @@ class _ContractScreenState extends State<ContractScreen>
                 } else if (pos == 11) {
                   bannerAdFuture = _bannerAdFuture4;
                 }
+                // Legendary contract ke upar (index == 11)
+                if (pos == legendaryIndex) {
+                  bannerAdFuture = _bannerAdFuture4;
+                }
                 return Container(
                   margin: const EdgeInsets.symmetric(vertical: 8),
                   child: FutureBuilder<Widget?>(
@@ -703,6 +651,24 @@ class _ContractScreenState extends State<ContractScreen>
                   ),
                 );
               }
+            }
+
+            // Legendary contract ke niche banner ad (sabse last)
+            if (index == totalItems - 1) {
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                child: FutureBuilder<Widget?>(
+                  future: _bannerAdFuture5,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.done &&
+                        snapshot.data != null) {
+                      return snapshot.data!;
+                    } else {
+                      return const SizedBox(height: 50);
+                    }
+                  },
+                ),
+              );
             }
 
             // Native ad positions
@@ -752,6 +718,9 @@ class _ContractScreenState extends State<ContractScreen>
             for (final pos in nativeAdPositions) {
               if (index > pos + bannerAdPositions.where((b) => b < pos).length)
                 contractIndex--;
+            }
+            if (contractIndex >= contracts.length) {
+              return const SizedBox.shrink();
             }
             final contract = contracts[contractIndex];
             final bool isCompleted = contract['isCompleted'] ?? false;

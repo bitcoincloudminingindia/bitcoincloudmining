@@ -7,7 +7,6 @@ import 'package:bitcoin_cloud_mining/providers/network_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:bitcoin_cloud_mining/services/mining_notification_service.dart';
-import 'package:bitcoin_cloud_mining/services/overlay_service.dart';
 import 'package:bitcoin_cloud_mining/services/sound_notification_service.dart';
 import 'package:bitcoin_cloud_mining/widgets/network_status_widget.dart';
 import 'package:bitcoin_cloud_mining/widgets/server_connection_animation.dart';
@@ -197,9 +196,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         // App going to background - save state
         if (_isMining) {
           _saveMiningState();
-          // Keep mining notification active in background
           // Mining ke dauran hi floating bubble show karo
-          OverlayService.showFloatingBubble();
         }
         break;
       case AppLifecycleState.detached:
@@ -1346,7 +1343,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             const SizedBox(height: 20),
             const Center(
               child: Text(
-                'Follow us for daily coupon! Catch up to 10,000\u0024 Bitcoin.\nWe share daily deposit coupons.',
+                'Join our community for exclusive coupons and BTC reward opportunities!',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 20,
@@ -1424,7 +1421,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               SizedBox(width: 10),
               Text(
-                'Win Real Bitcoin!',
+                'Play & Earn BTC Rewards',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -1437,7 +1434,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           const Divider(color: Colors.white54, thickness: 1, height: 20),
           const SizedBox(height: 8),
           const Text(
-            'Try your luck and earn real Bitcoin rewards through fun games!',
+            'Play fun games and get BTC rewards for your achievements!',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 16, color: Colors.white70),
           ),
@@ -1639,88 +1636,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _adTimer?.cancel();
     _adTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
       if (mounted && _isMining) {
-        _showRewardedAd();
+        // _showRewardedAd(); // Auto-call hata diya gaya hai (AdMob policy compliance)
       }
     });
-  }
-
-  Future<void> _showRewardedAd() async {
-    try {
-      final rewardedAd = await _adService.getRewardedAd();
-      if (rewardedAd != null && mounted) {
-        await rewardedAd.show(
-          onUserEarnedReward: (_, reward) {
-            // Power up sound बजाओ
-            SoundNotificationService.playSciFiPowerUpSound();
-
-            setState(() {
-              _isPowerBoostActive = true;
-              _powerBoostClickCount++;
-
-              // Calculate new multiplier
-              if (_powerBoostClickCount == 1) {
-                _currentPowerBoostMultiplier = INITIAL_POWER_BOOST_RATE;
-              } else {
-                _currentPowerBoostMultiplier += POWER_BOOST_INCREMENT;
-              }
-
-              // Update mining rate with new multiplier
-              _currentMiningRate =
-                  BASE_MINING_RATE * (1 + _currentPowerBoostMultiplier);
-              _hashRate = 2.5 * (1 + _currentPowerBoostMultiplier);
-              _powerBoostStartTime = DateTime.now();
-            });
-
-            // Show boost activation message
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Auto Power Boost activated! Mining rate increased by ${(_currentPowerBoostMultiplier * 100).toStringAsFixed(0)}%\n'
-                    'New rate: ${_currentMiningRate.toStringAsFixed(18)} BTC/sec\n'
-                    'New hash rate: ${_hashRate.toStringAsFixed(1)} GH/s\n'
-                    'Duration: 5 minutes',
-                  ),
-                  backgroundColor: Colors.green,
-                  duration: const Duration(seconds: 3),
-                ),
-              );
-            }
-
-            // Start power boost timer
-            _powerBoostTimer?.cancel();
-            _powerBoostTimer = Timer(
-              const Duration(minutes: POWER_BOOST_DURATION_MINUTES),
-              () {
-                if (!mounted) return;
-                setState(() {
-                  _isPowerBoostActive = false;
-                  _currentPowerBoostMultiplier = 0.0;
-                  _hashRate = 2.5;
-                });
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Power Boost ended! Mining rate back to normal',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      backgroundColor: Colors.orange,
-                      duration: Duration(seconds: 3),
-                    ),
-                  );
-                }
-              },
-            );
-
-            // Save state immediately after power boost activation
-            _saveMiningState();
-          },
-        );
-      }
-    } catch (e) {
-      debugPrint('Error showing rewarded ad: $e');
-    }
   }
 
   Future<void> _startPowerBoost() async {
@@ -1737,73 +1655,48 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           setState(() {
             _isPowerBoostActive = true;
             _powerBoostClickCount++;
+
+            // Calculate new multiplier
             if (_powerBoostClickCount == 1) {
               _currentPowerBoostMultiplier = INITIAL_POWER_BOOST_RATE;
             } else {
               _currentPowerBoostMultiplier += POWER_BOOST_INCREMENT;
             }
+
+            // Update mining rate with new multiplier
             _currentMiningRate =
                 BASE_MINING_RATE * (1 + _currentPowerBoostMultiplier);
             _hashRate = 2.5 * (1 + _currentPowerBoostMultiplier);
             _powerBoostStartTime = DateTime.now();
           });
-          // Power Boost Start Notification
-          await SoundNotificationService.showAlertNotification(
-            title: '⚡ Power Boost Active!',
-            message:
-                'Mining rate increased! New hash rate: \\${_hashRate.toStringAsFixed(1)} GH/s',
-          );
-          // Mining notification update with new hash rate
-          if (MiningNotificationService.isActive) {
-            final walletProvider = context.read<WalletProvider>();
-            final currentBalance = walletProvider.balance.toStringAsFixed(18);
-            MiningNotificationService.updateMiningStats(
-              balance: currentBalance,
-              hashRate: _hashRate.toStringAsFixed(1),
-              status: '⛏️ Mining with Power Boost!',
+
+          // Show boost activation message
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Auto Power Boost activated! Mining rate increased by ${(_currentPowerBoostMultiplier * 100).toStringAsFixed(0)}%\n'
+                  'New rate: ${_currentMiningRate.toStringAsFixed(18)} BTC/sec\n'
+                  'New hash rate: ${_hashRate.toStringAsFixed(1)} GH/s\n'
+                  'Duration: 5 minutes',
+                ),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 3),
+              ),
             );
           }
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Power Boost activated! Mining rate increased by \\${(_currentPowerBoostMultiplier * 100).toStringAsFixed(0)}%\\n'
-                'New rate: \\${_currentMiningRate.toStringAsFixed(18)} BTC/sec\\n'
-                'New hash rate: \\${_hashRate.toStringAsFixed(1)} GH/s\\n'
-                'Duration: 5 minutes',
-              ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
-            ),
-          );
+
+          // Start power boost timer
           _powerBoostTimer?.cancel();
           _powerBoostTimer = Timer(
             const Duration(minutes: POWER_BOOST_DURATION_MINUTES),
-            () async {
+            () {
               if (!mounted) return;
-              // Power boost khatam hone se pehle earning update karo
-              _updateMiningProgressFromElapsed();
               setState(() {
                 _isPowerBoostActive = false;
                 _currentPowerBoostMultiplier = 0.0;
                 _hashRate = 2.5;
               });
-              // Power Boost End Notification
-              await SoundNotificationService.showAlertNotification(
-                title: '⚡ Power Boost Ended',
-                message: 'Mining rate back to normal. Hash rate: 2.5 GH/s',
-              );
-              // Mining notification update with normal hash rate
-              if (MiningNotificationService.isActive) {
-                final walletProvider = context.read<WalletProvider>();
-                final currentBalance =
-                    walletProvider.balance.toStringAsFixed(18);
-                MiningNotificationService.updateMiningStats(
-                  balance: currentBalance,
-                  hashRate: '2.5',
-                  status: '⛏️ Mining in progress...',
-                );
-              }
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -1818,7 +1711,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               }
             },
           );
-          await _saveMiningState();
+
+          // Save state immediately after power boost activation
+          _saveMiningState();
         },
         onAdDismissed: () {
           if (!mounted) return;

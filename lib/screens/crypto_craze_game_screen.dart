@@ -318,7 +318,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
 
   void _scheduleInterstitialAd() {
     _adTimer?.cancel();
-    _adTimer = Timer.periodic(const Duration(minutes: 3), (_) {
+    _adTimer = Timer.periodic(const Duration(minutes: 5), (_) {
       _showInterstitialAd();
     });
   }

@@ -62,16 +62,16 @@ By accessing or using **$appName**, you confirm that you have read, understood, 
 
 ## 3. App Usage & Mining  
 - **$appName** provides Bitcoin cloud mining services.
-- Mining earnings are paid in real BTC and can be withdrawn to your external wallet.
+- BTC rewards are credited based on ad interactions and app tasks. Real BTC withdrawals are subject to our payout policy.
 - Mining rates may vary based on network conditions and your mining power.
 - The app may offer **power-ups** and **boosters** to enhance your mining speed.
 - **Rewarded ads** are available to boost your mining earnings.
 
 ## 4. Wallet & Transactions  
-- Your **in-app wallet** stores your real BTC balance.
-- The minimum withdrawal amount is 0.000000000000000001 BTC.
-- Withdrawals are processed within 48 hours.
-- No transaction fees are charged for withdrawals.
+- This wallet displays your virtual BTC balance earned through gameplay and rewarded ads.  
+- The minimum withdrawal amount is 0.000000000000000001 BTC.  
+- Withdrawals are subject to our minimum threshold and processed manually after review. Withdrawals are usually processed within 48 hours.  
+- No transaction fees are charged for withdrawals.  
 - The app reserves the right to delay or deny withdrawals if fraudulent activity is suspected.
 
 ## 5. Prohibited Activities  
@@ -115,6 +115,74 @@ By using **$appName**, you acknowledge and agree to these Terms & Conditions.
                     fontWeight: FontWeight.bold,
                     color: Colors.white),
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class PrivacyPolicyScreen extends StatelessWidget {
+  const PrivacyPolicyScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Privacy Policy'),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF1A237E),
+                Color(0xFF0D47A1),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+      ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF1A237E),
+              Color(0xFF0D47A1),
+            ],
+          ),
+        ),
+        child: Container(
+          color: Colors.black.withAlpha(128),
+          padding: const EdgeInsets.all(16),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Privacy Policy',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'We use simulated BTC earnings to enhance gameplay. These do not represent actual financial value or cryptocurrency holdings.\n',
+                  style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white70,
+                      fontStyle: FontStyle.italic),
+                ),
+                Text(
+                  'Your privacy is important to us. This Privacy Policy explains how we collect, use, and protect your information when you use our app.\n\nWe do not share your personal information with third parties except as necessary to provide our services or as required by law.\n\nWe may update this Privacy Policy from time to time. Continued use of the app after updates constitutes acceptance of the revised policy.\n\nFor any questions, contact us at bitcoincloudminingformobile@gmail.com.',
+                  style: TextStyle(fontSize: 16, color: Colors.white70),
+                ),
+              ],
             ),
           ),
         ),

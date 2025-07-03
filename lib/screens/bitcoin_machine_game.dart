@@ -8,21 +8,21 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
-class BTCSlotSpinGameScreen extends StatefulWidget {
+class BitcoinMachineScreen extends StatefulWidget {
   final String gameTitle;
   final double baseWinAmount;
 
-  const BTCSlotSpinGameScreen({
+  const BitcoinMachineScreen({
     super.key,
     required this.gameTitle,
     required this.baseWinAmount,
   });
 
   @override
-  State<BTCSlotSpinGameScreen> createState() => _BTCSlotSpinGameScreenState();
+  State<BitcoinMachineScreen> createState() => _BitcoinMachineScreenState();
 }
 
-class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
+class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
   final List<String> symbols = ['💲', '💎', '🔥', '❌'];
   final List<List<String>> reels = List.generate(3, (_) => []);
   bool isSpinning = false;
@@ -50,7 +50,6 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
 
   Future<void> _loadAds() async {
     await _adService.loadRewardedAd();
-    await _adService.loadInterstitialAd();
   }
 
   Future<void> _showRewardedAd() async {
@@ -90,10 +89,6 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
     }
   }
 
-  Future<void> _showInterstitialAd() async {
-    await _adService.showInterstitialAd();
-  }
-
   void _initializeReels() {
     for (int i = 0; i < 3; i++) {
       reels[i] =
@@ -123,11 +118,6 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
         spinCount = 0;
         totalSpins++;
       });
-
-      // Show interstitial ad every 10 spins
-      if (totalSpins % 10 == 0) {
-        _showInterstitialAd();
-      }
 
       // Total spin duration: 5 seconds (5000 ms)
       const int totalSpinDurationMs = 5000;
@@ -195,6 +185,63 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
     }
   }
 
+  void _showCongratsDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.blue.shade900,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            'Congratulations!',
+            style: TextStyle(
+                color: Colors.yellowAccent,
+                fontWeight: FontWeight.bold,
+                fontSize: 24),
+            textAlign: TextAlign.center,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.celebration,
+                  color: Colors.yellowAccent, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                style: const TextStyle(color: Colors.white, fontSize: 18),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await _showRewardedAd();
+                  setState(_initializeReels);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.yellowAccent,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                ),
+                child: const Text(
+                  'Watch Ad for Play Again',
+                  style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _checkWinnings() {
     double reward = 0;
     String message = '';
@@ -227,17 +274,7 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
       setState(() {
         gameWalletBalance += reward;
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            message,
-            style: const TextStyle(color: Colors.white),
-          ),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      _showCongratsDialog(message);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -289,15 +326,12 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.gameTitle),
+        title: Text('Bitcoin Machine'),
         backgroundColor: Colors.blue.shade900,
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () async {
-            // Show interstitial ad first
-            await _showInterstitialAd();
-
             // Show loading dialog
             showDialog(
               context: context,
@@ -384,7 +418,7 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Slot Wallet: ${gameWalletBalance.toStringAsFixed(18)} BTC',
+                                'BTC Machine Wallet: ${gameWalletBalance.toStringAsFixed(18)} BTC',
                                 style: GoogleFonts.poppins(
                                   color: Colors.greenAccent,
                                   fontSize: 16,
@@ -546,7 +580,7 @@ class _BTCSlotSpinGameScreenState extends State<BTCSlotSpinGameScreen> {
                                             Colors.yellowAccent.withAlpha(100),
                                       ),
                                       child: Text(
-                                        isSpinning ? 'SPINNING...' : 'SPIN',
+                                        isSpinning ? '...' : 'START',
                                         style: GoogleFonts.poppins(
                                           fontSize: 20,
                                           fontWeight: FontWeight.bold,

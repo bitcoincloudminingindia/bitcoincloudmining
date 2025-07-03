@@ -1,13 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
-import 'package:bitcoin_cloud_mining/services/notification_service.dart';
 import 'package:bitcoin_cloud_mining/widgets/login_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/services.dart';
 
 class LaunchScreen extends StatefulWidget {
   const LaunchScreen({super.key});
@@ -69,51 +67,6 @@ class _LaunchScreenState extends State<LaunchScreen>
 
   Future<void> _initializeApp() async {
     try {
-      // Request mandatory notification permission first
-      final notificationService = Provider.of<NotificationService>(context, listen: false);
-      final permissionGranted = await notificationService.requestMandatoryPermission(context);
-      
-      if (!permissionGranted) {
-        // If permission not granted, show error and exit
-        if (mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: const Text(
-                  '❌ Permission Required',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
-                ),
-                content: const Text(
-                  'Notification permission is required to use this app. Please allow notifications in your device settings and restart the app.',
-                  style: TextStyle(fontSize: 16),
-                ),
-                actions: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      // Exit app
-                      SystemNavigator.pop();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Exit App'),
-                  ),
-                ],
-              );
-            },
-          );
-        }
-        return;
-      }
-      
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       await authProvider.initializeAuth();
       final token = await authProvider.getToken();

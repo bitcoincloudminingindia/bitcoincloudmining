@@ -1,18 +1,14 @@
 import 'dart:io' show exit, Platform;
 
-import 'package:bitcoin_cloud_mining/fcm_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
-import '../config/api_config.dart';
 import '../providers/auth_provider.dart';
 import '../screens/auth/reset_password_screen.dart';
 import '../screens/loading_user_data_screen.dart';
-import '../services/notification_service.dart';
+import '../screens/terms_condition_screen.dart';
 import '../utils/constants.dart';
-import '../utils/storage_utils.dart';
 import '../utils/validators.dart' as form_validators;
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
@@ -86,27 +82,6 @@ class _LoginDialogState extends State<LoginDialog> {
       if (!mounted) return;
 
       if (result['success'] == true) {
-        // Request mandatory notification permission after successful login
-        final notificationService =
-            Provider.of<NotificationService>(context, listen: false);
-        final permissionGranted =
-            await notificationService.requestMandatoryPermission(context);
-
-        if (!permissionGranted) {
-          // If permission not granted, show error and stay on login screen
-          setState(() {
-            _errorMessage =
-                'Notification permission is required to use this app. Please allow notifications and try again.';
-            _isLoading = false;
-          });
-          return;
-        }
-
-        // FCM token ko login ke turant baad backend ko bhejo
-        final token = await FcmService.getFcmToken();
-        if (token != null) {
-          await _sendTokenToBackend(token);
-        }
         // Close login dialog
         Navigator.of(context).pop();
 
@@ -129,28 +104,6 @@ class _LoginDialogState extends State<LoginDialog> {
         _errorMessage = 'An error occurred during login. Please try again.';
         _isLoading = false;
       });
-    }
-  }
-
-  // Helper function to send FCM token to backend
-  Future<void> _sendTokenToBackend(String token) async {
-    try {
-      final jwtToken = await StorageUtils.getToken();
-      final url = Uri.parse(ApiConfig.fcmTokenUrl);
-      final headers = ApiConfig.getHeaders(token: jwtToken);
-      final response = await http.post(
-        url,
-        headers: headers,
-        body: '{"fcmToken": "$token"}',
-      );
-      if (response.statusCode == 200) {
-        debugPrint('✅ FCM token sent to backend successfully (login)');
-      } else {
-        debugPrint(
-            '❌ Failed to send FCM token to backend (login): \\${response.body}');
-      }
-    } catch (e) {
-      debugPrint('❌ Error sending FCM token to backend (login): $e');
     }
   }
 
@@ -415,6 +368,74 @@ class _LoginDialogState extends State<LoginDialog> {
                       style: TextStyle(
                         fontSize: 14,
                         decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: Center(
+                      child: Text.rich(
+                        TextSpan(
+                          text: 'By continuing, I agree to our ',
+                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                          children: [
+                            WidgetSpan(
+                              child: GestureDetector(
+                                onTap: () {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    backgroundColor: Colors.transparent,
+                                    isScrollControlled: true,
+                                    builder: (context) => Container(
+                                      height:
+                                          MediaQuery.of(context).size.height *
+                                              0.85,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black,
+                                        borderRadius: BorderRadius.vertical(
+                                            top: Radius.circular(24)),
+                                      ),
+                                      child: TermsConditionScreen(),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  'Terms',
+                                  style: TextStyle(
+                                    color: Colors.amber,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            TextSpan(text: ' & '),
+                            WidgetSpan(
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const PrivacyPolicyScreen(),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  'Privacy Policy',
+                                  style: TextStyle(
+                                    color: Colors.amber,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),

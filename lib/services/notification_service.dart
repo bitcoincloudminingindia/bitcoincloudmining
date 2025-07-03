@@ -7,7 +7,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
-import 'package:permission_handler/permission_handler.dart';
 import 'package:rxdart/subjects.dart';
 
 // Conditional web import
@@ -62,9 +61,6 @@ class NotificationService {
 
     // Create notification channels for Android 8.0+
     await _createNotificationChannels();
-
-    // Request permissions
-    await _requestPermissions();
 
     // Initialize mining notification
     await _initializeMiningNotification();
@@ -123,168 +119,6 @@ class NotificationService {
               AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(systemChannel);
     }
-  }
-
-  Future<void> _requestPermissions() async {
-    if (Platform.isAndroid) {
-      // Request notification permission for Android 13+
-      if (await Permission.notification.request().isGranted) {
-        debugPrint('Notification permission granted');
-      } else {
-        debugPrint('Notification permission denied');
-      }
-    } else if (Platform.isIOS) {
-      await _notifications
-          .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
-          ?.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
-    }
-  }
-
-  // Mandatory notification permission request
-  Future<bool> requestMandatoryPermission(BuildContext context) async {
-    bool permissionGranted = false;
-
-    if (Platform.isAndroid) {
-      final status = await Permission.notification.status;
-
-      if (status.isGranted) {
-        permissionGranted = true;
-      } else {
-        // Show mandatory dialog for Android
-        final result = await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text(
-                '🔔 Notification Permission Required',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange,
-                ),
-              ),
-              content: const Text(
-                'This app requires notification permission to:\n\n'
-                '• Send you important updates about your wallet\n'
-                '• Notify you about game rewards and bonuses\n'
-                '• Keep you informed about mining activities\n'
-                '• Alert you about security updates\n\n'
-                'Please allow notifications to continue using the app.',
-                style: TextStyle(fontSize: 16),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () async {
-                    Navigator.of(context).pop(false);
-                    // Open app settings if permission denied
-                    await openAppSettings();
-                  },
-                  child: const Text(
-                    'Open Settings',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    Navigator.of(context).pop(true);
-                    final newStatus = await Permission.notification.request();
-                    permissionGranted = newStatus.isGranted;
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Allow Notifications'),
-                ),
-              ],
-            );
-          },
-        );
-
-        if (result == true) {
-          final newStatus = await Permission.notification.request();
-          permissionGranted = newStatus.isGranted;
-        }
-      }
-    } else if (Platform.isIOS) {
-      // For iOS, show similar dialog
-      final result = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text(
-              '🔔 Notification Permission Required',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.orange,
-              ),
-            ),
-            content: const Text(
-              'This app requires notification permission to:\n\n'
-              '• Send you important updates about your wallet\n'
-              '• Notify you about game rewards and bonuses\n'
-              '• Keep you informed about mining activities\n'
-              '• Alert you about security updates\n\n'
-              'Please allow notifications to continue using the app.',
-              style: TextStyle(fontSize: 16),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(context).pop(false);
-                  await openAppSettings();
-                },
-                child: const Text(
-                  'Open Settings',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  Navigator.of(context).pop(true);
-                  await _notifications
-                      .resolvePlatformSpecificImplementation<
-                          IOSFlutterLocalNotificationsPlugin>()
-                      ?.requestPermissions(
-                        alert: true,
-                        badge: true,
-                        sound: true,
-                      );
-                  permissionGranted = true;
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Allow Notifications'),
-              ),
-            ],
-          );
-        },
-      );
-
-      if (result == true) {
-        await _notifications
-            .resolvePlatformSpecificImplementation<
-                IOSFlutterLocalNotificationsPlugin>()
-            ?.requestPermissions(
-              alert: true,
-              badge: true,
-              sound: true,
-            );
-        permissionGranted = true;
-      }
-    }
-
-    return permissionGranted;
   }
 
   Future<void> showNotification({

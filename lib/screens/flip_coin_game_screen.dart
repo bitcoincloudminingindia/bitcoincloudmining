@@ -3,7 +3,6 @@ import 'dart:math';
 
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/wallet_provider.dart';
@@ -43,9 +42,8 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
   Decimal _gameWalletBalance = Decimal.zero;
   bool _isTransferring = false;
   Decimal _pendingReward = Decimal.zero;
-  RewardedAd? _rewardedAd;
-  InterstitialAd? _interstitialAd;
-  BannerAd? _bannerAd;
+  Future<Widget?>? _bannerAdFuture;
+  final AdService _adService = AdService();
   bool _isAdLoading = false;
 
   @override
@@ -75,95 +73,32 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
               _wins++;
               _pendingReward = _winAmount;
               _showCongratulations = true;
-              _loadRewardedAd();
             } else {
               _gameWalletBalance -= _penaltyAmount;
-              _showInterstitialAd();
             }
           }
         });
       }
     });
 
-    _loadBannerAd();
-  }
-
-  void _loadBannerAd() {
-    _bannerAd = BannerAd(
-      adUnitId: AdService.bannerAdUnitId,
-      size: AdSize.banner,
-      request: const AdRequest(),
-      listener: BannerAdListener(
-        onAdLoaded: (_) {
-          setState(() {});
-        },
-        onAdFailedToLoad: (ad, error) {
-          ad.dispose();
-        },
-      ),
-    );
-
-    _bannerAd?.load();
-  }
-
-  void _loadRewardedAd() {
-    RewardedAd.load(
-      adUnitId: AdService.rewardedAdUnitId,
-      request: const AdRequest(),
-      rewardedAdLoadCallback: RewardedAdLoadCallback(
-        onAdLoaded: (ad) {
-          _rewardedAd = ad;
-        },
-        onAdFailedToLoad: (error) {
-          debugPrint('Failed to load rewarded ad: $error');
-        },
-      ),
-    );
-  }
-
-  void _showInterstitialAd() {
-    if (_interstitialAd != null) {
-      _interstitialAd!.show();
-      _loadInterstitialAd();
-    }
-  }
-
-  void _loadInterstitialAd() {
-    InterstitialAd.load(
-      adUnitId: AdService.interstitialAdUnitId,
-      request: const AdRequest(),
-      adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (ad) {
-          _interstitialAd = ad;
-        },
-        onAdFailedToLoad: (error) {
-          debugPrint('Failed to load interstitial ad: $error');
-        },
-      ),
-    );
+    _bannerAdFuture = _adService.getBannerAdWidget();
   }
 
   Future<void> _collectReward() async {
-    if (_rewardedAd == null) {
-      _addRewardToWallet();
-      return;
-    }
-
     setState(() {
       _isAdLoading = true;
     });
-
-    await _rewardedAd!.show(
-      onUserEarnedReward: (_, reward) {
+    await _adService.showRewardedAd(
+      onRewarded: (amount) {
         _addRewardToWallet();
       },
+      onAdDismissed: () {
+        setState(() {
+          _isAdLoading = false;
+          _showCongratulations = false;
+        });
+      },
     );
-
-    setState(() {
-      _isAdLoading = false;
-    });
-
-    _loadRewardedAd();
   }
 
   void _addRewardToWallet() {
@@ -606,13 +541,16 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
                         ),
                       ),
                     const Spacer(),
-                    if (_bannerAd != null)
-                      Container(
-                        width: _bannerAd!.size.width.toDouble(),
-                        height: _bannerAd!.size.height.toDouble(),
-                        alignment: Alignment.center,
-                        child: AdWidget(ad: _bannerAd!),
-                      ),
+                    FutureBuilder<Widget?>(
+                      future: _bannerAdFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.done &&
+                            snapshot.hasData) {
+                          return snapshot.data ?? const SizedBox.shrink();
+                        }
+                        return const SizedBox(height: 50);
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -793,9 +731,6 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
     }
 
     _controller.dispose();
-    _rewardedAd?.dispose();
-    _interstitialAd?.dispose();
-    _bannerAd?.dispose();
     super.dispose();
   }
 }

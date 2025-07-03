@@ -14,7 +14,6 @@ import '../constants/color_constants.dart';
 import '../providers/auth_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../screens/notification_screen.dart';
-import '../services/overlay_service.dart';
 import '../utils/number_formatter.dart';
 import '../widgets/login_dialog.dart';
 
@@ -692,135 +691,6 @@ class _SettingScreenState extends State<SettingScreen> {
     );
   }
 
-  Widget _buildFloatingBubbleSection() {
-    return _buildGradientCard(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.white.withAlpha(51),
-              Colors.white.withAlpha(26),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(51),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.bubble_chart,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Text(
-                    'Floating Bubble',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Show floating bubble when app is in background',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      final granted = await OverlayService.requestPermission();
-                      if (granted) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content:
-                                  Text('Floating bubble permission granted!'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                        }
-                      } else {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                  'Permission denied. Please enable in settings.'),
-                              backgroundColor: Colors.orange,
-                            ),
-                          );
-                        }
-                      }
-                    },
-                    icon: const Icon(Icons.security, size: 16),
-                    label: const Text('Grant Permission'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.withAlpha(204),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final isGranted =
-                        await OverlayService.isPermissionGranted();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(isGranted
-                              ? 'Permission is granted'
-                              : 'Permission not granted'),
-                          backgroundColor:
-                              isGranted ? Colors.green : Colors.orange,
-                        ),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.info, size: 16),
-                  label: const Text('Check'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey.withAlpha(204),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildLogoutButton() {
     return Container(
       width: double.infinity,
@@ -881,8 +751,6 @@ class _SettingScreenState extends State<SettingScreen> {
                     const SizedBox(height: 16),
                     _buildSupportSection(),
                     const SizedBox(height: 16),
-                    _buildFloatingBubbleSection(),
-                    const SizedBox(height: 24),
                     _buildLogoutButton(),
                     const SizedBox(height: 24),
                   ],

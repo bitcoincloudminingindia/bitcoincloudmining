@@ -114,9 +114,9 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                     child: Text(
                       '🔥 Why Choose Bitcoin Cloud Mining?\n\n'
                       '⚡ State-of-the-Art Mining Facilities – Advanced ASIC miners maintained in professional data centers with optimal conditions.\n\n'
-                      '🔐 Secure & Transparent Operations – Real-time mining monitoring and secure wallet system with instant tracking.\n\n'
+                      '🔐 Secure & Transparent Operations – Track your simulated hash rate and BTC earnings in real-time through our cloud mining interface.\n\n'
                       '💰 Competitive Returns – Efficient mining operations with zero hidden fees and minimum withdrawal of 0.000000000000000001 BTC.\n\n'
-                      '� 24/7 Mining Performance – Continuous operation with 99.9% uptime and professional maintenance.\n\n'
+                      '💫 24/7 Mining Performance – Continuous operation with 99.9% uptime and professional maintenance.\n\n'
                       '🛟 24/7 Support – Dedicated customer service team available round the clock.\n\n'
                       '⚡ Quick Withdrawals – All withdrawal requests are processed within 48 hours.\n',
                       style: textStyle,
@@ -186,8 +186,8 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                       '🔮 Upcoming Developments:\n'
                       '🚀 Expanding Mining Facilities – Adding more state-of-the-art data centers\n'
                       '⚡ Enhanced Mining Efficiency – Implementing next-gen ASIC technology\n'
-                      '� Global Expansion – New mining facilities in renewable energy locations\n'
-                      '💹 Advanced Analytics – Real-time mining statistics and performance metrics\n'
+                      '🌐 Global Expansion – New mining facilities in renewable energy locations\n'
+                      '💹 Advanced Analytics – Track your simulated hash rate and BTC earnings in real-time through our cloud mining interface.\n'
                       '🔗 Multi-Chain Support – Expanding to mine other profitable cryptocurrencies',
                       style: textStyle,
                     ),

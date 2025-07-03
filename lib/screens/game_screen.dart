@@ -1,6 +1,6 @@
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/screens/bitcoin_blast_game_screen.dart';
-import 'package:bitcoin_cloud_mining/screens/btc_slot_spin_game_screen.dart';
+import 'package:bitcoin_cloud_mining/screens/bitcoin_machine_game.dart';
 import 'package:bitcoin_cloud_mining/screens/crypto_craze_game_screen.dart';
 import 'package:bitcoin_cloud_mining/screens/flip_coin_game_screen.dart';
 import 'package:bitcoin_cloud_mining/screens/hash_rush_game_screen.dart';
@@ -9,6 +9,7 @@ import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/color_constants.dart';
 import '../widgets/custom_app_bar.dart';
@@ -56,7 +57,7 @@ class _GameScreenState extends State<GameScreen> {
       'color': Colors.green
     },
     {
-      'title': 'BTC Slot Spin',
+      'title': 'Bitcoin Machine',
       'icon': '🎰',
       'winAmount': 0.000000000000001000,
       'color': Colors.blue
@@ -91,6 +92,32 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void navigateToGameScreen(String title, double winAmount) async {
+    // Per-game disclaimer logic
+    final prefs = await SharedPreferences.getInstance();
+    final disclaimerKey = 'disclaimer_shown_${title.replaceAll(' ', '_')}';
+    final hasSeenDisclaimer = prefs.getBool(disclaimerKey) ?? false;
+
+    if (!hasSeenDisclaimer) {
+      final accepted = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          title: const Text('Disclaimer'),
+          content: const Text(
+            'This is a simulated BTC earning experience. Rewards are virtual unless stated otherwise.\n\nThis is not real gambling. Rewards are virtual and the app does not offer cash-based betting or wagering.',
+          ),
+          actions: [
+            TextButton(
+              child: const Text('I Understand'),
+              onPressed: () => Navigator.pop(context, true),
+            ),
+          ],
+        ),
+      );
+      if (accepted != true) return;
+      await prefs.setBool(disclaimerKey, true);
+    }
+
     Widget targetScreen;
 
     if (title == 'Crypto Craze') {
@@ -107,8 +134,8 @@ class _GameScreenState extends State<GameScreen> {
         gameTitle: 'Flip the Coin',
         baseWinAmount: 0.000000000000000100,
       );
-    } else if (title == 'BTC Slot Spin') {
-      targetScreen = BTCSlotSpinGameScreen(
+    } else if (title == 'Bitcoin Machine') {
+      targetScreen = BitcoinMachineScreen(
         gameTitle: title,
         baseWinAmount: winAmount,
       );

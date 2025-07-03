@@ -164,7 +164,6 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
         await _adService.showRewardedAd(
           onRewarded: (amount) {
             onRewarded();
-            _adService.loadInterstitialAd();
           },
           onAdDismissed: () {
             if (mounted) {
@@ -819,9 +818,6 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
                                   _isCollecting =
                                       false; // Reset collecting state
                                 });
-
-                                // Show interstitial ad after collecting reward
-                                _adService.showInterstitialAd();
                               }
 
                               ScaffoldMessenger.of(context).showSnackBar(

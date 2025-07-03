@@ -5,7 +5,6 @@ import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:bitcoin_cloud_mining/services/sound_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -375,9 +374,6 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
       saveTaskData(); // Save progress after updating
     });
   }
-
-  RewardedAd? rewardedAd;
-  bool isRewardedAdReady = false;
 
   Future<void> showRewardedAd(VoidCallback onAdComplete) async {
     if (!_adService.isRewardedAdLoaded) {

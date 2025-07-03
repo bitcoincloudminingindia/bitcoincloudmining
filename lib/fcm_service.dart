@@ -21,9 +21,6 @@ class FcmService {
       // Initialize audio service
       await AudioService.initialize();
 
-      // Request notification permission
-      await requestPermission();
-
       // Get FCM token
       final token = await getFcmToken();
       if (token != null) {

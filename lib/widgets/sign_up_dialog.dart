@@ -1,11 +1,10 @@
 import 'dart:async';
 
+import 'package:bitcoin_cloud_mining/screens/terms_condition_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../config/api_config.dart';
 import '../services/api_service.dart';
-import '../services/notification_service.dart';
 import '../utils/constants.dart';
 import '../utils/validators.dart' as form_validators;
 import '../widgets/custom_button.dart';
@@ -53,6 +52,8 @@ class _SignUpDialogState extends State<SignUpDialog> {
   bool _hasSpecialChar = false;
   bool _hasNumber = false;
   bool _hasMinLength = false;
+
+  bool _agreedToTerms = false;
 
   @override
   void initState() {
@@ -311,26 +312,8 @@ class _SignUpDialogState extends State<SignUpDialog> {
         );
 
         if (verified == true) {
-          // Request mandatory notification permission after successful signup
-          final notificationService = Provider.of<NotificationService>(context, listen: false);
-          final permissionGranted = await notificationService.requestMandatoryPermission(context);
-          
-          if (!permissionGranted) {
-            // If permission not granted, show error and stay on signup screen
-            setState(() {
-              _errorMessage = 'Notification permission is required to use this app. Please allow notifications and try again.';
-              _isLoading = false;
-            });
-            return;
-          }
-          
-          // Close both dialogs only after successful verification
+          // Close only signup dialog after OTP verification (LoginDialog ab OTP dialog ke flow me khulega)
           Navigator.of(context).pop(); // Close signup dialog
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => const LoginDialog(),
-          );
         }
       } else {
         setState(() {
@@ -730,15 +713,99 @@ class _SignUpDialogState extends State<SignUpDialog> {
                             ),
                           ),
                         ],
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Checkbox(
+                              value: _agreedToTerms,
+                              onChanged: (val) {
+                                setState(() {
+                                  _agreedToTerms = val ?? false;
+                                });
+                              },
+                              activeColor: Colors.amber[400],
+                            ),
+                            Expanded(
+                              child: Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  const Text(
+                                    'I agree to the ',
+                                    style: TextStyle(
+                                        color: Colors.white70, fontSize: 14),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () {
+                                      showModalBottomSheet(
+                                        context: context,
+                                        backgroundColor: Colors.transparent,
+                                        isScrollControlled: true,
+                                        builder: (context) => Container(
+                                          height: MediaQuery.of(context)
+                                                  .size
+                                                  .height *
+                                              0.85,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.black,
+                                            borderRadius: BorderRadius.vertical(
+                                                top: Radius.circular(24)),
+                                          ),
+                                          child: const TermsConditionScreen(),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text(
+                                      'Terms & Conditions',
+                                      style: TextStyle(
+                                        color: Colors.amber,
+                                        fontWeight: FontWeight.bold,
+                                        decoration: TextDecoration.underline,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                  const Text(
+                                    ' & ',
+                                    style: TextStyle(
+                                        color: Colors.white70, fontSize: 14),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const PrivacyPolicyScreen(),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text(
+                                      'Privacy Policy',
+                                      style: TextStyle(
+                                        color: Colors.amber,
+                                        fontWeight: FontWeight.bold,
+                                        decoration: TextDecoration.underline,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
                         CustomButton(
-                          onPressed: () => _handleSignup(
-                            email: _emailController.text,
-                            password: _passwordController.text,
-                            fullName: _fullNameController.text,
-                            username: _usernameController.text,
-                            referredByCode: _referralCodeController.text.trim(),
-                          ),
+                          onPressed: _agreedToTerms
+                              ? () => _handleSignup(
+                                    email: _emailController.text,
+                                    password: _passwordController.text,
+                                    fullName: _fullNameController.text,
+                                    username: _usernameController.text,
+                                    referredByCode:
+                                        _referralCodeController.text.trim(),
+                                  )
+                              : () {},
                           text: 'Sign Up',
                           isLoading: _isLoading,
                         ),
