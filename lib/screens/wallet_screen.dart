@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import '../components/processing_dialog.dart';
 import '../screens/transaction_details_screen.dart';
 import '../utils/number_formatter.dart';
+import '../widgets/withdrawal_disclaimer_dialog.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -522,55 +523,6 @@ class _WalletScreenState extends State<WalletScreen>
           },
         );
       },
-    );
-  }
-
-  // Add _showDepositDialog method
-  void _showDepositDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.green[50],
-        title: const Text('Deposit BTC', style: TextStyle(color: Colors.green)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Send BTC to this address:'),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-                      style: TextStyle(fontFamily: 'monospace'),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.copy, color: Colors.green),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Address copied')),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close', style: TextStyle(color: Colors.green)),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1259,12 +1211,7 @@ class _WalletScreenState extends State<WalletScreen>
             flex: 1,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              child: _buildActionButton(
-                icon: Icons.call_received,
-                label: 'Deposit',
-                onTap: () => _showDepositDialog(context),
-                color: Colors.green,
-              ),
+              child: SizedBox.shrink(),
             ),
           ),
           Expanded(
@@ -1274,7 +1221,12 @@ class _WalletScreenState extends State<WalletScreen>
               child: _buildActionButton(
                 icon: Icons.call_made,
                 label: 'Withdraw',
-                onTap: _showWithdrawalDialog,
+                onTap: () {
+                  showWithdrawalDisclaimerDialog(
+                    context: context,
+                    onContinue: _showWithdrawalDialog,
+                  );
+                },
                 color: Colors.red,
               ),
             ),

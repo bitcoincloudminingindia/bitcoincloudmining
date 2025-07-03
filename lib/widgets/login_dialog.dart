@@ -3,11 +3,11 @@ import 'dart:io' show exit, Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../providers/auth_provider.dart';
 import '../screens/auth/reset_password_screen.dart';
 import '../screens/loading_user_data_screen.dart';
-import '../screens/terms_condition_screen.dart';
 import '../utils/constants.dart';
 import '../utils/validators.dart' as form_validators;
 import '../widgets/custom_button.dart';
@@ -373,69 +373,60 @@ class _LoginDialogState extends State<LoginDialog> {
                   ),
                   const SizedBox(height: 24),
                   Padding(
-                    padding: EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.only(bottom: 8),
                     child: Center(
-                      child: Text.rich(
-                        TextSpan(
-                          text: 'By continuing, I agree to our ',
-                          style: TextStyle(color: Colors.white70, fontSize: 13),
-                          children: [
-                            WidgetSpan(
-                              child: GestureDetector(
-                                onTap: () {
-                                  showModalBottomSheet(
-                                    context: context,
-                                    backgroundColor: Colors.transparent,
-                                    isScrollControlled: true,
-                                    builder: (context) => Container(
-                                      height:
-                                          MediaQuery.of(context).size.height *
-                                              0.85,
-                                      decoration: BoxDecoration(
-                                        color: Colors.black,
-                                        borderRadius: BorderRadius.vertical(
-                                            top: Radius.circular(24)),
+                      child: Column(
+                        children: [
+                          Text.rich(
+                            TextSpan(
+                              text: 'By continuing, I agree to our ',
+                              style: TextStyle(
+                                  color: Colors.white70, fontSize: 13),
+                              children: [
+                                WidgetSpan(
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      final url = Uri.parse(
+                                          'https://doc-hosting.flycricket.io/bitcoin-cloud-mining-terms-of-use/44cea453-e05c-463b-bfb6-cd64fbdfe0a7/terms');
+                                      await launchUrl(url,
+                                          mode: LaunchMode.externalApplication);
+                                    },
+                                    child: Text(
+                                      'Terms',
+                                      style: TextStyle(
+                                        color: Colors.amber,
+                                        fontWeight: FontWeight.bold,
+                                        decoration: TextDecoration.underline,
+                                        fontSize: 13,
                                       ),
-                                      child: TermsConditionScreen(),
                                     ),
-                                  );
-                                },
-                                child: Text(
-                                  'Terms',
-                                  style: TextStyle(
-                                    color: Colors.amber,
-                                    fontWeight: FontWeight.bold,
-                                    decoration: TextDecoration.underline,
-                                    fontSize: 13,
                                   ),
                                 ),
-                              ),
-                            ),
-                            TextSpan(text: ' & '),
-                            WidgetSpan(
-                              child: GestureDetector(
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const PrivacyPolicyScreen(),
+                                TextSpan(text: ' & '),
+                                WidgetSpan(
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      final url = Uri.parse(
+                                          'https://doc-hosting.flycricket.io/bitcoin-cloud-mining-privacy-policy/e7bf1a89-eb0d-4b5b-bf33-f72ca57b4e64/privacy');
+                                      await launchUrl(url,
+                                          mode: LaunchMode.externalApplication);
+                                    },
+                                    child: Text(
+                                      'Privacy Policy',
+                                      style: TextStyle(
+                                        color: Colors.amber,
+                                        fontWeight: FontWeight.bold,
+                                        decoration: TextDecoration.underline,
+                                        fontSize: 13,
+                                      ),
                                     ),
-                                  );
-                                },
-                                child: Text(
-                                  'Privacy Policy',
-                                  style: TextStyle(
-                                    color: Colors.amber,
-                                    fontWeight: FontWeight.bold,
-                                    decoration: TextDecoration.underline,
-                                    fontSize: 13,
                                   ),
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
-                        ),
-                        textAlign: TextAlign.center,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
                   ),

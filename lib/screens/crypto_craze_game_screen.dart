@@ -35,17 +35,25 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
   Timer? _adTimer;
   List<bool> _completedLevels = List.generate(1000, (_) => false);
   late WalletProvider _walletProvider;
-  bool _isAdLoaded = false;
+  final bool _isAdLoaded = false;
   bool _isAdLoading = false;
   String? _adError;
   bool _isDoubleMiningActive = false;
   Timer? _doubleMiningTimer;
+// default reward
 
   @override
   void initState() {
     super.initState();
     _loadGameData();
-    _initializeAds();
+    _adService.loadBannerAd();
+    _adService.loadRewardedInterstitialAd();
+    // 5 minute ka timer: har 5 minute me ad show
+    _adTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      if (mounted) {
+        _showRewardedInterstitialAd();
+      }
+    });
   }
 
   @override
@@ -284,152 +292,33 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     );
   }
 
-  Future<void> _initializeAds() async {
-    setState(() {
-      _isAdLoading = true;
-      _adError = null;
-    });
-
-    try {
-      await _adService.loadBannerAd();
-      await _adService.loadInterstitialAd();
-      await _adService.loadRewardedAd();
-
-      if (mounted) {
-        setState(() {
-          _isAdLoaded = _adService.isBannerAdLoaded;
-          _isAdLoading = false;
-        });
-      }
-
-      // Schedule interstitial ads
-      _scheduleInterstitialAd();
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isAdLoaded = false;
-          _isAdLoading = false;
-          _adError =
-              'Failed to load ads. Please check your internet connection.';
-        });
-      }
-    }
-  }
-
-  void _scheduleInterstitialAd() {
-    _adTimer?.cancel();
-    _adTimer = Timer.periodic(const Duration(minutes: 5), (_) {
-      _showInterstitialAd();
-    });
-  }
-
-  Future<void> _showInterstitialAd() async {
+  Future<void> _showRewardedInterstitialAd() async {
     if (_isAdLoading) return;
-
     setState(() {
       _isAdLoading = true;
     });
-
     try {
-      if (!_adService.isInterstitialAdLoaded) {
-        await _adService.loadInterstitialAd();
+      if (!_adService.isRewardedInterstitialAdLoaded) {
+        await _adService.loadRewardedInterstitialAd();
       }
-
       if (mounted) {
-        await _adService.showInterstitialAd();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to show ad. Please try again later.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isAdLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _showDoubleMiningAd() async {
-    if (_isDoubleMiningActive) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Double mining is already active!'),
-          backgroundColor: Colors.orange,
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
-    if (_isAdLoading) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please wait while we load the ad...'),
-          backgroundColor: Colors.blue,
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _isAdLoading = true;
-    });
-
-    try {
-      debugPrint('🎬 Showing rewarded ad for Crypto Craze...');
-
-      if (!_adService.isRewardedAdLoaded) {
-        await _adService.loadRewardedAd();
-      }
-
-      if (mounted) {
-        await _adService.showRewardedAd(
+        await _adService.showRewardedInterstitialAd(
           onRewarded: (amount) async {
-            if (!mounted) return;
-
-            try {
-              // Add BTC reward (5x normal reward)
-              const double adReward = 0.000000000000000050; // 5x normal reward
-
+            // Ad dekhne par 5 minute ke liye double mining activate karo
+            if (!_isDoubleMiningActive) {
               setState(() {
                 _isDoubleMiningActive = true;
-                _btcScore += adReward;
-                _sessionEarnings += adReward;
               });
-
               _startDoubleMiningTimer();
-
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      '🎉 +${adReward.toStringAsFixed(18)} BTC earned! Double mining activated! ⚡',
+                      '🎉 Double mining activated for 5 minutes! All rewards are now 2x.',
                       style: const TextStyle(fontSize: 16),
                     ),
                     backgroundColor: Colors.green,
                     duration: const Duration(seconds: 3),
-                  ),
-                );
-              }
-
-              debugPrint(
-                  '✅ Crypto Craze ad reward earned: ${adReward.toStringAsFixed(18)} BTC');
-            } catch (e) {
-              debugPrint('❌ Error adding ad reward: $e');
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error adding reward: ${e.toString()}'),
-                    backgroundColor: Colors.red,
                   ),
                 );
               }
@@ -440,7 +329,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text(
-                      'Please watch the full ad to earn BTC and activate double mining.'),
+                      'Please watch the full ad to activate double mining.'),
                   backgroundColor: Colors.orange,
                   duration: Duration(seconds: 2),
                 ),
@@ -450,11 +339,10 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
         );
       }
     } catch (e) {
-      debugPrint('❌ Error showing rewarded ad: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Error showing ad. Please try again.'),
+            content: Text('Unable to show ad. Please try again later.'),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 2),
           ),
@@ -478,7 +366,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Double mining period ended!'),
+            content: Text('Double mining ended. Rewards back to normal.'),
             backgroundColor: Colors.orange,
             duration: Duration(seconds: 2),
           ),
@@ -684,7 +572,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                       right: 0,
                       child: Center(
                         child: ElevatedButton.icon(
-                          onPressed: _showDoubleMiningAd,
+                          onPressed: _showRewardedInterstitialAd,
                           icon: const Icon(Icons.play_circle_fill,
                               color: Colors.white),
                           label: const Text(

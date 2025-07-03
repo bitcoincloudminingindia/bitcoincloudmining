@@ -332,6 +332,25 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ),
+                const _AnimatedSection(
+                  delay: 1100,
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Privacy Policy: https://doc-hosting.flycricket.io/bitcoin-cloud-mining-privacy-policy/e7bf1a89-eb0d-4b5b-bf33-f72ca57b4e64/privacy',
+                          style: TextStyle(fontSize: 12, color: Colors.white54),
+                        ),
+                        Text(
+                          'Terms & Conditions: https://doc-hosting.flycricket.io/bitcoin-cloud-mining-terms-of-use/44cea453-e05c-463b-bfb6-cd64fbdfe0a7/terms',
+                          style: TextStyle(fontSize: 12, color: Colors.white54),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ]),
             ),
           ],

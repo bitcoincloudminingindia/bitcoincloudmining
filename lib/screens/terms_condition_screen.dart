@@ -48,6 +48,8 @@ class TermsConditionScreen extends StatelessWidget {
           child: SingleChildScrollView(
             child: MarkdownBody(
               data: """
+**This app is a simulation. All BTC and wallet balance shown are virtual and have no real monetary value.**
+
 **Terms & Conditions**  
 _Last Updated: ${dynamicLastUpdated}_
 
@@ -103,6 +105,9 @@ If you have any questions about these terms, please contact us at **$supportEmai
 
 ---
 By using **$appName**, you acknowledge and agree to these Terms & Conditions.
+
+Privacy Policy: https://doc-hosting.flycricket.io/bitcoin-cloud-mining-privacy-policy/e7bf1a89-eb0d-4b5b-bf33-f72ca57b4e64/privacy
+Terms & Conditions: https://doc-hosting.flycricket.io/bitcoin-cloud-mining-terms-of-use/44cea453-e05c-463b-bfb6-cd64fbdfe0a7/terms
 """,
               styleSheet: MarkdownStyleSheet(
                 p: const TextStyle(fontSize: 16, color: Colors.white),

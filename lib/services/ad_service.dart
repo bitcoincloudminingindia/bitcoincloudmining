@@ -17,7 +17,6 @@ class AdService {
   static const Duration AD_CACHE_DURATION = Duration(minutes: 30);
   static const int MAX_OTHER_ADS_PER_HOUR = 20;
   static const Duration FREQUENCY_CAP_DURATION = Duration(hours: 1);
-  static const Duration INTERSTITIAL_AD_INTERVAL = Duration(minutes: 5);
 
   // Ad unit IDs - Use Google test IDs for all ad types
   final Map<String, Map<String, String>> _adUnitIds = {
@@ -37,13 +36,11 @@ class AdService {
 
   // Ad objects
   BannerAd? _bannerAd;
-  InterstitialAd? _interstitialAd;
   RewardedAd? _rewardedAd;
   NativeAd? _nativeAd;
 
   // Ad states
   bool _isBannerAdLoaded = false;
-  bool _isInterstitialAdLoaded = false;
   bool _isRewardedAdLoaded = false;
   bool _isRewardedAdLoading = false;
   bool _isNativeAdLoaded = false;
@@ -69,6 +66,10 @@ class AdService {
   int _nativeAdImpressionCount = 0;
   DateTime? _nativeAdFirstLoadTime;
   double _nativeAdAverageLoadTime = 0.0;
+
+  RewardedInterstitialAd? _rewardedInterstitialAd;
+  bool _isRewardedInterstitialAdLoaded = false;
+  bool get isRewardedInterstitialAdLoaded => _isRewardedInterstitialAdLoaded;
 
   // Getters for metrics
   Map<String, dynamic> get adMetrics => {
@@ -99,7 +100,6 @@ class AdService {
   // Public getters for ad loaded states
   bool get isRewardedAdLoaded => _isRewardedAdLoaded;
   bool get isBannerAdLoaded => _isBannerAdLoaded;
-  bool get isInterstitialAdLoaded => _isInterstitialAdLoaded;
   bool get isNativeAdLoaded => _isNativeAdLoaded;
 
   // Get ad unit ID based on platform and ad type
@@ -114,20 +114,6 @@ class AdService {
   bool _canShowAd(String adType) {
     // No limit for rewarded and banner ads
     if (adType == 'rewarded' || adType == 'banner') {
-      return true;
-    }
-
-    // Special handling for interstitial ads - show every 5 minutes
-    if (adType == 'interstitial') {
-      final lastShowTime = _lastAdShowTimes[adType];
-      if (lastShowTime != null) {
-        final timeSinceLastShow = DateTime.now().difference(lastShowTime);
-        if (timeSinceLastShow < INTERSTITIAL_AD_INTERVAL) {
-          debugPrint(
-              'Interstitial ad interval not reached. Next ad in ${(INTERSTITIAL_AD_INTERVAL - timeSinceLastShow).inMinutes} minutes');
-          return false;
-        }
-      }
       return true;
     }
 
@@ -311,39 +297,6 @@ class AdService {
     } else {
       return const SizedBox(height: 0);
     }
-  }
-
-  // Load interstitial ad
-  Future<void> loadInterstitialAd() async {
-    if (_isInterstitialAdLoaded && _isCachedAdValid('interstitial')) return;
-
-    await _loadAdWithRetry(
-      'interstitial',
-      () async {
-        final adUnitId = _getAdUnitId('interstitial');
-        if (adUnitId.isEmpty)
-          throw Exception('Invalid interstitial ad unit ID');
-
-        await InterstitialAd.load(
-          adUnitId: adUnitId,
-          request: const AdRequest(),
-          adLoadCallback: InterstitialAdLoadCallback(
-            onAdLoaded: (ad) {
-              _interstitialAd = ad;
-              _isInterstitialAdLoaded = true;
-              debugPrint('Interstitial ad loaded');
-            },
-            onAdFailedToLoad: (error) {
-              _isInterstitialAdLoaded = false;
-              throw error;
-            },
-          ),
-        );
-      },
-      (success) {
-        _isInterstitialAdLoaded = success;
-      },
-    );
   }
 
   // Load rewarded ad with better error handling
@@ -745,29 +698,6 @@ class AdService {
     }
   }
 
-  // Show interstitial ad with frequency capping
-  Future<bool> showInterstitialAd() async {
-    if (!_canShowAd('interstitial')) {
-      debugPrint('Interstitial ad frequency cap reached');
-      return false;
-    }
-
-    if (!_isInterstitialAdLoaded || _interstitialAd == null) {
-      debugPrint('Interstitial ad not loaded');
-      return false;
-    }
-
-    try {
-      await _interstitialAd!.show();
-      _updateAdMetrics('interstitial', true, null);
-      return true;
-    } catch (e) {
-      debugPrint('Error showing interstitial ad: $e');
-      _updateAdMetrics('interstitial', false, null);
-      return false;
-    }
-  }
-
   // Get banner ad widget
   Widget getBannerAd() {
     if (!_isBannerAdLoaded || _bannerAd == null) {
@@ -797,7 +727,6 @@ class AdService {
 
       // Preload ads
       loadBannerAd();
-      loadInterstitialAd();
       loadRewardedAd();
       loadNativeAd();
 
@@ -810,13 +739,11 @@ class AdService {
   // Dispose ads
   void dispose() {
     _bannerAd?.dispose();
-    _interstitialAd?.dispose();
     _rewardedAd?.dispose();
     _nativeAd?.dispose();
     _nativeAdRefreshTimer?.cancel();
 
     _isBannerAdLoaded = false;
-    _isInterstitialAdLoaded = false;
     _isRewardedAdLoaded = false;
     _isRewardedAdLoading = false;
     _isNativeAdLoaded = false;
@@ -841,13 +768,13 @@ class AdService {
   }
 
   static const String bannerAdUnitId =
-      'ca-app-pub-3940256099942544/6300978111'; // Test ID
+      'ca-app-pub-3537329799200606/2028008282'; // Home_Banner_Ad (REAL)
   static const String rewardedAdUnitId =
-      'ca-app-pub-3940256099942544/5224354917'; // Test ID
-  static const String interstitialAdUnitId =
-      'ca-app-pub-3940256099942544/1033173712'; // Test ID
+      'ca-app-pub-3537329799200606/7827129874'; // Rewarded_BTC_Ad (REAL)
   static const String nativeAdUnitId =
-      'ca-app-pub-3940256099942544/2247696110'; // Test ID (Android)
+      'ca-app-pub-3537329799200606/2260507229'; // Native_Contract_Card (REAL)
+  static const String rewardedInterstitialAdUnitId =
+      'ca-app-pub-3537329799200606/5712102428'; // RewardedInterstitial_GameOver (REAL)
 
   Future<RewardedAd?> getRewardedAd() async {
     if (_rewardedAd != null) {
@@ -884,58 +811,6 @@ class AdService {
     return _rewardedAd;
   }
 
-  // Test native ad functionality
-  Future<Map<String, dynamic>> testNativeAd() async {
-    final result = {
-      'success': false,
-      'message': '',
-      'details': <String, dynamic>{},
-    };
-
-    try {
-      debugPrint('🧪 Testing native ad functionality...');
-
-      // Check if platform supports native ads
-      if (kIsWeb) {
-        result['message'] = 'Native ads not supported on web';
-        return result;
-      }
-
-      final adUnitId = _getAdUnitId('native');
-      if (adUnitId.isEmpty) {
-        result['message'] = 'Invalid ad unit ID';
-        return result;
-      }
-
-      (result['details'] as Map<String, dynamic>)['ad_unit_id'] = adUnitId;
-      (result['details'] as Map<String, dynamic>)['platform'] =
-          Platform.isAndroid ? 'android' : 'ios';
-
-      // Try to load a test ad
-      await loadNativeAd();
-
-      if (_isNativeAdLoaded) {
-        result['success'] = true;
-        result['message'] = 'Native ad loaded successfully';
-        (result['details'] as Map<String, dynamic>)['load_time'] =
-            _nativeAdAverageLoadTime;
-        (result['details'] as Map<String, dynamic>)['load_count'] =
-            _nativeAdLoadCount;
-        (result['details'] as Map<String, dynamic>)['fail_count'] =
-            _nativeAdFailCount;
-      } else {
-        result['message'] = 'Native ad failed to load';
-        (result['details'] as Map<String, dynamic>)['fail_count'] =
-            _nativeAdFailCount;
-      }
-    } catch (e) {
-      result['message'] = 'Test failed: ${e.toString()}';
-      debugPrint('❌ Native ad test failed: $e');
-    }
-
-    return result;
-  }
-
   // Validate native ad size and layout
   Map<String, dynamic> validateNativeAdSize() {
     final result = {
@@ -966,5 +841,75 @@ class AdService {
 
     debugPrint('📏 Native ad size validation: $result');
     return result;
+  }
+
+  Future<void> loadRewardedInterstitialAd() async {
+    _isRewardedInterstitialAdLoaded = false;
+    try {
+      final adUnitId = rewardedInterstitialAdUnitId;
+      await RewardedInterstitialAd.load(
+        adUnitId: adUnitId,
+        request: const AdRequest(),
+        rewardedInterstitialAdLoadCallback: RewardedInterstitialAdLoadCallback(
+          onAdLoaded: (ad) {
+            _rewardedInterstitialAd = ad;
+            _isRewardedInterstitialAdLoaded = true;
+            debugPrint('RewardedInterstitialAd loaded');
+            ad.fullScreenContentCallback = FullScreenContentCallback(
+              onAdDismissedFullScreenContent: (ad) {
+                ad.dispose();
+                _isRewardedInterstitialAdLoaded = false;
+                loadRewardedInterstitialAd();
+              },
+              onAdFailedToShowFullScreenContent: (ad, error) {
+                ad.dispose();
+                _isRewardedInterstitialAdLoaded = false;
+                loadRewardedInterstitialAd();
+              },
+            );
+          },
+          onAdFailedToLoad: (error) {
+            debugPrint('RewardedInterstitialAd failed to load: $error');
+            _isRewardedInterstitialAdLoaded = false;
+          },
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error loading RewardedInterstitialAd: $e');
+      _isRewardedInterstitialAdLoaded = false;
+    }
+  }
+
+  Future<bool> showRewardedInterstitialAd({
+    required Function(double) onRewarded,
+    required VoidCallback onAdDismissed,
+  }) async {
+    if (!_isRewardedInterstitialAdLoaded || _rewardedInterstitialAd == null) {
+      debugPrint('RewardedInterstitialAd not loaded');
+      return false;
+    }
+    bool rewardGranted = false;
+    try {
+      await _rewardedInterstitialAd!.show(
+        onUserEarnedReward: (ad, reward) {
+          rewardGranted = true;
+          onRewarded(reward.amount.toDouble());
+        },
+      );
+      _isRewardedInterstitialAdLoaded = false;
+      _rewardedInterstitialAd = null;
+      if (!rewardGranted) {
+        onAdDismissed();
+      }
+      loadRewardedInterstitialAd();
+      return true;
+    } catch (e) {
+      debugPrint('Error showing RewardedInterstitialAd: $e');
+      _isRewardedInterstitialAdLoaded = false;
+      _rewardedInterstitialAd = null;
+      onAdDismissed();
+      loadRewardedInterstitialAd();
+      return false;
+    }
   }
 }

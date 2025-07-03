@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:bitcoin_cloud_mining/screens/terms_condition_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../config/api_config.dart';
 import '../services/api_service.dart';
@@ -312,8 +312,14 @@ class _SignUpDialogState extends State<SignUpDialog> {
         );
 
         if (verified == true) {
-          // Close only signup dialog after OTP verification (LoginDialog ab OTP dialog ke flow me khulega)
           Navigator.of(context).pop(); // Close signup dialog
+          Future.delayed(const Duration(milliseconds: 300), () {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => const LoginDialog(),
+            );
+          });
         }
       } else {
         setState(() {
@@ -736,24 +742,11 @@ class _SignUpDialogState extends State<SignUpDialog> {
                                         color: Colors.white70, fontSize: 14),
                                   ),
                                   GestureDetector(
-                                    onTap: () {
-                                      showModalBottomSheet(
-                                        context: context,
-                                        backgroundColor: Colors.transparent,
-                                        isScrollControlled: true,
-                                        builder: (context) => Container(
-                                          height: MediaQuery.of(context)
-                                                  .size
-                                                  .height *
-                                              0.85,
-                                          decoration: const BoxDecoration(
-                                            color: Colors.black,
-                                            borderRadius: BorderRadius.vertical(
-                                                top: Radius.circular(24)),
-                                          ),
-                                          child: const TermsConditionScreen(),
-                                        ),
-                                      );
+                                    onTap: () async {
+                                      final url = Uri.parse(
+                                          'https://doc-hosting.flycricket.io/bitcoin-cloud-mining-terms-of-use/44cea453-e05c-463b-bfb6-cd64fbdfe0a7/terms');
+                                      await launchUrl(url,
+                                          mode: LaunchMode.externalApplication);
                                     },
                                     child: const Text(
                                       'Terms & Conditions',
@@ -771,13 +764,11 @@ class _SignUpDialogState extends State<SignUpDialog> {
                                         color: Colors.white70, fontSize: 14),
                                   ),
                                   GestureDetector(
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const PrivacyPolicyScreen(),
-                                        ),
-                                      );
+                                    onTap: () async {
+                                      final url = Uri.parse(
+                                          'https://doc-hosting.flycricket.io/bitcoin-cloud-mining-privacy-policy/e7bf1a89-eb0d-4b5b-bf33-f72ca57b4e64/privacy');
+                                      await launchUrl(url,
+                                          mode: LaunchMode.externalApplication);
                                     },
                                     child: const Text(
                                       'Privacy Policy',

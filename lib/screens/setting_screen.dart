@@ -9,6 +9,7 @@ import 'package:bitcoin_cloud_mining/utils/storage_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../constants/color_constants.dart';
 import '../providers/auth_provider.dart';
@@ -630,6 +631,23 @@ class _SettingScreenState extends State<SettingScreen> {
               MaterialPageRoute(
                   builder: (context) => const TermsConditionScreen()),
             ),
+          ),
+          const Divider(height: 1),
+          _buildSupportTile(
+            icon: Icons.privacy_tip_outlined,
+            title: 'Privacy Policy',
+            onTap: () async {
+              final url = Uri.parse(
+                  'https://doc-hosting.flycricket.io/bitcoin-cloud-mining-privacy-policy/e7bf1a89-eb0d-4b5b-bf33-f72ca57b4e64/privacy');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Could not open Privacy Policy')),
+                );
+              }
+            },
           ),
         ],
       ),

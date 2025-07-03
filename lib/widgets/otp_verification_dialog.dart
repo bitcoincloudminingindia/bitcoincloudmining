@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../config/api_config.dart';
 import '../services/api_service.dart';
-import 'login_dialog.dart';
 
 class OtpVerificationDialog extends StatefulWidget {
   final String email;
@@ -112,23 +111,7 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
             ),
           );
           // Close OTP dialog
-          Navigator.of(context).pop();
-          // Show DisclaimerScreen, then LoginDialog after OK
-          Future.delayed(const Duration(milliseconds: 300), () {
-            Navigator.of(context)
-                .push(
-              MaterialPageRoute(
-                builder: (context) => DisclaimerScreen(),
-              ),
-            )
-                .then((_) {
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => const LoginDialog(),
-              );
-            });
-          });
+          Navigator.of(context).pop(true);
         }
       } else {
         setState(() {
