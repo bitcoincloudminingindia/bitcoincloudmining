@@ -36,7 +36,7 @@ const generateToken = (user) => {
     userId: user.userId,
     role: user.role || 'user', // Default role
     email: user.userEmail, // Include email for additional verification
-    version: '1.0' // Add version for future compatibility
+    version: '1.0.1' // Add version for future compatibility
   };
 
   // Log token generation
