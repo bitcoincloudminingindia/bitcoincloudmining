@@ -185,7 +185,7 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
     }
   }
 
-  void _showCongratsDialog(String message) {
+  void _showCongratsDialog(String message, double reward) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -214,26 +214,54 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  await _showRewardedAd();
-                  setState(_initializeReels);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.yellowAccent,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
-                ),
-                child: const Text(
-                  'Watch Ad for Play Again',
-                  style: TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: () async {
+                      setState(() {
+                        gameWalletBalance += reward;
+                      });
+                      Navigator.of(context).pop();
+                      await _showRewardedAd();
+                      setState(_initializeReels);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.yellowAccent,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 32, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: const Text(
+                      'Watch Ad for Play Again',
+                      style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: const Text(
+                      'Skip Without Reward',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -271,10 +299,7 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
     _updateMatchingSections();
 
     if (reward > 0) {
-      setState(() {
-        gameWalletBalance += reward;
-      });
-      _showCongratsDialog(message);
+      _showCongratsDialog(message, reward);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

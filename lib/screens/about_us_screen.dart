@@ -115,10 +115,10 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                       '🔥 Why Choose Bitcoin Cloud Mining?\n\n'
                       '⚡ State-of-the-Art Mining Facilities – Advanced ASIC miners maintained in professional data centers with optimal conditions.\n\n'
                       '🔐 Secure & Transparent Operations – Track your simulated hash rate and BTC earnings in real-time through our cloud mining interface.\n\n'
-                      '💰 Competitive Returns – Efficient mining operations with zero hidden fees and minimum withdrawal of 0.000000000000000001 BTC.\n\n'
+                      '🎮 Simulated Bitcoin mining experience – Enjoy a rewarding gameplay experience with engaging in-app rewards.\n\n'
                       '💫 24/7 Mining Performance – Continuous operation with 99.9% uptime and professional maintenance.\n\n'
                       '🛟 24/7 Support – Dedicated customer service team available round the clock.\n\n'
-                      '⚡ Quick Withdrawals – All withdrawal requests are processed within 48 hours.\n',
+                      '⚡ Withdrawals processed within 48 hours if eligible. Withdrawal requests are reviewed and processed based on eligibility.\n',
                       style: textStyle,
                     ),
                   ),
@@ -131,7 +131,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Global Mining Statistics: ${totalBtcMined.toStringAsFixed(18)} BTC mined by our users',
+                          'Global Mining Statistics: ${totalBtcMined.toStringAsFixed(18)} BTC (simulated) earned by players through gameplay.',
                           style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -164,14 +164,14 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                           name: 'Sundar Sah',
                           role: 'CEO & Founder',
                           description:
-                              'Visionary entrepreneur and blockchain expert with 10+ years in cryptocurrency mining and fintech innovation.',
+                              'Visionary entrepreneur and blockchain expert with 10+ years in simulated mining and fintech innovation.',
                         ),
                         SizedBox(height: 16),
                         _TeamMember(
                           name: 'Update This',
                           role: 'CTO',
                           description:
-                              'Expert in distributed systems and mining optimization. Leading the development of next-gen mining technology.',
+                              'Expert in distributed systems and mining optimization. Leading the development of next-gen simulated mining technology.',
                         ),
                       ],
                     ),
@@ -188,7 +188,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                       '⚡ Enhanced Mining Efficiency – Implementing next-gen ASIC technology\n'
                       '🌐 Global Expansion – New mining facilities in renewable energy locations\n'
                       '💹 Advanced Analytics – Track your simulated hash rate and BTC earnings in real-time through our cloud mining interface.\n'
-                      '🔗 Multi-Chain Support – Expanding to mine other profitable cryptocurrencies',
+                      '🔗 Multi-Chain Support – Expanding to simulated mining of other profitable cryptocurrencies',
                       style: textStyle,
                     ),
                   ),
@@ -222,7 +222,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                               ),
                               _TestimonialCard(
                                 text:
-                                    '“Finally, a mining app that actually lets you earn BTC!”',
+                                    '“Finally, a mining app that lets you request BTC withdrawals after reaching a minimum threshold and passing eligibility review!”',
                                 rating: 5,
                               ),
                             ],
@@ -320,6 +320,16 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                         ),
                       ],
                     ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                const Padding(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: Text(
+                    'Note: All earnings shown in this app are simulated and based on in-app gameplay. Bitcoin Cloud Mining is not a real mining operation. BTC rewards are virtual unless stated otherwise.',
+                    style: TextStyle(fontSize: 12, color: Colors.white54),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               ]),

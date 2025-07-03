@@ -1423,7 +1423,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               Text(
                 'Play & Earn BTC Rewards',
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                   fontFamily: 'Bitcoin',
