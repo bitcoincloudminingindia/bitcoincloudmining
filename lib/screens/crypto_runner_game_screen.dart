@@ -62,7 +62,6 @@ class _CryptoRunnerGameScreenState extends State<CryptoRunnerGameScreen>
       await audioPlayer.setSource(AssetSource('sounds/beep.mp3'));
       await audioPlayer.setVolume(0.5);
     } catch (e) {
-      debugPrint('Error loading sound effects: $e');
     }
   }
 
@@ -320,7 +319,6 @@ class _CryptoRunnerGameScreenState extends State<CryptoRunnerGameScreen>
         await audioPlayer.seek(Duration.zero);
         await audioPlayer.resume();
       } catch (e) {
-        debugPrint('Error playing sound: $e');
       }
     }
   }

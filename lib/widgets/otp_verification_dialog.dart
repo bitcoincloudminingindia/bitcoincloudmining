@@ -25,8 +25,6 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
   @override
   void initState() {
     super.initState();
-    debugPrint(
-        '🔄 Initializing OTP verification dialog for email: ${widget.email}');
     if (widget.shouldSendOtp) {
       _sendOtp();
     }
@@ -39,7 +37,6 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
   }
 
   Future<void> _sendOtp() async {
-    debugPrint('📧 Sending OTP to email: ${widget.email}');
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -49,8 +46,6 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
       final result = await ApiService.post(ApiConfig.sendVerificationOtp, {
         'email': widget.email,
       });
-
-      debugPrint('📧 OTP send result: $result');
 
       if (result['success'] == true) {
         if (mounted) {
@@ -67,7 +62,6 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
         });
       }
     } catch (e) {
-      debugPrint('❌ Error sending OTP: $e');
       setState(() {
         _errorMessage = 'An error occurred while sending OTP';
       });
@@ -86,7 +80,6 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
       return;
     }
 
-    debugPrint('🔐 Verifying OTP for email: ${widget.email}');
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -98,11 +91,8 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
         'otp': _otpController.text,
       });
 
-      debugPrint('🔐 OTP verification result: $result');
-
       if (result['success'] == true) {
         if (mounted) {
-          debugPrint('✅ OTP verification successful');
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -119,7 +109,6 @@ class _OtpVerificationDialogState extends State<OtpVerificationDialog> {
         });
       }
     } catch (e) {
-      debugPrint('❌ Error verifying OTP: $e');
       setState(() {
         _errorMessage = 'An error occurred while verifying OTP';
       });

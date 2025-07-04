@@ -70,8 +70,6 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     _adService.dispose();
 
     if (_sessionEarnings > 0) {
-      debugPrint(
-          '🔄 Adding game earnings to wallet: ${_sessionEarnings.toStringAsFixed(18)} BTC');
       try {
         _walletProvider
             .addEarning(
@@ -80,7 +78,6 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
           description: 'Crypto Craze Game Earnings - Level $_currentLevel',
         )
             .then((_) {
-          debugPrint('✅ Game earnings added to wallet successfully');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -91,7 +88,6 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
             );
           }
         }).catchError((error) {
-          debugPrint('❌ Error adding game earnings to wallet: $error');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -101,9 +97,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
             );
           }
         });
-      } catch (error) {
-        debugPrint('❌ Error adding game earnings to wallet: $error');
-      }
+      } catch (error) {}
     }
 
     super.dispose();
@@ -418,9 +412,6 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     // Save earnings to wallet
     if (_sessionEarnings > 0) {
       try {
-        debugPrint(
-            '💾 Saving Crypto Craze earnings: ${_sessionEarnings.toStringAsFixed(18)} BTC');
-
         await _walletProvider.addEarning(
           _sessionEarnings,
           type: 'game',
@@ -429,8 +420,6 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
 
         // Play earning sound for game completion
         await SoundNotificationService.playEarningSound();
-
-        debugPrint('✅ Crypto Craze earnings saved successfully');
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -445,7 +434,6 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
           );
         }
       } catch (e) {
-        debugPrint('❌ Error saving Crypto Craze earnings: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -460,7 +448,6 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
 
     // Save game data
     _saveGameData();
-    debugPrint('✅ Game data saved');
 
     // Navigate back
     if (mounted) {

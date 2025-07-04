@@ -77,15 +77,11 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
     });
 
     try {
-      debugPrint('🔄 Initializing ads for Hash Rush...');
-
       // Load banner ad (async)
       await _adService.loadBannerAd();
-      debugPrint('✅ Banner ad loaded');
 
       // Load rewarded ad (async)
       await _adService.loadRewardedAd();
-      debugPrint('✅ Rewarded ad loaded');
 
       if (mounted) {
         setState(() {
@@ -95,13 +91,9 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
         });
 
         if (isAdLoaded) {
-          debugPrint('✅ Ads initialized successfully');
-        } else {
-          debugPrint('⚠️ Some ads failed to load');
-        }
+        } else {}
       }
     } catch (e) {
-      debugPrint('❌ Error initializing ads: $e');
       if (mounted) {
         setState(() {
           isAdLoaded = false;
@@ -144,11 +136,7 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
           type: 'game',
           description: 'Hash Rush - Game Earnings (Auto-saved)',
         );
-        debugPrint(
-            '💾 Auto-saved Hash Rush earnings on dispose: ${earnedBTC.toStringAsFixed(18)} BTC');
-      } catch (e) {
-        debugPrint('❌ Error auto-saving Hash Rush earnings: $e');
-      }
+      } catch (e) {}
     }
 
     // Save task data
@@ -453,9 +441,6 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
     try {
       // Transfer game earnings to main wallet before exiting
       if (earnedBTC > 0) {
-        debugPrint(
-            '💾 Saving Hash Rush earnings: ${earnedBTC.toStringAsFixed(18)} BTC');
-
         final walletProvider =
             Provider.of<WalletProvider>(context, listen: false);
         await walletProvider.addEarning(
@@ -466,8 +451,6 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
 
         // Play earning sound for game completion
         await SoundNotificationService.playNotificationSound('success_chime');
-
-        debugPrint('✅ Hash Rush earnings saved successfully');
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -481,16 +464,11 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
             ),
           );
         }
-      } else {
-        debugPrint('ℹ️ No earnings to save');
-      }
+      } else {}
 
       // Save task data before exit
       await saveTaskData();
-      debugPrint('✅ Task data saved');
     } catch (e) {
-      debugPrint('❌ Error saving Hash Rush earnings: $e');
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -546,11 +524,7 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
       setState(() {
         earnedBTC = 0.0;
       });
-
-      debugPrint('💾 Periodically saved Hash Rush earnings');
-    } catch (e) {
-      debugPrint('❌ Error in periodic save: $e');
-    }
+    } catch (e) {}
   }
 
   @override

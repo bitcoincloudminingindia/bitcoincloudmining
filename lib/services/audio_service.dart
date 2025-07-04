@@ -1,5 +1,4 @@
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/foundation.dart';
 
 class AudioService {
   static final AudioPlayer _audioPlayer = AudioPlayer();
@@ -10,9 +9,7 @@ class AudioService {
     try {
       await _audioPlayer.setReleaseMode(ReleaseMode.loop);
       _isInitialized = true;
-      debugPrint('✅ Audio service initialized successfully');
     } catch (e) {
-      debugPrint('❌ Audio service initialization failed: $e');
     }
   }
 
@@ -25,9 +22,7 @@ class AudioService {
     try {
       // Play custom notification sound
       await _audioPlayer.play(AssetSource('sounds/notification_sound.mp3'));
-      debugPrint('🔊 Playing notification sound');
     } catch (e) {
-      debugPrint('❌ Failed to play notification sound: $e');
       // Fallback to default system sound
       await _audioPlayer.play(AssetSource('audio/coin_sound.mp3'));
     }
@@ -41,9 +36,7 @@ class AudioService {
 
     try {
       await _audioPlayer.play(AssetSource('audio/reward_sound.mp3'));
-      debugPrint('🎵 Playing reward sound');
     } catch (e) {
-      debugPrint('❌ Failed to play reward sound: $e');
     }
   }
 
@@ -55,9 +48,7 @@ class AudioService {
 
     try {
       await _audioPlayer.play(AssetSource('audio/coin_sound.mp3'));
-      debugPrint('🪙 Playing coin sound');
     } catch (e) {
-      debugPrint('❌ Failed to play coin sound: $e');
     }
   }
 
@@ -69,9 +60,7 @@ class AudioService {
 
     try {
       await _audioPlayer.play(AssetSource('audio/error_sound.mp3'));
-      debugPrint('⚠️ Playing error sound');
     } catch (e) {
-      debugPrint('❌ Failed to play error sound: $e');
     }
   }
 
@@ -79,9 +68,7 @@ class AudioService {
   static Future<void> stopSound() async {
     try {
       await _audioPlayer.stop();
-      debugPrint('🔇 Sound stopped');
     } catch (e) {
-      debugPrint('❌ Failed to stop sound: $e');
     }
   }
 
@@ -89,9 +76,7 @@ class AudioService {
   static Future<void> setVolume(double volume) async {
     try {
       await _audioPlayer.setVolume(volume);
-      debugPrint('🔊 Volume set to: $volume');
     } catch (e) {
-      debugPrint('❌ Failed to set volume: $e');
     }
   }
 
@@ -100,9 +85,7 @@ class AudioService {
     try {
       await _audioPlayer.dispose();
       _isInitialized = false;
-      debugPrint('🧹 Audio service disposed');
     } catch (e) {
-      debugPrint('❌ Failed to dispose audio service: $e');
     }
   }
 }

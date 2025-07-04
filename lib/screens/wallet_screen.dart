@@ -114,7 +114,6 @@ class _WalletScreenState extends State<WalletScreen>
         });
       }
     } catch (e) {
-      debugPrint('❌ Error loading wallet: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -217,9 +216,7 @@ class _WalletScreenState extends State<WalletScreen>
           }
         }
       }
-    } catch (e) {
-      debugPrint('❌ Error checking pending transactions: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> _loadWallet() async {
@@ -246,7 +243,6 @@ class _WalletScreenState extends State<WalletScreen>
         });
       }
     } catch (e) {
-      debugPrint('❌ Error loading wallet: $e');
       if (mounted && !_isDisposed) {
         setState(() {
           _isLoading = false;
@@ -266,9 +262,7 @@ class _WalletScreenState extends State<WalletScreen>
           _btcAmount = _walletProvider.btcBalance;
         });
       }
-    } catch (e) {
-      debugPrint('❌ Error loading wallet balance: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> _syncWalletBalance() async {
@@ -277,7 +271,6 @@ class _WalletScreenState extends State<WalletScreen>
       if (currentBalance < 0) {
         // If balance is negative, reset it to 0
         await _walletProvider.updateBalance(0);
-        debugPrint('Reset negative balance to 0');
       }
 
       // Refresh transactions
@@ -288,9 +281,7 @@ class _WalletScreenState extends State<WalletScreen>
           _btcAmount = _walletProvider.btcBalance;
         });
       }
-    } catch (e) {
-      debugPrint('❌ Error syncing wallet balance: $e');
-    }
+    } catch (e) {}
   }
 
   String formatBTCAmount(double amount) {
@@ -323,13 +314,6 @@ class _WalletScreenState extends State<WalletScreen>
     if (btcAmount > _walletProvider.btcBalance) {
       throw Exception('Insufficient balance');
     }
-
-    debugPrint('Converting to BTC:');
-    debugPrint(
-        'Local Amount: ${NumberFormatter.formatBTCAmount(localAmount)} ${_selectedMethod == "Paytm" ? "INR" : _selectedMethod == "Paypal" ? "USD" : "BTC"}');
-    debugPrint('BTC Price: $btcPrice');
-    debugPrint('Currency Rate: $currencyRate');
-    debugPrint('Calculated BTC: ${NumberFormatter.formatBTCAmount(btcAmount)}');
 
     return double.parse(NumberFormatter.formatBTCAmount(btcAmount));
   }
@@ -1643,14 +1627,6 @@ class _WalletScreenState extends State<WalletScreen>
     }
 
     final localBalance = _walletProvider.btcBalance * btcPrice * currencyRate;
-    debugPrint('Local balance calculation:');
-    debugPrint(
-        'BTC Balance: ${NumberFormatter.formatBTCAmount(_walletProvider.btcBalance)}');
-    debugPrint('BTC Price: $btcPrice');
-    debugPrint('Currency Rate: $currencyRate');
-    debugPrint(
-        'Calculated Local Balance: ${NumberFormatter.formatBTCAmount(localBalance)}');
-
     return localBalance;
   }
 
@@ -1765,9 +1741,7 @@ class _WalletScreenState extends State<WalletScreen>
       if (mounted && !_isDisposed) {
         setState(() {});
       }
-    } catch (e) {
-      debugPrint('❌ Error refreshing wallet: $e');
-    }
+    } catch (e) {}
   }
 
   IconData _getTransactionIcon(String type) {

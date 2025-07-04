@@ -120,9 +120,6 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
     });
 
     try {
-      debugPrint(
-          '💾 Transferring Flip Coin earnings: ${_gameWalletBalance.toString()} BTC');
-
       final walletProvider =
           Provider.of<WalletProvider>(context, listen: false);
       await walletProvider.addEarning(
@@ -133,8 +130,6 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
 
       // Play earning sound for game completion
       await SoundNotificationService.playEarningSound();
-
-      debugPrint('✅ Flip Coin earnings transferred successfully');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -149,7 +144,6 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
         );
       }
     } catch (e) {
-      debugPrint('❌ Error transferring Flip Coin earnings: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -184,10 +178,6 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
       _result = randomResult;
       _showResult = false;
     });
-
-    debugPrint(
-        'Starting flip - User chose: [1m${isHeads ? "Heads" : "Tails"}[0m');
-    debugPrint('Random result: [1m${randomResult ? "Heads" : "Tails"}[0m');
 
     // Start animation
     _controller.reset();
@@ -723,11 +713,7 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
           type: 'game',
           description: 'Flip Coin Game Earnings (Auto-saved)',
         );
-        debugPrint(
-            '💾 Auto-saved Flip Coin earnings on dispose: ${_gameWalletBalance.toString()} BTC');
-      } catch (e) {
-        debugPrint('❌ Error auto-saving Flip Coin earnings: $e');
-      }
+      } catch (e) {}
     }
 
     _controller.dispose();

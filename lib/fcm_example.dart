@@ -31,7 +31,6 @@ class _MyAppState extends State<MyApp> {
     await FcmService.requestPermission();
     final token = await FcmService.getFcmToken();
     setState(() => _fcmToken = token);
-    debugPrint('FCM Token: $token');
     if (token != null) {
       await sendTokenToBackend(token);
     }
@@ -49,12 +48,9 @@ class _MyAppState extends State<MyApp> {
         body: '{"token": "$token"}',
       );
       if (response.statusCode == 200) {
-        debugPrint('FCM token sent to backend successfully');
       } else {
-        debugPrint('Failed to send FCM token to backend: \\${response.body}');
       }
     } catch (e) {
-      debugPrint('Error sending FCM token to backend: $e');
     }
   }
 

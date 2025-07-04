@@ -29,7 +29,6 @@ class VersionCheckService {
         _showForceUpdateDialog(context);
       }
     } catch (e) {
-      debugPrint('❌ Version check failed: $e');
     }
   }
 
@@ -43,7 +42,6 @@ class VersionCheckService {
         if (curr[i] > latestV[i]) return false;
       }
     } catch (e) {
-      debugPrint('⚠️ Version comparison failed: $e');
     }
     return false;
   }
@@ -64,7 +62,6 @@ class VersionCheckService {
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
               } else {
-                debugPrint('⚠️ Could not launch update URL');
               }
             },
             child: const Text('Update Now'),

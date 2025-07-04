@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'services/audio_service.dart';
@@ -23,19 +22,14 @@ class FcmService {
 
       // Get FCM token
       final token = await getFcmToken();
-      if (token != null) {
-        debugPrint('📱 FCM Token: $token');
-      }
+      if (token != null) {}
 
       // Only set up background message handler if Firebase is available
       if (_isFirebaseInitialized) {
         FirebaseMessaging.onBackgroundMessage(
             _firebaseMessagingBackgroundHandler);
       }
-
-      debugPrint('✅ FCM initialized successfully');
     } catch (e) {
-      debugPrint('❌ FCM initialization failed: $e');
       _isFirebaseInitialized = false;
       // Still initialize local notifications even if Firebase fails
       await _initLocalNotifications();
@@ -47,9 +41,7 @@ class FcmService {
       const android = AndroidInitializationSettings('@mipmap/ic_launcher');
       const initSettings = InitializationSettings(android: android);
       await _localNotifications.initialize(initSettings);
-    } catch (e) {
-      debugPrint('Local notifications initialization failed: $e');
-    }
+    } catch (e) {}
   }
 
   static Future<void> requestPermission() async {
@@ -64,20 +56,11 @@ class FcmService {
           provisional: false,
         );
 
-        debugPrint(
-            '📱 Notification permission status: ${settings.authorizationStatus}');
-
         if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-          debugPrint('✅ Notification permission granted');
         } else if (settings.authorizationStatus ==
             AuthorizationStatus.provisional) {
-          debugPrint('⚠️ Provisional notification permission granted');
-        } else {
-          debugPrint('❌ Notification permission denied');
-        }
-      } catch (e) {
-        debugPrint('❌ Firebase messaging permission request failed: $e');
-      }
+        } else {}
+      } catch (e) {}
     }
   }
 
@@ -86,7 +69,6 @@ class FcmService {
       try {
         return await FirebaseMessaging.instance.getToken();
       } catch (e) {
-        debugPrint('Failed to get FCM token: $e');
         return null;
       }
     }
@@ -103,11 +85,8 @@ class FcmService {
         });
         FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
           // Handle notification tap (background/terminated)
-          debugPrint('Notification opened: ${message.notification?.title}');
         });
-      } catch (e) {
-        debugPrint('Firebase messaging listener setup failed: $e');
-      }
+      } catch (e) {}
     }
   }
 
@@ -134,9 +113,7 @@ class FcmService {
         message.notification?.body,
         details,
       );
-    } catch (e) {
-      debugPrint('Failed to show local notification: $e');
-    }
+    } catch (e) {}
   }
 }
 
@@ -145,8 +122,5 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp();
     }
-    debugPrint('Handling a background message: ${message.messageId}');
-  } catch (e) {
-    debugPrint('Background message handler failed: $e');
-  }
+  } catch (e) {}
 }

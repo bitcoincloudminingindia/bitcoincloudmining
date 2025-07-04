@@ -79,7 +79,6 @@ class _LaunchScreenState extends State<LaunchScreen>
         _showLoginDialog();
       }
     } catch (e) {
-      debugPrint('Error initializing app: $e');
       if (mounted) _showLoginDialog();
     }
   }

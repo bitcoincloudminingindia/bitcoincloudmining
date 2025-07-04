@@ -99,7 +99,6 @@ class _LoginDialogState extends State<LoginDialog> {
         });
       }
     } catch (e) {
-      debugPrint('❌ Login error: $e');
       setState(() {
         _errorMessage = 'An error occurred during login. Please try again.';
         _isLoading = false;

@@ -196,7 +196,6 @@ class _SettingScreenState extends State<SettingScreen> {
 
         // Check response status
         if (response.statusCode != 200) {
-          debugPrint('⚠️ Server logout failed: ${response.body}');
           // Continue with local cleanup even if server logout fails
         }
 
@@ -240,7 +239,6 @@ class _SettingScreenState extends State<SettingScreen> {
           Navigator.of(context).pop();
         }
 
-        debugPrint('Logout error: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

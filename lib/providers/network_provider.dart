@@ -40,28 +40,18 @@ class NetworkProvider extends ChangeNotifier {
         _isConnected = isConnected;
         _updateConnectionType();
         notifyListeners();
-
-        debugPrint(isConnected
-            ? '✅ Network connected via $_connectionType'
-            : '❌ Network disconnected');
       });
 
       _isInitialized = true;
       notifyListeners();
-
-      debugPrint('✅ Network provider initialized');
-    } catch (e) {
-      debugPrint('❌ Error initializing network provider: $e');
-    }
+    } catch (e) {}
   }
 
   // Update connection type
   Future<void> _updateConnectionType() async {
     try {
       _connectionType = await _networkService.getConnectionType();
-    } catch (e) {
-      debugPrint('❌ Error updating connection type: $e');
-    }
+    } catch (e) {}
   }
 
   // Force check connection
@@ -73,7 +63,6 @@ class NetworkProvider extends ChangeNotifier {
       notifyListeners();
       return isConnected;
     } catch (e) {
-      debugPrint('❌ Error checking connection: $e');
       return false;
     }
   }

@@ -35,7 +35,6 @@ void callbackDispatcher() {
       }
       return Future.value(true);
     } catch (e) {
-      debugPrint('Error in background task: $e');
       return Future.value(false);
     }
   });
@@ -74,7 +73,6 @@ class NotificationProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      debugPrint('Error loading notifications: $e');
       _isLoading = false;
       notifyListeners();
     }
@@ -111,7 +109,6 @@ class NotificationProvider with ChangeNotifier {
       _unreadCount++;
       notifyListeners();
     } catch (e) {
-      debugPrint('Error adding notification: $e');
     }
   }
 
@@ -134,7 +131,6 @@ class NotificationProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('Error marking notification as read: $e');
     }
   }
 
@@ -148,7 +144,6 @@ class NotificationProvider with ChangeNotifier {
       _unreadCount = 0;
       notifyListeners();
     } catch (e) {
-      debugPrint('Error marking all notifications as read: $e');
     }
   }
 

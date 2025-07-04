@@ -58,7 +58,6 @@ class ApiConfig {
   static Future<String> getWorkingUrl() async {
     for (String url in fallbackUrls) {
       try {
-        debugPrint('🔍 Testing URL: $url');
         final response = await http.get(
           Uri.parse('$url/health'),
           headers: {
@@ -71,16 +70,13 @@ class ApiConfig {
         ).timeout(const Duration(seconds: 10));
 
         if (response.statusCode == 200) {
-          debugPrint('✅ Working URL found: $url');
           return url;
         }
       } catch (e) {
-        debugPrint('❌ URL failed: $url - $e');
         continue;
       }
     }
 
-    debugPrint('⚠️ All URLs failed, using primary URL');
     return baseUrl;
   }
 
@@ -207,25 +203,20 @@ class ApiConfig {
 
   static void setToken(String token) {
     _token = token;
-    debugPrint('🔑 Token updated in ApiConfig: ${token.substring(0, 10)}...');
   }
 
   static void setRefreshToken(String refreshToken) {
     _refreshToken = refreshToken;
-    debugPrint(
-        '🔑 Refresh token updated in ApiConfig: ${refreshToken.substring(0, 10)}...');
   }
 
   static void setUserId(String userId) {
     _userId = userId;
-    debugPrint('👤 UserId updated in ApiConfig: $userId');
   }
 
   static void clear() {
     _token = null;
     _refreshToken = null;
     _userId = null;
-    debugPrint('🧹 ApiConfig cleared');
   }
 
   static void setTokenSilently(String? token) {
@@ -256,9 +247,6 @@ class ApiConfig {
 
     while (attempts < maxAttempts) {
       try {
-        debugPrint(
-            '🔍 Checking server availability (attempt ${attempts + 1}/$maxAttempts)...');
-
         // First try health endpoint
         final healthResponse = await http
             .get(
@@ -268,7 +256,6 @@ class ApiConfig {
             .timeout(const Duration(seconds: 10));
 
         if (healthResponse.statusCode == 200) {
-          debugPrint('✅ Server is available');
           return true;
         }
 
@@ -281,41 +268,31 @@ class ApiConfig {
             .timeout(const Duration(seconds: 10));
 
         if (baseResponse.statusCode < 500) {
-          debugPrint('✅ Server is available');
           return true;
         }
 
         attempts++;
         if (attempts < maxAttempts) {
-          debugPrint(
-              '⚠️ Server check failed, retrying in ${retryDelay.inSeconds}s...');
           await Future.delayed(retryDelay);
         }
       } on SocketException {
-        debugPrint('❌ Server check failed: No connection');
         attempts++;
         if (attempts < maxAttempts) {
-          debugPrint('⚠️ Retrying in ${retryDelay.inSeconds}s...');
           await Future.delayed(retryDelay);
         }
       } on TimeoutException {
-        debugPrint('❌ Server check failed: Timeout');
         attempts++;
         if (attempts < maxAttempts) {
-          debugPrint('⚠️ Retrying in ${retryDelay.inSeconds}s...');
           await Future.delayed(retryDelay);
         }
       } catch (e) {
-        debugPrint('❌ Server check failed: $e');
         attempts++;
         if (attempts < maxAttempts) {
-          debugPrint('⚠️ Retrying in ${retryDelay.inSeconds}s...');
           await Future.delayed(retryDelay);
         }
       }
     }
 
-    debugPrint('❌ Server check failed after $maxAttempts attempts');
     return false;
   }
 

@@ -18,19 +18,19 @@ class AdService {
   static const int MAX_OTHER_ADS_PER_HOUR = 20;
   static const Duration FREQUENCY_CAP_DURATION = Duration(hours: 1);
 
-  // Ad unit IDs - Use Google test IDs for all ad types
+  // Ad unit IDs - Use real AdMob IDs for all ad types
   final Map<String, Map<String, String>> _adUnitIds = {
     'android': {
-      'banner': 'ca-app-pub-3940256099942544/6300978111',
-      'interstitial': 'ca-app-pub-3940256099942544/1033173712',
-      'rewarded': 'ca-app-pub-3940256099942544/5224354917',
-      'native': 'ca-app-pub-3940256099942544/2247696110',
+      'banner': 'ca-app-pub-3537329799200606/2028008282',
+      'rewardedInterstitial': 'ca-app-pub-3537329799200606/5712102428',
+      'rewarded': 'ca-app-pub-3537329799200606/7827129874',
+      'native': 'ca-app-pub-3537329799200606/2260507229',
     },
     'ios': {
-      'banner': 'ca-app-pub-3940256099942544/2934735716',
-      'interstitial': 'ca-app-pub-3940256099942544/4411468910',
-      'rewarded': 'ca-app-pub-3940256099942544/1712485313',
-      'native': 'ca-app-pub-3940256099942544/3986624511',
+      'banner': 'ca-app-pub-3537329799200606/2028008282',
+      'rewardedInterstitial': 'ca-app-pub-3537329799200606/5712102428',
+      'rewarded': 'ca-app-pub-3537329799200606/7827129874',
+      'native': 'ca-app-pub-3537329799200606/2260507229',
     },
   };
 
@@ -126,7 +126,6 @@ class AdService {
       final timeSinceLastShow = now.difference(lastShowTime);
       if (timeSinceLastShow < FREQUENCY_CAP_DURATION &&
           showCount >= MAX_OTHER_ADS_PER_HOUR) {
-        debugPrint('Ad frequency cap reached for $adType');
         return false;
       }
     }
@@ -169,9 +168,7 @@ class AdService {
       final failuresJson =
           _adFailures.entries.map((e) => '${e.key}:${e.value}').join(',');
       await prefs.setString('ad_failures', failuresJson);
-    } catch (e) {
-      debugPrint('Error saving ad metrics: $e');
-    }
+    } catch (e) {}
   }
 
   // Load metrics from SharedPreferences
@@ -194,9 +191,7 @@ class AdService {
           }
         }
       }
-    } catch (e) {
-      debugPrint('Error loading ad metrics: $e');
-    }
+    } catch (e) {}
   }
 
   // Load ad with retry mechanism
@@ -221,7 +216,6 @@ class AdService {
       } catch (e) {
         attempts++;
         _adLoadAttempts[adType] = attempts;
-        debugPrint('Failed to load $adType ad (attempt $attempts): $e');
 
         if (attempts < MAX_RETRY_ATTEMPTS) {
           await Future.delayed(RETRY_DELAY * attempts);
@@ -248,7 +242,6 @@ class AdService {
     _bannerAdRefreshTimer?.cancel();
     _bannerAdRefreshTimer =
         Timer.periodic(const Duration(seconds: 60), (timer) {
-      debugPrint('🔄 Auto-refreshing banner ad...');
       _isBannerAdLoaded = false;
       _bannerAd?.dispose();
       _bannerAd = null;
@@ -274,7 +267,6 @@ class AdService {
           listener: BannerAdListener(
             onAdLoaded: (_) {
               _isBannerAdLoaded = true;
-              debugPrint('Banner ad loaded');
               _startBannerAdAutoRefresh(); // Start auto-refresh timer
             },
             onAdFailedToLoad: (ad, error) {
@@ -320,17 +312,14 @@ class AdService {
     if (kIsWeb) return;
 
     if (_isRewardedAdLoading) {
-      debugPrint('Rewarded ad already loading');
       return;
     }
 
     _isRewardedAdLoading = true;
-    debugPrint('🔄 Loading rewarded ad...');
 
     try {
       final adUnitId = _getAdUnitId('rewarded');
       if (adUnitId.isEmpty) {
-        debugPrint('❌ No rewarded ad unit ID available');
         _isRewardedAdLoading = false;
         return;
       }
@@ -340,7 +329,6 @@ class AdService {
         request: const AdRequest(),
         rewardedAdLoadCallback: RewardedAdLoadCallback(
           onAdLoaded: (ad) {
-            debugPrint('✅ Rewarded ad loaded successfully');
             _rewardedAd = ad;
             _isRewardedAdLoaded = true;
             _isRewardedAdLoading = false;
@@ -349,28 +337,22 @@ class AdService {
             // Set up ad event listeners
             ad.fullScreenContentCallback = FullScreenContentCallback(
               onAdDismissedFullScreenContent: (ad) {
-                debugPrint('Rewarded ad dismissed');
                 _isRewardedAdLoaded = false;
                 ad.dispose();
               },
               onAdFailedToShowFullScreenContent: (ad, error) {
-                debugPrint('❌ Rewarded ad failed to show: $error');
                 _isRewardedAdLoaded = false;
                 ad.dispose();
               },
-              onAdShowedFullScreenContent: (ad) {
-                debugPrint('Rewarded ad showed full screen');
-              },
+              onAdShowedFullScreenContent: (ad) {},
             );
           },
           onAdFailedToLoad: (error) {
-            debugPrint('Rewarded ad failed to load: $error');
             _isRewardedAdLoading = false;
           },
         ),
       );
     } catch (e) {
-      debugPrint('Error loading rewarded ad: $e');
       _isRewardedAdLoading = false;
     }
   }
@@ -381,17 +363,14 @@ class AdService {
   // Load native ad with retry mechanism and auto-refresh
   Future<void> loadNativeAd() async {
     if (_isNativeAdLoaded) {
-      debugPrint('✅ Native ad already loaded');
       return;
     }
 
     final adUnitId = _getAdUnitId('native');
     if (adUnitId.isEmpty) {
-      debugPrint('❌ Invalid native ad unit ID');
       return;
     }
 
-    debugPrint('🔄 Loading native ad with ID: $adUnitId');
     final startTime = DateTime.now();
 
     await _loadAdWithRetry(
@@ -417,39 +396,21 @@ class AdService {
                   (_nativeAdAverageLoadTime * (_nativeAdLoadCount - 1) +
                           loadTime.inMilliseconds) /
                       _nativeAdLoadCount;
-
-              debugPrint(
-                  '✅ Native ad loaded successfully in ${loadTime.inMilliseconds}ms');
-              debugPrint(
-                  '📊 Native ad metrics: Load count: $_nativeAdLoadCount, Fail count: $_nativeAdFailCount');
-
-              // Start auto-refresh timer
-              _startNativeAdAutoRefresh();
             },
             onAdFailedToLoad: (ad, error) {
               _isNativeAdLoaded = false;
               _nativeAdFailCount++;
               ad.dispose();
-              debugPrint('❌ Native ad failed to load: $error');
-              debugPrint(
-                  '📊 Native ad failure details: Code: ${error.code}, Message: ${error.message}');
               _adFailures['native'] = (_adFailures['native'] ?? 0) + 1;
               throw error;
             },
-            onAdOpened: (ad) {
-              debugPrint('🎯 Native ad opened');
-            },
-            onAdClosed: (ad) {
-              debugPrint('🔒 Native ad closed');
-            },
+            onAdOpened: (ad) {},
+            onAdClosed: (ad) {},
             onAdImpression: (ad) {
               _nativeAdImpressionCount++;
-              debugPrint(
-                  '👁️ Native ad impression (total: $_nativeAdImpressionCount)');
             },
             onAdClicked: (ad) {
               _nativeAdClickCount++;
-              debugPrint('🖱️ Native ad clicked (total: $_nativeAdClickCount)');
             },
           ),
         );
@@ -460,12 +421,10 @@ class AdService {
       (success) {
         _isNativeAdLoaded = success;
         if (success) {
-          debugPrint('✅ Native ad load completed successfully');
-        } else {
-          debugPrint('❌ Native ad load failed after retries');
-        }
+        } else {}
       },
     );
+    _startNativeAdAutoRefresh();
   }
 
   // Start auto-refresh timer for native ads
@@ -473,7 +432,6 @@ class AdService {
     _nativeAdRefreshTimer?.cancel();
     // Refresh native ad every 5 minutes
     _nativeAdRefreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
-      debugPrint('🔄 Auto-refreshing native ad...');
       _isNativeAdLoaded = false;
       _nativeAd?.dispose();
       _nativeAd = null;
@@ -483,7 +441,6 @@ class AdService {
 
   // Force refresh native ad
   Future<void> refreshNativeAd() async {
-    debugPrint('🔄 Force refreshing native ad...');
     _isNativeAdLoaded = false;
     _nativeAd?.dispose();
     _nativeAd = null;
@@ -517,7 +474,6 @@ class AdService {
             // Add refresh button for failed ads
             GestureDetector(
               onTap: () {
-                debugPrint('🔄 Manually refreshing native ad...');
                 _isNativeAdLoaded = false;
                 _nativeAd?.dispose();
                 _nativeAd = null;
@@ -569,7 +525,6 @@ class AdService {
                   try {
                     return AdWidget(ad: _nativeAd!);
                   } catch (e) {
-                    debugPrint('❌ Error rendering native ad: $e');
                     // Return fallback UI if ad rendering fails
                     return Container(
                       color: Colors.grey[100],
@@ -601,7 +556,6 @@ class AdService {
               right: 4,
               child: GestureDetector(
                 onTap: () {
-                  debugPrint('User dismissed native ad');
                   // Optionally track ad dismissal
                 },
                 child: Container(
@@ -637,15 +591,12 @@ class AdService {
     }
 
     if (!_canShowAd('rewarded')) {
-      debugPrint('Rewarded ad frequency cap reached');
       return false;
     }
 
     if (!_isRewardedAdLoaded || _rewardedAd == null) {
-      debugPrint('Rewarded ad not loaded, attempting to load...');
       await loadRewardedAd();
       if (!_isRewardedAdLoaded || _rewardedAd == null) {
-        debugPrint('Failed to load rewarded ad');
         return false;
       }
     }
@@ -656,7 +607,6 @@ class AdService {
     try {
       _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
         onAdDismissedFullScreenContent: (ad) {
-          debugPrint('Rewarded ad dismissed');
           ad.dispose();
           _isRewardedAdLoaded = false;
 
@@ -671,7 +621,6 @@ class AdService {
           _updateAdMetrics('rewarded', adShown, null);
         },
         onAdFailedToShowFullScreenContent: (ad, error) {
-          debugPrint('❌ Rewarded ad failed to show: $error');
           ad.dispose();
           _isRewardedAdLoaded = false;
 
@@ -684,14 +633,12 @@ class AdService {
           _updateAdMetrics('rewarded', false, null);
         },
         onAdShowedFullScreenContent: (ad) {
-          debugPrint('Rewarded ad showed full screen');
           adShown = true;
         },
       );
 
       await _rewardedAd!.show(
         onUserEarnedReward: (ad, reward) {
-          debugPrint('✅ User earned reward: ${reward.amount}');
           rewardGranted = true;
           onRewarded(reward.amount.toDouble());
         },
@@ -699,7 +646,6 @@ class AdService {
 
       return true;
     } catch (e) {
-      debugPrint('❌ Error showing rewarded ad: $e');
       _isRewardedAdLoaded = false;
       _rewardedAd?.dispose();
 
@@ -717,7 +663,6 @@ class AdService {
   // Get banner ad widget
   Widget getBannerAd() {
     if (!_isBannerAdLoaded || _bannerAd == null) {
-      debugPrint('[AdService] getBannerAd: Banner ad not loaded or null');
       return const SizedBox(height: 50);
     }
     try {
@@ -727,8 +672,6 @@ class AdService {
         child: AdWidget(ad: _bannerAd!),
       );
     } catch (e) {
-      debugPrint('[AdService] getBannerAd: Exception building AdWidget: '
-          '[31m$e[0m');
       return const SizedBox(height: 50);
     }
   }
@@ -745,11 +688,7 @@ class AdService {
       loadBannerAd();
       loadRewardedAd();
       loadNativeAd();
-
-      debugPrint('Ad service initialized successfully');
-    } catch (e) {
-      debugPrint('Error initializing ad service: $e');
-    }
+    } catch (e) {}
   }
 
   // Dispose ads
@@ -856,7 +795,6 @@ class AdService {
           .add('Button height should be at least 48dp for touch targets');
     }
 
-    debugPrint('📏 Native ad size validation: $result');
     return result;
   }
 
@@ -871,7 +809,6 @@ class AdService {
           onAdLoaded: (ad) {
             _rewardedInterstitialAd = ad;
             _isRewardedInterstitialAdLoaded = true;
-            debugPrint('RewardedInterstitialAd loaded');
             ad.fullScreenContentCallback = FullScreenContentCallback(
               onAdDismissedFullScreenContent: (ad) {
                 ad.dispose();
@@ -886,13 +823,11 @@ class AdService {
             );
           },
           onAdFailedToLoad: (error) {
-            debugPrint('RewardedInterstitialAd failed to load: $error');
             _isRewardedInterstitialAdLoaded = false;
           },
         ),
       );
     } catch (e) {
-      debugPrint('Error loading RewardedInterstitialAd: $e');
       _isRewardedInterstitialAdLoaded = false;
     }
   }
@@ -902,7 +837,6 @@ class AdService {
     required VoidCallback onAdDismissed,
   }) async {
     if (!_isRewardedInterstitialAdLoaded || _rewardedInterstitialAd == null) {
-      debugPrint('RewardedInterstitialAd not loaded');
       return false;
     }
     bool rewardGranted = false;
@@ -921,7 +855,6 @@ class AdService {
       loadRewardedInterstitialAd();
       return true;
     } catch (e) {
-      debugPrint('Error showing RewardedInterstitialAd: $e');
       _isRewardedInterstitialAdLoaded = false;
       _rewardedInterstitialAd = null;
       onAdDismissed();

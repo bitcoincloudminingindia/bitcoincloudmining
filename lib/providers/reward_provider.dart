@@ -211,7 +211,6 @@ class RewardProvider with ChangeNotifier {
     try {
       // Check if verification is already in progress
       if (_verificationInProgress[platform] == true) {
-        debugPrint('Verification already in progress for $platform');
         return false;
       }
 
@@ -239,8 +238,6 @@ class RewardProvider with ChangeNotifier {
         if (attemptTime != null) {
           final timeSpent = DateTime.now().difference(attemptTime).inSeconds;
           if (timeSpent < 10) {
-            debugPrint(
-                'User returned too quickly ($timeSpent seconds) for $platform');
             _verificationInProgress[platform] = false;
             return false;
           }
@@ -266,7 +263,6 @@ class RewardProvider with ChangeNotifier {
       _verificationInProgress[platform] = false;
       return false;
     } catch (e) {
-      debugPrint('Social media verification error: $e');
       _verificationInProgress[platform] = false;
       return false;
     }
@@ -315,7 +311,6 @@ class RewardProvider with ChangeNotifier {
         }
       ];
     } catch (e) {
-      debugPrint('Error loading social media platforms: $e');
       // Keep using default values if API fails
     }
     notifyListeners();

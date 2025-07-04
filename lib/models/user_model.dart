@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 
 class User {
@@ -31,7 +29,9 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     // Debug function to check required fields
-    _debugRequiredFields(json);
+    if (kDebugMode) {
+      _debugRequiredFields(json);
+    }
 
     // Handle both direct user data and nested user data
     final userData = json['data']?['user'] ?? json['user'] ?? json;
@@ -59,41 +59,14 @@ class User {
   }
 
   static void _debugRequiredFields(Map<String, dynamic> json) {
-    debugPrint('\n🔍 DEBUG: Checking User Model Fields');
-    debugPrint('📦 Raw JSON Data:');
-    debugPrint(jsonEncode(json));
-
     // Check data object first
     final data = json['data'];
-    if (data != null) {
-      debugPrint('\n📦 Data Object Found:');
-      debugPrint(data);
-    }
+    if (data != null) {}
 
     // Get user data from correct location
-    final userData = data?['user'] ?? json['user'] ?? json;
-    debugPrint('\n📋 Required Fields Status:');
-    debugPrint(
-        'userId: ${userData['userId'] != null ? '✅' : '❌'} (${userData['userId']})');
-    debugPrint(
-        'email: ${userData['email'] != null ? '✅' : '❌'} (${userData['email']})');
-    debugPrint(
-        'username: ${userData['username'] != null ? '✅' : '❌'} (${userData['username']})');
-    debugPrint(
-        'isVerified: ${userData['isVerified'] != null ? '✅' : '❌'} (${userData['isVerified']})');
-    debugPrint(
-        'referralCode: ${userData['referralCode'] != null ? '✅' : '❌'} (${userData['referralCode']})');
-    debugPrint(
-        'referredBy: ${userData['referredBy'] != null ? '✅' : 'ℹ️'} (${userData['referredBy'] ?? 'Not referred'})');
-    debugPrint(
-        'walletBalance: ${userData['walletBalance'] != null ? '✅' : '❌'} (${userData['walletBalance']})');
-    debugPrint(
-        'referralCount: ${userData['referralCount'] != null ? '✅' : '❌'} (${userData['referralCount']})');
-
+    // final userData = data?['user'] ?? json['user'] ?? json; // Unused, isliye hata diya
     // Check token in both locations
-    final token = data?['token'] ?? json['token'];
-    debugPrint('token: ${token != null ? '✅' : '❌'} ($token)');
-    debugPrint('\n');
+    // final token = data?['token'] ?? json['token']; // Unused, isliye hata diya
   }
 
   Map<String, dynamic> toJson() {

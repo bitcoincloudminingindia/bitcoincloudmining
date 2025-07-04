@@ -239,7 +239,6 @@ class _ContractScreenState extends State<ContractScreen>
         _isAdInitialized = true;
       });
     } catch (e) {
-      debugPrint('Error initializing ad service: $e');
       // Retry after 5 seconds
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) {
@@ -350,9 +349,7 @@ class _ContractScreenState extends State<ContractScreen>
         await prefs.remove('contract_current_earnings_$index');
         await prefs.remove('contract_is_mining_$index');
       }
-    } catch (e) {
-      debugPrint('Error saving contract state: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> _completeContract(int index) async {
@@ -393,9 +390,7 @@ class _ContractScreenState extends State<ContractScreen>
           );
         }
       }
-    } catch (e) {
-      debugPrint('Error completing contract: $e');
-    }
+    } catch (e) {}
   }
 
   void _startContractMining(int index) {
@@ -495,7 +490,6 @@ class _ContractScreenState extends State<ContractScreen>
     try {
       await _adService.showRewardedAd(
         onRewarded: (double amount) async {
-          debugPrint('User earned reward: $amount');
           final contract = contracts[index];
           setState(() {
             if (contract['adsWatched'] < contract['adsRequired']) {
@@ -515,7 +509,6 @@ class _ContractScreenState extends State<ContractScreen>
         },
       );
     } catch (e) {
-      debugPrint('Error showing ad: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Failed to show ad. Please try again.'),
@@ -539,9 +532,7 @@ class _ContractScreenState extends State<ContractScreen>
   Future<void> _loadNativeAd() async {
     try {
       await _adService.loadNativeAd();
-    } catch (e) {
-      debugPrint('Error loading native ad: $e');
-    }
+    } catch (e) {}
   }
 
   @override
@@ -554,7 +545,7 @@ class _ContractScreenState extends State<ContractScreen>
           icon: const Icon(Icons.notifications),
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Notifications coming soon!')),
+              const SnackBar(content: Text('Notifications not available!')),
             );
           },
         ),
@@ -750,7 +741,7 @@ class _ContractScreenState extends State<ContractScreen>
           Icon(Icons.update, size: 50, color: Colors.grey),
           SizedBox(height: 16),
           Text(
-            'Paid Contracts Coming Soon!',
+            'Paid Contracts Not Available!',
             style: TextStyle(fontSize: 20, color: Colors.grey),
           ),
         ],

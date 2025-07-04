@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:bitcoin_cloud_mining/models/user.dart';
-import 'package:bitcoin_cloud_mining/services/api_service.dart';
 import 'package:bitcoin_cloud_mining/services/analytics_service.dart';
+import 'package:bitcoin_cloud_mining/services/api_service.dart';
 // wallet_service.dart file does not exist, so it has been removed
 import 'package:bitcoin_cloud_mining/utils/constants.dart';
 import 'package:bitcoin_cloud_mining/utils/error_handler.dart';
@@ -119,38 +119,29 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _updateUserState(Map<String, dynamic> userData) async {
     try {
-      debugPrint('🔄 Updating user state with data: $userData');
-
       // Update wallet balance
       if (userData['walletBalance'] != null) {
-        final balance = userData['walletBalance'].toString();
-        debugPrint('💰 Wallet balance updated: $balance BTC');
+        // final balance = userData['walletBalance'].toString(); // Unused, isliye hata diya
       }
 
       // Update user ID
       if (userData['userId'] != null) {
         _userId = userData['userId'];
         ApiConfig.setUserId(_userId!);
-        debugPrint('👤 UserId updated in ApiConfig: Set');
       }
 
       // Update token
       if (userData['token'] != null) {
         _token = userData['token'];
         ApiConfig.setToken(_token!);
-        debugPrint('🔑 Token updated in ApiConfig: Set');
       }
 
       // Update user object
       _user = User.fromJson(userData);
       _isLoggedIn = true;
 
-      debugPrint('✅ User state updated successfully');
-      debugPrint('🔍 User ID after update: $_userId');
-
       notifyListeners();
     } catch (e) {
-      debugPrint('❌ Error updating user state: $e');
       rethrow;
     }
   }
@@ -163,9 +154,6 @@ class AuthProvider extends ChangeNotifier {
     String? referredByCode,
   }) async {
     try {
-      debugPrint('📤 Sending signup request');
-      debugPrint('📝 User data: $fullName, $userName, $userEmail');
-
       // Check connectivity first
       if (!await checkConnectivity()) {
         return {
@@ -193,9 +181,6 @@ class AuthProvider extends ChangeNotifier {
           )
           .timeout(const Duration(seconds: 10));
 
-      debugPrint('📥 Response status: ${response.statusCode}');
-      debugPrint('📝 Response body: ${response.body}');
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         final token = data['data']?['token'];
@@ -214,7 +199,6 @@ class AuthProvider extends ChangeNotifier {
         };
       }
     } catch (e) {
-      debugPrint('❌ Signup error: $e');
       return {
         'success': false,
         'message': 'An error occurred during signup',
@@ -225,13 +209,10 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _saveToken(String token) async {
     try {
-      debugPrint('💾 Saving token to storage');
       await StorageUtils.saveToken(token);
       _token = token;
       notifyListeners();
-    } catch (e) {
-      debugPrint('❌ Error saving token: $e');
-    }
+    } catch (e) {}
   }
 
   Future<Map<String, dynamic>> login({
@@ -239,8 +220,6 @@ class AuthProvider extends ChangeNotifier {
     required String password,
   }) async {
     try {
-      debugPrint('🔐 Attempting login for email: $email');
-
       // Check connectivity first
       if (!await checkConnectivity()) {
         return {
@@ -256,18 +235,16 @@ class AuthProvider extends ChangeNotifier {
 
       final response = await http
           .post(
-        Uri.parse('${ApiConfig.baseUrl}/api/auth/login'),
+            Uri.parse('${ApiConfig.baseUrl}/api/auth/login'),
             headers: ApiConfig.getHeaders(),
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
+            body: jsonEncode({
+              'email': email,
+              'password': password,
+            }),
           )
           .timeout(const Duration(seconds: 30));
 
       final data = jsonDecode(response.body);
-      debugPrint('📥 Login response: ${response.statusCode}');
-      debugPrint('📥 Login response body: $data');
 
       if (response.statusCode == 200 && data['success'] == true) {
         // Extract token and user data
@@ -282,14 +259,12 @@ class AuthProvider extends ChangeNotifier {
         await StorageUtils.saveToken(token);
         _token = token;
         ApiConfig.setToken(token);
-        debugPrint('✅ Token saved and configured');
 
         // Save user ID
         final userId = userData['userId'] ?? userData['_id'];
         if (userId != null) {
           await StorageUtils.saveUserId(userId);
           ApiConfig.setUserId(userId);
-          debugPrint('✅ User ID saved: $userId');
         }
 
         // Update user state
@@ -321,7 +296,6 @@ class AuthProvider extends ChangeNotifier {
         throw ApiError(data['message'] ?? 'Login failed');
       }
     } catch (e) {
-      debugPrint('❌ Login error: $e');
       return {
         'success': false,
         'message': 'Login failed: ${e.toString()}',
@@ -411,7 +385,6 @@ class AuthProvider extends ChangeNotifier {
         throw Exception(result['message'] ?? 'Profile update failed');
       }
     } catch (e) {
-      debugPrint('Save user data error: $e');
       rethrow; // Rethrow to handle in UI
     }
   }
@@ -466,7 +439,6 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> logout() async {
     try {
-      debugPrint('🚪 Logging out...');
       final token = await StorageUtils.getToken();
       final userId = _userId;
 
@@ -475,12 +447,10 @@ class AuthProvider extends ChangeNotifier {
           // Get current wallet balance
           final walletBalance =
               _user?.walletBalance.toString() ?? '0.000000000000000000';
-          debugPrint('💰 Current wallet balance: $walletBalance');
 
           // Format balance to 18 decimal places
           final formattedBalance =
               NumberFormatter.formatBTCAmount(double.parse(walletBalance));
-          debugPrint('💰 Formatted balance for logout: $formattedBalance');
 
           // Attempt server logout
           final response = await http
@@ -498,12 +468,9 @@ class AuthProvider extends ChangeNotifier {
               .timeout(const Duration(seconds: 10));
 
           if (response.statusCode != 200) {
-            final errorData = jsonDecode(response.body);
-            debugPrint('⚠️ Server logout failed: ${errorData['message']}');
+            // errorData variable ko hata diya gaya hai
           }
-        } catch (e) {
-          debugPrint('⚠️ Server logout failed: $e');
-        }
+        } catch (e) {}
       }
 
       // Clear local storage
@@ -526,10 +493,8 @@ class AuthProvider extends ChangeNotifier {
       _isInitialized = false; // Reset initialization state
       _isInitializing = false;
 
-      debugPrint('✅ Logged out successfully');
       notifyListeners();
     } catch (e) {
-      debugPrint('❌ Logout error: $e');
       rethrow;
     }
   }
@@ -607,9 +572,7 @@ class AuthProvider extends ChangeNotifier {
       await StorageUtils.saveUserData(userData);
 
       notifyListeners();
-      debugPrint('✅ Wallet balance updated: $formattedBalance BTC');
     } catch (e) {
-      debugPrint('❌ Balance sync error: $e');
       rethrow;
     }
   }
@@ -639,7 +602,6 @@ class AuthProvider extends ChangeNotifier {
         await StorageUtils.saveUserData(userData);
       }
     } catch (e) {
-      debugPrint('❌ Error updating user data: $e');
       rethrow;
     }
   }
@@ -647,18 +609,13 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _loadUserProfileFromServer() async {
     try {
       final response = await ApiService.get(ApiConfig.profile);
-      debugPrint('📥 Profile response: $response');
 
       if (response['status'] == 'success' && response['data'] != null) {
-        debugPrint('🔄 Saving user data...');
-        debugPrint('📝 Raw user data: ${response['data']}');
         await updateUserData(response['data']);
-        debugPrint('✅ User data saved successfully');
       } else {
         throw Exception('Failed to load user profile');
       }
     } catch (e) {
-      debugPrint('❌ Error loading user profile: $e');
       rethrow;
     }
   }
@@ -681,7 +638,6 @@ class AuthProvider extends ChangeNotifier {
         throw Exception(result['message'] ?? 'Settings update failed');
       }
     } catch (e) {
-      debugPrint('Update settings error: $e');
       rethrow;
     }
   }
@@ -709,7 +665,6 @@ class AuthProvider extends ChangeNotifier {
       throw AuthenticationError(
           response['message'] ?? 'OTP verification failed');
     } catch (e) {
-      debugPrint('OTP verification error: $e');
       rethrow;
     }
   }
@@ -717,7 +672,6 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> initializeAuth() async {
     // Prevent concurrent initialization
     if (_isInitializing) {
-      debugPrint('⚠️ Auth initialization already in progress, waiting...');
       while (_isInitializing) {
         await Future.delayed(const Duration(milliseconds: 100));
       }
@@ -726,45 +680,22 @@ class AuthProvider extends ChangeNotifier {
 
     // Return cached state if already initialized
     if (_isInitialized) {
-      debugPrint('✅ Auth already initialized, returning cached state');
       return _isLoggedIn;
     }
 
     try {
       _isInitializing = true;
-      debugPrint('🔄 Starting auth initialization...');
 
       // Get token from storage
       final token = await StorageUtils.getToken();
-      debugPrint(
-          '🔑 Token from storage: ${token != null ? 'Found' : 'Not found'}');
-
-      if (token == null) {
-        debugPrint('❌ No token found, auth initialization failed');
-        _isLoggedIn = false;
-        _isInitialized = true;
-        notifyListeners();
-        return false;
-      }
-
-      // Update token state
-      _token = token;
-      ApiConfig.setToken(token);
-
       // Get user data from storage
       final userData = await StorageUtils.getUserData();
-      debugPrint(
-          '📱 User data from storage: ${userData != null ? 'Found' : 'Not found'}');
-
       // If no user data but we have token, try to fetch from server
       if (userData == null) {
-        debugPrint(
-            '⚠️ No user data in storage, trying to fetch from server...');
         try {
           final apiService = ApiService();
           final response = await apiService.getUserProfile();
           if (response['status'] == 'success' && response['data'] != null) {
-            debugPrint('✅ Got user data from server');
             final serverData = response['data'];
 
             // Save server data
@@ -778,18 +709,15 @@ class AuthProvider extends ChangeNotifier {
             return true;
           }
         } catch (e) {
-          debugPrint('❌ Error fetching user data from server: $e');
           // Don't logout on network error
           if (e.toString().contains('SocketException') ||
               e.toString().contains('TimeoutException')) {
-            debugPrint('⚠️ Network error, keeping login state');
             _isInitialized = true;
             return true;
           }
         }
 
         // Only logout if we couldn't get data from server
-        debugPrint('❌ Could not get user data from server');
         await logout();
         _isInitialized = true;
         return false;
@@ -797,15 +725,12 @@ class AuthProvider extends ChangeNotifier {
 
       try {
         // First validate token
-        debugPrint('🔍 Validating token...');
         final response = await ApiService.post(
           ApiConfig.validateToken,
           {'token': token},
         );
 
         if (response['success'] == true || response['status'] == 'success') {
-          debugPrint('✅ Token is valid');
-
           // Update state with stored data
           await _updateUserState(userData);
           _isLoggedIn = true;
@@ -816,11 +741,8 @@ class AuthProvider extends ChangeNotifier {
         }
 
         // If token is not valid, try to refresh
-        debugPrint('⚠️ Token invalid, attempting refresh...');
         final refreshResponse = await refreshToken();
         if (refreshResponse) {
-          debugPrint('✅ Token refreshed successfully');
-
           // Update state with stored data
           await _updateUserState(userData);
           _isLoggedIn = true;
@@ -831,17 +753,13 @@ class AuthProvider extends ChangeNotifier {
         }
 
         // If refresh also fails, then logout
-        debugPrint('❌ Token validation and refresh failed');
         await logout();
         _isInitialized = true;
         return false;
       } catch (e) {
-        debugPrint('❌ Token validation error: $e');
-
         // Network error condition, keep login state if we have valid data
         if (e.toString().contains('SocketException') ||
             e.toString().contains('TimeoutException')) {
-          debugPrint('⚠️ Network error, keeping login state');
           await _updateUserState(userData);
           _isLoggedIn = true;
           _isInitialized = true;
@@ -855,8 +773,6 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
     } catch (e) {
-      debugPrint('❌ Auth initialization error: $e');
-
       // Critical error condition, logout
       if (e.toString().contains('FormatException') ||
           e.toString().contains('TypeError')) {
@@ -871,10 +787,8 @@ class AuthProvider extends ChangeNotifier {
 
   Future<bool> validateCurrentToken() async {
     try {
-      debugPrint('🔍 Checking token validation...');
       final token = await getToken();
       if (token == null) {
-        debugPrint('❌ No token found for validation');
         return false;
       }
 
@@ -884,20 +798,16 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (result['success'] == true) {
-        debugPrint('✅ Token is valid');
         return true;
       }
 
       // If token is expired, try to refresh
       if (result['status'] == 401) {
-        debugPrint('⚠️ Token expired, attempting refresh...');
         return await refreshToken();
       }
 
-      debugPrint('❌ Token validation failed: ${result['message']}');
       return false;
     } catch (e) {
-      debugPrint('❌ Token validation error: $e');
       return false;
     }
   }
@@ -922,7 +832,6 @@ class AuthProvider extends ChangeNotifier {
       );
       return response['success'] ?? false;
     } catch (e) {
-      debugPrint('Error sending OTP: $e');
       return false;
     }
   }
@@ -931,7 +840,6 @@ class AuthProvider extends ChangeNotifier {
     try {
       final refreshToken = await StorageUtils.getRefreshToken();
       if (refreshToken == null) {
-        debugPrint('No refresh token found');
         return false;
       }
 
@@ -953,7 +861,6 @@ class AuthProvider extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      debugPrint('Token refresh error: $e');
       return false;
     }
   }
@@ -974,7 +881,6 @@ class AuthProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      debugPrint('Auth state maintenance error: $e');
       await logout();
     }
   }
@@ -982,7 +888,6 @@ class AuthProvider extends ChangeNotifier {
   Future<void> loadUserProfile() async {
     // Skip if not initialized
     if (!_isInitialized) {
-      debugPrint('⚠️ Auth not initialized, initializing first...');
       final initialized = await initializeAuth();
       if (!initialized) {
         throw Exception('Auth initialization failed');
@@ -991,14 +896,11 @@ class AuthProvider extends ChangeNotifier {
     }
 
     try {
-      debugPrint('🔄 Loading user profile...');
-
       // Try to load from server first
       try {
         await _loadUserProfileFromServer();
         return;
       } catch (e) {
-        debugPrint('⚠️ Failed to load from server: $e');
         // Continue to try loading from storage
       }
 
@@ -1006,13 +908,11 @@ class AuthProvider extends ChangeNotifier {
       final userData = await StorageUtils.getUserData();
       if (userData != null) {
         await updateUserData({'user': userData});
-        debugPrint('✅ Loaded user data from storage');
         return;
       }
 
       throw Exception('Could not load user profile from server or storage');
     } catch (e) {
-      debugPrint('❌ Error loading profile: $e');
       rethrow;
     }
   }
@@ -1029,7 +929,6 @@ class AuthProvider extends ChangeNotifier {
   Future<Map<String, dynamic>> validateToken() async {
     // If not initialized, perform initialization first
     if (!_isInitialized) {
-      debugPrint('⚠️ Auth not initialized, initializing first...');
       final initialized = await initializeAuth();
       if (!initialized) {
         return {'success': false, 'message': 'Auth initialization failed'};
@@ -1065,9 +964,6 @@ class AuthProvider extends ChangeNotifier {
 
   Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data) async {
     try {
-      debugPrint('🔄 Updating profile...');
-      debugPrint('📝 Profile data: $data');
-
       // Validate required fields are not null
       if (data['fullName'] == null) {
         throw 'Full name is required';
@@ -1082,7 +978,6 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (response['success']) {
-        debugPrint('✅ Profile updated successfully');
         // Update local user data if needed
         if (response['data'] != null && response['data']['user'] != null) {
           _userData = {...?_userData, ...response['data']['user']};
@@ -1090,11 +985,9 @@ class AuthProvider extends ChangeNotifier {
         }
         return response;
       } else {
-        debugPrint('❌ Profile update failed: ${response['message']}');
         return response;
       }
     } catch (e) {
-      debugPrint('❌ Error updating profile: $e');
       rethrow;
     }
   }
@@ -1139,7 +1032,6 @@ class AuthProvider extends ChangeNotifier {
 
       throw ApiError(response['message'] ?? 'Password reset failed');
     } catch (e) {
-      debugPrint('Password reset request error: $e');
       rethrow;
     }
   }
@@ -1168,7 +1060,6 @@ class AuthProvider extends ChangeNotifier {
       throw AuthenticationError(
           response['message'] ?? 'OTP verification failed');
     } catch (e) {
-      debugPrint('Reset OTP verification error: $e');
       rethrow;
     }
   }
@@ -1217,7 +1108,6 @@ class AuthProvider extends ChangeNotifier {
 
       throw ApiError(response['message'] ?? 'Password reset failed');
     } catch (e) {
-      debugPrint('Password reset error: $e');
       if (e is ApiError) {
         return {'success': false, 'message': e.message, 'error': 'API_ERROR'};
       }
@@ -1254,7 +1144,6 @@ class AuthProvider extends ChangeNotifier {
 
       throw ApiError(response['message'] ?? 'Password reset failed');
     } catch (e) {
-      debugPrint('Password reset error: $e');
       rethrow;
     }
   }
@@ -1267,7 +1156,6 @@ class AuthProvider extends ChangeNotifier {
       );
       return response['success'] == true;
     } catch (e) {
-      debugPrint('Error requesting password reset: $e');
       return false;
     }
   }
@@ -1283,7 +1171,6 @@ class AuthProvider extends ChangeNotifier {
       );
       return response;
     } catch (e) {
-      debugPrint('Error verifying reset OTP: $e');
       return {'success': false, 'message': e.toString(), 'error': 'API_ERROR'};
     }
   }
@@ -1304,7 +1191,6 @@ class AuthProvider extends ChangeNotifier {
       );
       return response['success'] == true;
     } catch (e) {
-      debugPrint('Error resetting password: $e');
       return false;
     }
   }
@@ -1319,7 +1205,6 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('❌ Error loading referral earnings: $e');
       rethrow; // Re-throw to handle in UI
     }
   }
@@ -1332,7 +1217,6 @@ class AuthProvider extends ChangeNotifier {
       }
       return [];
     } catch (e) {
-      debugPrint('❌ Error getting referred users: $e');
       return [];
     }
   }
@@ -1365,29 +1249,21 @@ class AuthProvider extends ChangeNotifier {
       }
       return token;
     } catch (e) {
-      debugPrint('❌ Token retrieval error: $e');
       return null;
     }
   }
 
   Future<void> setToken(String token) async {
     try {
-      debugPrint('🔄 Saving token...');
-      debugPrint('📝 Token to save: ${token.substring(0, 20)}...');
-
       // Save token to storage
       await StorageUtils.saveToken(token);
-      debugPrint('✅ Token saved to web storage');
 
       // Update token in ApiConfig
       ApiConfig.setToken(token);
-      debugPrint('🔑 Token updated in ApiConfig: Set');
-      debugPrint('✅ Token updated in ApiConfig');
 
       _token = token;
       notifyListeners();
     } catch (e) {
-      debugPrint('❌ Error saving token: $e');
       rethrow;
     }
   }
@@ -1399,15 +1275,12 @@ class AuthProvider extends ChangeNotifier {
       await StorageUtils.removeToken();
       notifyListeners();
     } catch (e) {
-      debugPrint('❌ Token clearing error: $e');
       rethrow;
     }
   }
 
   Future<void> setUserId(String id) async {
     try {
-      debugPrint('🔄 Setting user ID: $id');
-
       if (id.isEmpty) {
         throw Exception('User ID cannot be empty');
       }
@@ -1420,10 +1293,8 @@ class AuthProvider extends ChangeNotifier {
       // Update API config
       ApiConfig.setUserId(id);
 
-      debugPrint('✅ User ID set successfully');
       notifyListeners();
     } catch (e) {
-      debugPrint('❌ Error setting user ID: $e');
       rethrow;
     }
   }
@@ -1434,7 +1305,6 @@ class AuthProvider extends ChangeNotifier {
       final response = await ApiService.get('/referrals');
       return response;
     } catch (e) {
-      debugPrint('Error getting referrals: $e');
       rethrow;
     }
   }
@@ -1450,7 +1320,6 @@ class AuthProvider extends ChangeNotifier {
       }
       return response;
     } catch (e) {
-      debugPrint('Error generating referral code: $e');
       rethrow;
     }
   }
@@ -1462,7 +1331,6 @@ class AuthProvider extends ChangeNotifier {
           await ApiService.post('/referrals/validate', {'code': code});
       return response;
     } catch (e) {
-      debugPrint('Error validating referral code: $e');
       rethrow;
     }
   }
@@ -1471,7 +1339,6 @@ class AuthProvider extends ChangeNotifier {
     try {
       return _userId ?? await StorageUtils.getToken();
     } catch (e) {
-      debugPrint('❌ Error getting user ID: $e');
       return null;
     }
   }
@@ -1480,36 +1347,29 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> sendVerificationEmail() async {
     try {
-      debugPrint('📧 Sending verification email');
-
       final response = await ApiService.post(
         '/auth/send-verification',
         {'email': _email},
       );
 
       if (response['success']) {
-        debugPrint('✅ Verification email sent successfully');
       } else {
         throw Exception(
             response['message'] ?? 'Failed to send verification email');
       }
     } catch (e) {
-      debugPrint('❌ Error sending verification email: $e');
       rethrow;
     }
   }
 
   Future<bool> verifyEmail(String token) async {
     try {
-      debugPrint('🔍 Verifying email with token');
-
       final response = await ApiService.post(
         '/auth/verify-email',
         {'token': token},
       );
 
       if (response['success']) {
-        debugPrint('✅ Email verified successfully');
         // Update user state
         if (_user != null) {
           _user = _user!.copyWith(isVerified: true);
@@ -1520,28 +1380,23 @@ class AuthProvider extends ChangeNotifier {
         throw Exception(response['message'] ?? 'Email verification failed');
       }
     } catch (e) {
-      debugPrint('❌ Error verifying email: $e');
       return false;
     }
   }
 
   Future<void> resendVerificationEmail() async {
     try {
-      debugPrint('📧 Resending verification email');
-
       final response = await ApiService.post(
         '/auth/resend-verification',
         {'email': _email},
       );
 
       if (response['success']) {
-        debugPrint('✅ Verification email resent successfully');
       } else {
         throw Exception(
             response['message'] ?? 'Failed to resend verification email');
       }
     } catch (e) {
-      debugPrint('❌ Error resending verification email: $e');
       rethrow;
     }
   }
@@ -1551,7 +1406,6 @@ class AuthProvider extends ChangeNotifier {
       final connectivityResult = await Connectivity().checkConnectivity();
       return connectivityResult != ConnectivityResult.none;
     } catch (e) {
-      debugPrint('❌ Connectivity check error: $e');
       return false;
     }
   }

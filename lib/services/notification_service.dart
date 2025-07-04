@@ -65,7 +65,6 @@ class NotificationService {
     // Initialize mining notification
     await _initializeMiningNotification();
 
-    debugPrint('✅ Notification service initialized');
   }
 
   Future<void> _createNotificationChannels() async {
@@ -214,7 +213,6 @@ class NotificationService {
         throw Exception('Failed to load notifications');
       }
     } catch (e) {
-      debugPrint('Error getting notifications: $e');
       return [];
     }
   }
@@ -232,7 +230,6 @@ class NotificationService {
         },
       );
     } catch (e) {
-      debugPrint('Error marking notification as read: $e');
     }
   }
 
@@ -249,7 +246,6 @@ class NotificationService {
         },
       );
     } catch (e) {
-      debugPrint('Error marking all notifications as read: $e');
     }
   }
 
@@ -258,7 +254,6 @@ class NotificationService {
     try {
       final token = await StorageUtils.getToken();
       if (token == null) {
-        debugPrint('No token available for login notification');
         return;
       }
 
@@ -279,19 +274,15 @@ class NotificationService {
         'timestamp': DateTime.now().toIso8601String(),
       };
 
-      debugPrint('Sending login notification with data: $data');
 
       final response = await ApiService.post(
         '/auth/login-notification',
         data,
       );
 
-      debugPrint('Login notification response: $response');
       if (!response['success']) {
-        debugPrint('Failed to send login notification: ${response['message']}');
       }
     } catch (e) {
-      debugPrint('Error sending login notification: $e');
     }
   }
 
@@ -313,9 +304,7 @@ class NotificationService {
         _updateMiningNotification();
       });
 
-      debugPrint('✅ Mining notification started');
     } catch (e) {
-      debugPrint('❌ Failed to start mining notification: $e');
     }
   }
 
@@ -378,9 +367,7 @@ class NotificationService {
         notificationDetails,
       );
 
-      debugPrint('📱 Mining notification updated: $content');
     } catch (e) {
-      debugPrint('❌ Failed to show mining notification: $e');
     }
   }
 
@@ -391,7 +378,6 @@ class NotificationService {
       // Update stats (in real app, these would come from your mining service)
       await _showMiningNotification();
     } catch (e) {
-      debugPrint('❌ Failed to update mining notification: $e');
     }
   }
 
@@ -446,9 +432,7 @@ class NotificationService {
       // Remove the notification
       await _notifications.cancel(_notificationId);
 
-      debugPrint('✅ Mining notification stopped');
     } catch (e) {
-      debugPrint('❌ Failed to stop mining notification: $e');
     }
   }
 

@@ -43,12 +43,11 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform);
   }
-  debugPrint('📩 Background Message: ${message.messageId}');
 }
 
 void main() async {
   // Set zone error handling to non-fatal
-  BindingBase.debugZoneErrorsAreFatal = false;
+  // BindingBase.debugZoneErrorsAreFatal = false; // Optional: Debug zone errors ko ignore na karein
 
   // Ensure Flutter bindings are initialized first
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,13 +58,9 @@ void main() async {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      debugPrint('✅ Firebase initialized successfully');
-    } else {
-      debugPrint('⚠️ Firebase already initialized');
-    }
+    } else {}
     // Initialize Firebase Analytics
     await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(true);
-    debugPrint('✅ Firebase Analytics initialized successfully');
 
     // Track app open event
     await AnalyticsService.trackAppOpen();
@@ -76,18 +71,7 @@ void main() async {
     // Initialize FCM after Firebase is ready
     await FcmService.initializeFCM();
   } catch (e) {
-    // Ignore duplicate app error more robustly
-    if ((e is FirebaseException && e.code == 'duplicate-app') ||
-        e
-            .toString()
-            .contains('A Firebase App named "[DEFAULT]" already exists') ||
-        e.toString().contains('already exists')) {
-      debugPrint(
-          '⚠️ Firebase already initialized (duplicate app error ignored)');
-    } else {
-      debugPrint('❌ Firebase initialization failed: $e');
-    }
-    // Continue without Firebase if initialization fails
+    // App initialization failed, ignore for now
   }
 
   // Only initialize window_manager on desktop platforms
@@ -107,9 +91,7 @@ void main() async {
           windowManager.setPreventClose(true);
         });
       });
-    } catch (e) {
-      debugPrint('Platform initialization error: $e');
-    }
+    } catch (e) {}
   }
 
   // Always initialize mobile ads on supported platforms (not web)
@@ -121,9 +103,7 @@ void main() async {
         // MobileAds.instance.registerNativeAdFactory('listTile', ...);
         // Register your native ad factory in native code, not Dart.
       }
-    } catch (e) {
-      debugPrint('Mobile Ads initialization error: $e');
-    }
+    } catch (e) {}
   }
 
   // Initialize background tasks if not on web
@@ -134,9 +114,7 @@ void main() async {
         isInDebugMode: kDebugMode,
       );
       // Removed periodic mining and cloud mining task registration for manual mining only
-    } catch (e) {
-      debugPrint('Background task initialization error: $e');
-    }
+    } catch (e) {}
   }
 
   // Initialize services
@@ -151,9 +129,7 @@ void main() async {
       apiService: apiService,
       notificationService: notificationService,
     ));
-  } catch (e) {
-    debugPrint('❌ Error running app: $e');
-  }
+  } catch (e) {}
 }
 
 class MyApp extends StatefulWidget {
@@ -194,9 +170,7 @@ class _MyAppState extends State<MyApp>
 
       // Initialize sound notification service
       await SoundNotificationService.initialize();
-    } catch (e) {
-      debugPrint('FCM setup failed: $e');
-    }
+    } catch (e) {}
   }
 
   void _setupNotificationListeners() {
@@ -226,9 +200,6 @@ class _MyAppState extends State<MyApp>
     // Listen for FCM foreground messages (only if Firebase is available)
     try {
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint(
-            '📬 Foreground Notification: ${message.notification?.title}');
-
         final context = navigatorKey.currentContext;
         if (context != null) {
           // Navigate to notification screen for FCM messages too
@@ -249,9 +220,7 @@ class _MyAppState extends State<MyApp>
           provider.addNotificationFromLocal(notification);
         }
       });
-    } catch (e) {
-      debugPrint('Firebase messaging listener setup failed: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> sendTokenToBackend(String token) async {
@@ -260,9 +229,6 @@ class _MyAppState extends State<MyApp>
       final url = Uri.parse(ApiConfig.fcmTokenUrl);
       final headers = ApiConfig.getHeaders(token: jwtToken);
 
-      debugPrint(
-          '📤 Sending FCM token to backend: [33m${token.substring(0, 20)}...[0m');
-
       final response = await http.post(
         url,
         headers: headers,
@@ -270,13 +236,8 @@ class _MyAppState extends State<MyApp>
       );
 
       if (response.statusCode == 200) {
-        debugPrint('✅ FCM token sent to backend successfully');
-      } else {
-        debugPrint('❌ Failed to send FCM token to backend: ${response.body}');
-      }
-    } catch (e) {
-      debugPrint('❌ Error sending FCM token to backend: $e');
-    }
+      } else {}
+    } catch (e) {}
   }
 
   @override
@@ -294,9 +255,7 @@ class _MyAppState extends State<MyApp>
   }
 
   @override
-  void onWindowEvent(String eventName) {
-    debugPrint('[WindowManager] onWindowEvent: $eventName');
-  }
+  void onWindowEvent(String eventName) {}
 
   @override
   void onWindowClose() async {

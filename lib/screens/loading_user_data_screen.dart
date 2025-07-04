@@ -115,7 +115,6 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
         final balance =
             double.tryParse(walletData['balance']?.toString() ?? '0') ?? 0.0;
         await walletProvider.updateBalance(balance);
-        debugPrint('✅ Wallet balance updated: $balance BTC');
       }
 
       // 3. Load wallet balance from server

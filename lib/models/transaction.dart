@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 class Transaction {
   final String id;
@@ -163,7 +162,6 @@ class Transaction {
         try {
           timestamp = DateTime.parse(json['timestamp'].toString());
         } catch (e) {
-          debugPrint('Error parsing timestamp: $e');
         }
       }
 
@@ -193,7 +191,6 @@ class Transaction {
         isClaimed: json['isClaimed'] ?? false,
       );
     } catch (e) {
-      debugPrint('❌ Error parsing transaction: $e');
       rethrow;
     }
   }

@@ -61,7 +61,6 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
       _audioPlayer.stop();
       _audioPlayer.dispose();
     } catch (e) {
-      debugPrint('❌ Error disposing audio player: $e');
     }
     gameTimer?.cancel();
     itemTimer?.cancel();
@@ -102,11 +101,9 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
       try {
         await _audioPlayer.play(AssetSource('audio/background.mp3'));
       } catch (e) {
-        debugPrint('❌ Background music error: $e');
         // Continue without background music
       }
     } catch (e) {
-      debugPrint('❌ Audio initialization error: $e');
       // Continue without audio
     }
   }
@@ -539,7 +536,6 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
       // Try to play collect sound with better error handling
       await _audioPlayer.play(AssetSource('audio/collect.mp3'));
     } catch (e) {
-      debugPrint('❌ Collect sound error: $e');
       // Continue without sound
     }
   }

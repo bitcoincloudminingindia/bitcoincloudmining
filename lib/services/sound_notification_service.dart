@@ -21,7 +21,6 @@ class SoundNotificationService {
         initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
           // Handle notification tap - navigate to notification screen
-          debugPrint('📱 Notification tapped: ${response.payload}');
           // Navigation will be handled by the main app's notification listener
         },
       );
@@ -29,9 +28,7 @@ class SoundNotificationService {
       // Create notification channels
       await _createNotificationChannels();
 
-      debugPrint('✅ Sound notification service initialized');
     } catch (e) {
-      debugPrint('❌ Sound notification service initialization failed: $e');
     }
   }
 
@@ -132,9 +129,7 @@ class SoundNotificationService {
       }
 
       await _audioPlayer.play(AssetSource(soundPath));
-      debugPrint('🔊 Playing notification sound: $soundType');
     } catch (e) {
-      debugPrint('❌ Error playing notification sound: $e');
     }
   }
 
@@ -142,15 +137,11 @@ class SoundNotificationService {
   static Future<void> playEarningSound() async {
     try {
       await _audioPlayer.play(AssetSource('sounds/earning_notification.mp3'));
-      debugPrint('💰 Playing earning notification sound');
     } catch (e) {
-      debugPrint('❌ Error playing earning sound: $e');
       // Fallback to success chime
       try {
         await _audioPlayer.play(AssetSource('sounds/success_chime.mp3'));
-        debugPrint('🎵 Playing fallback success chime');
       } catch (e2) {
-        debugPrint('❌ Error playing fallback sound: $e2');
       }
     }
   }
@@ -160,15 +151,11 @@ class SoundNotificationService {
     try {
       // Use a different existing sound for power up effect
       await _audioPlayer.play(AssetSource('sounds/earning_notification.mp3'));
-      debugPrint('⚡ Playing sci-fi power up sound');
     } catch (e) {
-      debugPrint('❌ Error playing sci-fi power up sound: $e');
       // Fallback to success chime
       try {
         await _audioPlayer.play(AssetSource('sounds/success_chime.mp3'));
-        debugPrint('🎵 Playing fallback success chime');
       } catch (e2) {
-        debugPrint('❌ Error playing fallback sound: $e2');
       }
     }
   }
@@ -178,15 +165,11 @@ class SoundNotificationService {
     try {
       // Use notification alert for achievement sound (more dramatic)
       await _audioPlayer.play(AssetSource('sounds/notification_alert.mp3'));
-      debugPrint('🏆 Playing sci-fi achievement sound');
     } catch (e) {
-      debugPrint('❌ Error playing sci-fi achievement sound: $e');
       // Fallback to success chime
       try {
         await _audioPlayer.play(AssetSource('sounds/success_chime.mp3'));
-        debugPrint('🎵 Playing fallback success chime');
       } catch (e2) {
-        debugPrint('❌ Error playing fallback sound: $e2');
       }
     }
   }
@@ -195,9 +178,7 @@ class SoundNotificationService {
   static Future<void> playSuccessChime() async {
     try {
       await _audioPlayer.play(AssetSource('sounds/success_chime.mp3'));
-      debugPrint('🎵 Playing success chime');
     } catch (e) {
-      debugPrint('❌ Error playing success chime: $e');
     }
   }
 
@@ -244,9 +225,7 @@ class SoundNotificationService {
         payload: payload?.toString(),
       );
 
-      debugPrint('📱 Notification shown: $title');
     } catch (e) {
-      debugPrint('❌ Failed to show notification: $e');
     }
   }
 
@@ -456,9 +435,7 @@ class SoundNotificationService {
   static Future<void> cancelAllNotifications() async {
     try {
       await _notifications.cancelAll();
-      debugPrint('✅ All notifications cancelled');
     } catch (e) {
-      debugPrint('❌ Error cancelling notifications: $e');
     }
   }
 
@@ -466,9 +443,7 @@ class SoundNotificationService {
   static Future<void> cancelNotification(int id) async {
     try {
       await _notifications.cancel(id);
-      debugPrint('✅ Notification cancelled: $id');
     } catch (e) {
-      debugPrint('❌ Error cancelling notification: $e');
     }
   }
 

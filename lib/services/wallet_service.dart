@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 import 'api_service.dart';
 
@@ -26,8 +25,6 @@ class WalletService {
       // Return the initialized wallet data
       return data;
     } catch (e) {
-      debugPrint('❌ Error initializing wallet: $e');
-
       // Check if it's a DNS error and provide better message
       if (e.toString().contains('Failed host lookup') ||
           e.toString().contains('no address associated with hostname')) {
@@ -53,8 +50,6 @@ class WalletService {
       final balance = response['data']['balance'] ?? '0.000000000000000000';
       return double.tryParse(balance) ?? 0.0;
     } catch (e) {
-      debugPrint('❌ Error getting wallet balance: $e');
-
       // Check if it's a DNS error and provide better message
       if (e.toString().contains('Failed host lookup') ||
           e.toString().contains('no address associated with hostname')) {

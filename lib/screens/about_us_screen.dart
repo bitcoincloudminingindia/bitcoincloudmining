@@ -23,7 +23,6 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
         try {
           totalBtcMined += 0.000001; // simulate earnings
         } catch (e) {
-          debugPrint('Error updating BTC mined: $e');
           // Handle error gracefully
         }
       });

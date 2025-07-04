@@ -56,7 +56,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   DateTime? _powerBoostStartTime;
   Color _currentColor = Colors.purple;
   double _miningProgress = 0.0;
-  bool _isSoundEnabled = true;
   int _lastMiningTime = 0;
   int _totalMiningTime = 0;
   Timer? _adTimer;
@@ -229,9 +228,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _scrollController.dispose();
     try {
       _adService.dispose();
-    } catch (e) {
-      debugPrint('Ad dispose error: $e');
-    }
+    } catch (e) {}
     super.dispose();
   }
 
@@ -261,10 +258,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final walletProvider =
           Provider.of<WalletProvider>(context, listen: false);
       await walletProvider.loadWallet();
-      debugPrint('✅ Wallet balance loaded successfully');
     } catch (e) {
-      debugPrint('Error initializing app: $e');
-
       // Check if it's a DNS error and provide better message
       String errorMessage = 'Error initializing app: ${e.toString()}';
       if (e.toString().contains('Failed host lookup') ||
@@ -310,8 +304,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           );
           return;
         } else {
-          debugPrint(
-              '⏰ Previous mining session completed, resetting state without adding earnings');
+          // '⏰ Previous mining session completed, resetting state without adding earnings');
           if (mounted) {
             setState(() {
               _isMining = false;
@@ -403,9 +396,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         earningsToAdd =
             double.parse((miningRate * elapsedSeconds).toStringAsFixed(18));
 
-        debugPrint(
-            '💰 Mining session completed! Adding earnings: ${earningsToAdd.toStringAsFixed(18)} BTC');
-
         // Show mining completion notification
         await SoundNotificationService.showAlertNotification(
           title: '⛏️ Mining Session Completed!',
@@ -413,8 +403,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               'Your mining session has completed successfully! You can start a new session now.',
         );
       } else {
-        debugPrint(
-            '⏰ Mining session not completed yet ($elapsedMinutes/$MINING_DURATION_MINUTES minutes), no earnings added');
+        // '⏰ Mining session not completed yet ($elapsedMinutes/$MINING_DURATION_MINUTES minutes), no earnings added');
       }
     }
 
@@ -619,7 +608,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final double loadedHashRate = prefs.getDouble('hashRate') ?? 2.5;
       final double loadedMiningProgress =
           prefs.getDouble('miningProgress') ?? 0.0;
-      final bool loadedIsSoundEnabled = prefs.getBool('isSoundEnabled') ?? true;
       final int loadedPercentage = prefs.getInt('percentage') ?? 0;
 
       // Check if mining session should be expired
@@ -648,12 +636,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (miningExpired && loadedIsMining && loadedMiningStartTime != null) {
         // Don't add earnings here, let _resetMiningState() handle it
         // This prevents duplicate earnings being added
-        debugPrint(
-            '⏰ Mining session expired, will be handled by _resetMiningState()');
       }
 
       setState(() {
-        _isSoundEnabled = loadedIsSoundEnabled;
         _percentage = loadedPercentage;
         if (miningExpired) {
           _isMining = false;
@@ -710,41 +695,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (miningExpired) {
         // Don't call _resetMiningState() here as it will add earnings prematurely
         // Just reset the state without adding earnings
-        debugPrint(
-            '⏰ Mining session expired on reload, resetting state without adding earnings');
-
-        // Show mining completion notification for expired session
-        await SoundNotificationService.showAlertNotification(
-          title: '⛏️ Mining Session Completed!',
-          message:
-              'Your previous mining session has completed. You can start a new session now.',
-        );
-
-        if (mounted) {
-          setState(() {
-            _isMining = false;
-            _miningStartTime = null;
-            _miningProgress = 0.0;
-            _currentMiningRate = BASE_MINING_RATE;
-            _hashRate = 2.5;
-            _isPowerBoostActive = false;
-            _currentPowerBoostMultiplier = 0.0;
-            _miningEarnings = 0.0;
-            _miningStatus = 'Inactive';
-            _lastMiningTime = 0;
-            _powerBoostClickCount = 0;
-            _powerBoostStartTime = null;
-          });
-        }
-        await _saveMiningState();
-      } else if (powerBoostExpired && _isMining) {
-        // If only power boost expired, save state to update prefs
-        await _saveMiningState();
       }
 
-      if (_isSoundEnabled) {
-        await _initializeAudio();
+      // Show mining completion notification for expired session
+      await SoundNotificationService.showAlertNotification(
+        title: '⛏️ Mining Session Completed!',
+        message:
+            'Your previous mining session has completed. You can start a new session now.',
+      );
+
+      if (mounted) {
+        setState(() {
+          _isMining = false;
+          _miningStartTime = null;
+          _miningProgress = 0.0;
+          _currentMiningRate = BASE_MINING_RATE;
+          _hashRate = 2.5;
+          _isPowerBoostActive = false;
+          _currentPowerBoostMultiplier = 0.0;
+          _miningEarnings = 0.0;
+          _miningStatus = 'Inactive';
+          _lastMiningTime = 0;
+          _powerBoostClickCount = 0;
+          _powerBoostStartTime = null;
+        });
       }
+      await _saveMiningState();
     } catch (e) {
       // Optionally log error
     }
@@ -767,9 +743,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('percentage', _percentage);
-    } catch (e) {
-      debugPrint('❌ Error saving percentage: $e');
-    }
+    } catch (e) {}
   }
 
   @override
@@ -1735,7 +1709,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         );
       }
     } catch (e) {
-      debugPrint('Power boost error: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1786,9 +1759,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             // Every 5th tap - power up sound
             await SoundNotificationService.playSciFiPowerUpSound();
           }
-        } catch (soundError) {
-          debugPrint('❌ Sound error: $soundError');
-        }
+        } catch (soundError) {}
 
         // Show different messages based on tap count
         if (mounted) {
@@ -1812,7 +1783,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           );
         }
       } catch (rewardError) {
-        debugPrint('❌ Error adding tap reward: $rewardError');
         if (mounted) {
           Fluttertoast.showToast(
             msg: 'Failed to add tap reward. Please try again.',
@@ -1824,16 +1794,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       // Save percentage safely
       try {
         await _savePercentage();
-      } catch (saveError) {
-        debugPrint('❌ Error saving percentage: $saveError');
-      }
+      } catch (saveError) {}
 
       // Show rewarded ad every 5 taps
       if (_sciFiTapCount >= 5) {
         _sciFiTapCount = 0;
 
         try {
-          debugPrint('🎬 Showing rewarded ad for sci-fi tap...');
           final bool adWatched = await _adService.showRewardedAd(
             onRewarded: (double amount) async {
               if (!mounted) return;
@@ -1851,9 +1818,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 // Play sci-fi achievement sound safely
                 try {
                   await SoundNotificationService.playSciFiAchievementSound();
-                } catch (soundError) {
-                  debugPrint('❌ Sound error: $soundError');
-                }
+                } catch (soundError) {}
 
                 if (mounted) {
                   Fluttertoast.showToast(
@@ -1864,7 +1829,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   );
                 }
               } catch (adRewardError) {
-                debugPrint('❌ Error adding ad reward: $adRewardError');
                 if (mounted) {
                   Fluttertoast.showToast(
                     msg: 'Failed to add ad reward. Please try again.',
@@ -1889,7 +1853,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             );
           }
         } catch (adError) {
-          debugPrint('❌ Error showing rewarded ad: $adError');
           if (mounted) {
             Fluttertoast.showToast(
               msg: 'Error showing ad. Please try again.',
@@ -1899,7 +1862,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         }
       }
     } catch (generalError) {
-      debugPrint('❌ General error in sci-fi tap: $generalError');
       if (mounted) {
         Fluttertoast.showToast(
           msg: 'Something went wrong. Please try again.',
@@ -1939,14 +1901,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // Initialize audio player settings
-  Future<void> _initializeAudio() async {
-    try {
-      await _audioPlayer.setVolume(1.0);
-      // Optionally preload a sound or set other audio settings here
-    } catch (e) {
-      debugPrint('Audio initialization error: $e');
-    }
-  }
 
   Future<void> _savePendingEarnings() async {
     try {
@@ -1956,12 +1910,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       // Note: Tap rewards are already added immediately in _onSciFiObjectTapped()
       // So we don't need to add them again here
       // This method is kept for any future pending earnings that might need periodic saving
-
-      debugPrint(
-          '💾 No pending earnings to save (mining earnings saved on completion, tap rewards added immediately)');
-    } catch (e) {
-      debugPrint('❌ Error saving pending earnings: $e');
-    }
+    } catch (e) {}
   }
 
   void _startPeriodicSaveTimer() {
@@ -1996,17 +1945,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       await _adService.initialize();
       await _loadNativeAd();
-    } catch (e) {
-      debugPrint('Error initializing ads: $e');
-    }
+    } catch (e) {}
   }
 
   // Contract screen jaisa native ad load karne ka function
   Future<void> _loadNativeAd() async {
     try {
       await _adService.loadNativeAd();
-    } catch (e) {
-      debugPrint('Error loading native ad: $e');
-    }
+    } catch (e) {}
   }
 }

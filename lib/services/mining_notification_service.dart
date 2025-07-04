@@ -32,9 +32,7 @@ class MiningNotificationService {
       // Create mining notification channel
       await _createMiningChannel();
 
-      debugPrint('✅ Mining notification service initialized');
     } catch (e) {
-      debugPrint('❌ Mining notification service initialization failed: $e');
     }
   }
 
@@ -80,9 +78,7 @@ class MiningNotificationService {
         _updateMiningNotification();
       });
 
-      debugPrint('✅ Mining notification started');
     } catch (e) {
-      debugPrint('❌ Failed to start mining notification: $e');
     }
   }
 
@@ -95,9 +91,7 @@ class MiningNotificationService {
           statusOverride: '✅ Mining completed!', timeOverride: '-');
       _updateTimer?.cancel();
       _updateTimer = null;
-      debugPrint('✅ Mining notification completed (status updated)');
     } catch (e) {
-      debugPrint('❌ Failed to complete mining notification: $e');
     }
   }
 
@@ -148,9 +142,7 @@ class MiningNotificationService {
         notificationDetails,
       );
 
-      debugPrint('📱 Mining notification updated: $content');
     } catch (e) {
-      debugPrint('❌ Failed to show mining notification: $e');
     }
   }
 
@@ -172,7 +164,6 @@ class MiningNotificationService {
     if (timeSinceLastUpdate >= 300 || _hasSignificantChange(newDuration)) {
       await _showMiningNotification();
       _lastUpdateTime = DateTime.now();
-      debugPrint('📱 Mining notification updated (timer-based)');
     }
   }
 
@@ -203,7 +194,6 @@ class MiningNotificationService {
       final doubleValue = double.tryParse(balance) ?? 0.0;
       return doubleValue.toStringAsFixed(18);
     } catch (e) {
-      debugPrint('❌ Error formatting balance: $e');
       return '0.000000000000000000';
     }
   }
@@ -235,9 +225,7 @@ class MiningNotificationService {
       _updateTimer?.cancel();
       _updateTimer = null;
       // Notification ko remove nahi karenge, bas timer band karenge
-      debugPrint('✅ Mining notification timer stopped (notification remains)');
     } catch (e) {
-      debugPrint('❌ Failed to stop mining notification: $e');
     }
   }
 
@@ -297,7 +285,6 @@ class MiningNotificationService {
         return 0; // Less than 1 minute
       }
     } catch (e) {
-      debugPrint('Error parsing duration: $e');
     }
     return 0;
   }

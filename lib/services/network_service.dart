@@ -39,9 +39,7 @@ class NetworkService {
       // Start periodic connection check
       _startPeriodicConnectionCheck();
 
-      debugPrint('✅ Network service initialized successfully');
     } catch (e) {
-      debugPrint('❌ Error initializing network service: $e');
     }
   }
 
@@ -53,7 +51,6 @@ class NetworkService {
           results.isNotEmpty ? results.first : ConnectivityResult.none;
       await _handleConnectivityChange(result);
     } catch (e) {
-      debugPrint('❌ Error checking connection status: $e');
       _updateConnectionStatus(false);
     }
   }
@@ -86,7 +83,6 @@ class NetworkService {
       final result = await InternetAddress.lookup('google.com');
       return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
     } catch (e) {
-      debugPrint('❌ Internet connectivity check failed: $e');
       return false;
     }
   }
@@ -97,9 +93,6 @@ class NetworkService {
       _isConnected = isConnected;
       _connectionStatusController.add(isConnected);
 
-      debugPrint(isConnected
-          ? '✅ Internet connection restored'
-          : '❌ Internet connection lost');
     }
   }
 

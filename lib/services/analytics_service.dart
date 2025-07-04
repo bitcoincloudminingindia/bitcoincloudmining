@@ -1,5 +1,4 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:flutter/foundation.dart';
 
 class AnalyticsService {
   static final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
@@ -8,20 +7,14 @@ class AnalyticsService {
   static Future<void> trackAppOpen() async {
     try {
       await _analytics.logAppOpen();
-      debugPrint('📊 Analytics: App open tracked');
-    } catch (e) {
-      debugPrint('❌ Analytics: Failed to track app open: $e');
-    }
+    } catch (e) {}
   }
 
   /// 🎯 Track login event
   static Future<void> trackLogin({String? method}) async {
     try {
       await _analytics.logLogin(loginMethod: method ?? 'email');
-      debugPrint('📊 Analytics: Login tracked with method: $method');
-    } catch (e) {
-      debugPrint('❌ Analytics: Failed to track login: $e');
-    }
+    } catch (e) {}
   }
 
   /// 💰 Track wallet transaction
@@ -39,11 +32,7 @@ class AnalyticsService {
           'currency': currency,
         },
       );
-      debugPrint(
-          '📊 Analytics: Transaction tracked: $type - $amount $currency');
-    } catch (e) {
-      debugPrint('❌ Analytics: Failed to track transaction: $e');
-    }
+    } catch (e) {}
   }
 
   /// 🎮 Track game played
@@ -61,10 +50,7 @@ class AnalyticsService {
           'earnings': earnings,
         },
       );
-      debugPrint('📊 Analytics: Game tracked: $gameName - $duration seconds');
-    } catch (e) {
-      debugPrint('❌ Analytics: Failed to track game: $e');
-    }
+    } catch (e) {}
   }
 
   /// 🎁 Track reward claimed
@@ -80,10 +66,7 @@ class AnalyticsService {
           'amount': amount,
         },
       );
-      debugPrint('📊 Analytics: Reward tracked: $rewardType - $amount');
-    } catch (e) {
-      debugPrint('❌ Analytics: Failed to track reward: $e');
-    }
+    } catch (e) {}
   }
 
   /// 👥 Track referral event
@@ -99,10 +82,7 @@ class AnalyticsService {
           if (referralCode != null) 'referral_code': referralCode,
         },
       );
-      debugPrint('📊 Analytics: Referral tracked: $action');
-    } catch (e) {
-      debugPrint('❌ Analytics: Failed to track referral: $e');
-    }
+    } catch (e) {}
   }
 
   /// 📱 Track notification interaction
@@ -118,11 +98,7 @@ class AnalyticsService {
           'action': action,
         },
       );
-      debugPrint(
-          '📊 Analytics: Notification tracked: $notificationType - $action');
-    } catch (e) {
-      debugPrint('❌ Analytics: Failed to track notification: $e');
-    }
+    } catch (e) {}
   }
 
   /// 🎯 Track custom event
@@ -135,10 +111,7 @@ class AnalyticsService {
         name: eventName,
         parameters: parameters,
       );
-      debugPrint('📊 Analytics: Custom event tracked: $eventName');
-    } catch (e) {
-      debugPrint('❌ Analytics: Failed to track custom event: $e');
-    }
+    } catch (e) {}
   }
 
   /// 👤 Set user properties
@@ -158,20 +131,13 @@ class AnalyticsService {
         await _analytics.setUserProperty(
             name: 'registration_date', value: registrationDate);
       }
-      debugPrint('📊 Analytics: User properties set');
-    } catch (e) {
-      debugPrint('❌ Analytics: Failed to set user properties: $e');
-    }
+    } catch (e) {}
   }
 
   /// 🔄 Enable/disable analytics collection
   static Future<void> setAnalyticsCollectionEnabled(bool enabled) async {
     try {
       await _analytics.setAnalyticsCollectionEnabled(enabled);
-      debugPrint(
-          '📊 Analytics: Collection ${enabled ? 'enabled' : 'disabled'}');
-    } catch (e) {
-      debugPrint('❌ Analytics: Failed to set collection enabled: $e');
-    }
+    } catch (e) {}
   }
 }
