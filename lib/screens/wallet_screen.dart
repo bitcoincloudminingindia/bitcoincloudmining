@@ -1257,14 +1257,17 @@ class _WalletScreenState extends State<WalletScreen>
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               builder: (ctx) {
-                return Padding(
-                  padding: MediaQuery.of(context).viewInsets,
+                return Container(
+                  color: Colors.blue[900], // Background blue kar diya
                   child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: WithdrawalEligibilityWidget(
-                      btcBalance: walletProvider.btcBalance,
-                      onNext: null, // Dialog me Next button disable rahega
-                      onBack: () => Navigator.of(ctx).pop(),
+                    padding: MediaQuery.of(context).viewInsets,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: WithdrawalEligibilityWidget(
+                        btcBalance: walletProvider.btcBalance,
+                        onNext: null, // Dialog me Next button disable rahega
+                        onBack: () => Navigator.of(ctx).pop(),
+                      ),
                     ),
                   ),
                 );
@@ -1906,24 +1909,27 @@ class _WalletScreenState extends State<WalletScreen>
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           builder: (ctx) {
-            return Padding(
-              padding: MediaQuery.of(context).viewInsets,
-              child: Consumer<WalletProvider>(
-                builder: (context, walletProvider, _) {
-                  return Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: WithdrawalEligibilityWidget(
-                      btcBalance: walletProvider.btcBalance,
-                      onNext: walletProvider.btcBalance >= 0.00005
-                          ? () {
-                              Navigator.of(ctx).pop();
-                              _showWithdrawalDialog();
-                            }
-                          : null,
-                      onBack: () => Navigator.of(ctx).pop(),
-                    ),
-                  );
-                },
+            return Container(
+              color: Colors.blue[900], // Background blue kar diya
+              child: Padding(
+                padding: MediaQuery.of(context).viewInsets,
+                child: Consumer<WalletProvider>(
+                  builder: (context, walletProvider, _) {
+                    return Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: WithdrawalEligibilityWidget(
+                        btcBalance: walletProvider.btcBalance,
+                        onNext: walletProvider.btcBalance >= 0.00005
+                            ? () {
+                                Navigator.of(ctx).pop();
+                                _showWithdrawalDialog();
+                              }
+                            : null,
+                        onBack: () => Navigator.of(ctx).pop(),
+                      ),
+                    );
+                  },
+                ),
               ),
             );
           },
@@ -1931,5 +1937,4 @@ class _WalletScreenState extends State<WalletScreen>
       },
     );
   }
-
 }
