@@ -1224,10 +1224,7 @@ class _WalletScreenState extends State<WalletScreen>
             flex: 1,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              child: Consumer<WalletProvider>(
-                builder: (context, walletProvider, _) =>
-                    _buildWithdrawalAvailabilityBox(walletProvider.btcBalance),
-              ),
+              child: _buildEligibilityActionButton(),
             ),
           ),
           Expanded(
@@ -1244,6 +1241,70 @@ class _WalletScreenState extends State<WalletScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildEligibilityActionButton() {
+    return Consumer<WalletProvider>(
+      builder: (context, walletProvider, _) {
+        final eligible = walletProvider.btcBalance >= 0.00005;
+        return GestureDetector(
+          onTap: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              builder: (ctx) {
+                return Padding(
+                  padding: MediaQuery.of(context).viewInsets,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: WithdrawalEligibilityWidget(
+                      btcBalance: walletProvider.btcBalance,
+                      onNext: null, // Dialog me Next button disable rahega
+                      onBack: () => Navigator.of(ctx).pop(),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            decoration: BoxDecoration(
+              color: eligible
+                  ? Colors.green.withAlpha(51)
+                  : Colors.red.withAlpha(51),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                  color: eligible ? Colors.green : Colors.red, width: 1.2),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  eligible ? Icons.check_circle : Icons.cancel,
+                  color: eligible ? Colors.green : Colors.red,
+                  size: 24,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  eligible ? 'Eligible' : 'Not Eligible',
+                  style: TextStyle(
+                    color: eligible ? Colors.green : Colors.red,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1871,37 +1932,4 @@ class _WalletScreenState extends State<WalletScreen>
     );
   }
 
-  Widget _buildWithdrawalAvailabilityBox(double btcBalance) {
-    final eligible = btcBalance >= 0.00005;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: eligible ? Colors.green[50] : Colors.red[50],
-        border:
-            Border.all(color: eligible ? Colors.green : Colors.red, width: 1.2),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            eligible ? Icons.check_circle : Icons.cancel,
-            color: eligible ? Colors.green : Colors.red,
-            size: 18,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            eligible
-                ? 'Available for Withdrawal'
-                : 'Not Available (Min 0.00005 BTC)',
-            style: TextStyle(
-              color: eligible ? Colors.green[800] : Colors.red[800],
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

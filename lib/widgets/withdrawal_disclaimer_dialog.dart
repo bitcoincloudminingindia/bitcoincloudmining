@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -26,12 +24,6 @@ class WithdrawalDisclaimerDialog extends StatelessWidget {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
-  }
-
-  void _exitApp(BuildContext context) {
-    // Android/iOS दोनों के लिए exit
-    Navigator.of(context).pop();
-    exit(0);
   }
 
   @override
@@ -96,19 +88,6 @@ class WithdrawalDisclaimerDialog extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 10),
-            GestureDetector(
-              onTap: () => _exitApp(context),
-              child: const Text(
-                'Skip',
-                style: TextStyle(
-                  color: kBlue,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  decoration: TextDecoration.underline,
-                ),
-              ),
             ),
             const SizedBox(height: 18),
             Text.rich(

@@ -26,12 +26,14 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
   void initState() {
     super.initState();
     VersionCheckService.checkForUpdate(context);
-    _checkAndRequestPermissions();
-    // Disclaimer dialog show karne ke liye post frame callback
+    // Pehle sirf disclaimer show karo, permission check baad me
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_disclaimerShown) {
         _disclaimerShown = true;
-        showWithdrawalDisclaimerDialog(context: context);
+        showWithdrawalDisclaimerDialog(
+          context: context,
+          onContinue: _checkAndRequestPermissions,
+        );
       }
     });
   }

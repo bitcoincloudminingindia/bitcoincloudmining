@@ -241,6 +241,21 @@ class AdService {
     return DateTime.now().difference(cacheTime) < AD_CACHE_DURATION;
   }
 
+  Timer? _bannerAdRefreshTimer;
+
+  // Start auto-refresh timer for banner ads
+  void _startBannerAdAutoRefresh() {
+    _bannerAdRefreshTimer?.cancel();
+    _bannerAdRefreshTimer =
+        Timer.periodic(const Duration(seconds: 60), (timer) {
+      debugPrint('🔄 Auto-refreshing banner ad...');
+      _isBannerAdLoaded = false;
+      _bannerAd?.dispose();
+      _bannerAd = null;
+      loadBannerAd();
+    });
+  }
+
   // Load banner ad
   Future<void> loadBannerAd() async {
     if (_isBannerAdLoaded && _isCachedAdValid('banner')) return;
@@ -260,6 +275,7 @@ class AdService {
             onAdLoaded: (_) {
               _isBannerAdLoaded = true;
               debugPrint('Banner ad loaded');
+              _startBannerAdAutoRefresh(); // Start auto-refresh timer
             },
             onAdFailedToLoad: (ad, error) {
               _isBannerAdLoaded = false;
@@ -742,6 +758,7 @@ class AdService {
     _rewardedAd?.dispose();
     _nativeAd?.dispose();
     _nativeAdRefreshTimer?.cancel();
+    _bannerAdRefreshTimer?.cancel(); // Dispose banner refresh timer
 
     _isBannerAdLoaded = false;
     _isRewardedAdLoaded = false;
