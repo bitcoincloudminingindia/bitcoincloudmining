@@ -144,7 +144,7 @@ class ApiConstants {
 }
 
 class WalletConstants {
-  static const double minWithdrawalBtc = 0.0000000001;
+  static const double minWithdrawalBtc = 0.00005;
   static const double minWithdrawalUsd = 1.0;
   static const double minWithdrawalInr = 100.0;
   static const double dailyWithdrawalLimit = 1.0; // BTC

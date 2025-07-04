@@ -16,7 +16,7 @@ class WithdrawalDisclaimerDialog extends StatelessWidget {
     super.key,
     this.title = 'Disclaimer',
     this.message =
-        'This app is a simulation game. The BTC shown here is virtual and has no real monetary value. The withdrawal feature is for demo purposes only.',
+        '⚠️ This is a virtual mining simulation app. All BTC shown is virtual. Withdrawals are enabled only when minimum thresholds are reached and verified.',
     this.onContinue,
     this.icon = Icons.warning_amber_rounded,
   });
@@ -162,7 +162,7 @@ Future<void> showWithdrawalDisclaimerDialog({
     builder: (ctx) => WithdrawalDisclaimerDialog(
       title: title ?? 'Disclaimer',
       message: message ??
-          'This app is a simulation game. The BTC shown here is virtual and has no real monetary value. The withdrawal feature is for demo purposes only.',
+          '⚠️ This is a virtual mining simulation app. All BTC shown is virtual. Withdrawals are enabled only when minimum thresholds are reached and verified.',
       onContinue: onContinue,
       icon: icon ?? Icons.warning_amber_rounded,
     ),

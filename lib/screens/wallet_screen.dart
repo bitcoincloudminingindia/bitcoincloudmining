@@ -14,6 +14,7 @@ import '../components/processing_dialog.dart';
 import '../screens/transaction_details_screen.dart';
 import '../utils/number_formatter.dart';
 import '../widgets/withdrawal_disclaimer_dialog.dart';
+import '../widgets/withdrawal_eligibility_widget.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -1211,23 +1212,21 @@ class _WalletScreenState extends State<WalletScreen>
             flex: 1,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              child: SizedBox.shrink(),
+              child: _buildActionButton(
+                icon: Icons.call_made,
+                label: 'Withdraw',
+                onTap: _startWithdrawalFlow,
+                color: Colors.red,
+              ),
             ),
           ),
           Expanded(
             flex: 1,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              child: _buildActionButton(
-                icon: Icons.call_made,
-                label: 'Withdraw',
-                onTap: () {
-                  showWithdrawalDisclaimerDialog(
-                    context: context,
-                    onContinue: _showWithdrawalDialog,
-                  );
-                },
-                color: Colors.red,
+              child: Consumer<WalletProvider>(
+                builder: (context, walletProvider, _) =>
+                    _buildWithdrawalAvailabilityBox(walletProvider.btcBalance),
               ),
             ),
           ),
@@ -1833,5 +1832,76 @@ class _WalletScreenState extends State<WalletScreen>
         );
       }
     }
+  }
+
+  void _startWithdrawalFlow() async {
+    await showWithdrawalDisclaimerDialog(
+      context: context,
+      onContinue: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          builder: (ctx) {
+            return Padding(
+              padding: MediaQuery.of(context).viewInsets,
+              child: Consumer<WalletProvider>(
+                builder: (context, walletProvider, _) {
+                  return Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: WithdrawalEligibilityWidget(
+                      btcBalance: walletProvider.btcBalance,
+                      onNext: walletProvider.btcBalance >= 0.00005
+                          ? () {
+                              Navigator.of(ctx).pop();
+                              _showWithdrawalDialog();
+                            }
+                          : null,
+                      onBack: () => Navigator.of(ctx).pop(),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildWithdrawalAvailabilityBox(double btcBalance) {
+    final eligible = btcBalance >= 0.00005;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: eligible ? Colors.green[50] : Colors.red[50],
+        border:
+            Border.all(color: eligible ? Colors.green : Colors.red, width: 1.2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            eligible ? Icons.check_circle : Icons.cancel,
+            color: eligible ? Colors.green : Colors.red,
+            size: 18,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            eligible
+                ? 'Available for Withdrawal'
+                : 'Not Available (Min 0.00005 BTC)',
+            style: TextStyle(
+              color: eligible ? Colors.green[800] : Colors.red[800],
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

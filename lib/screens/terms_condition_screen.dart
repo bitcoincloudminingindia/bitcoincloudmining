@@ -71,9 +71,10 @@ By accessing or using **$appName**, you confirm that you have read, understood, 
 
 ## 4. Wallet & Transactions  
 - This wallet displays your virtual BTC balance earned through gameplay and rewarded ads.  
-- The minimum withdrawal amount is 0.000000000000000001 BTC.  
+- The minimum withdrawal amount is 0.00005 BTC.  
 - Withdrawals are subject to our minimum threshold and processed manually after review. Withdrawals are usually processed within 48 hours.  
 - No transaction fees are charged for withdrawals.  
+- ⚠️ This is a virtual mining simulation app. All BTC shown is virtual. Withdrawals are enabled only when minimum thresholds are reached and verified.  
 - The app reserves the right to delay or deny withdrawals if fraudulent activity is suspected.
 
 ## 5. Prohibited Activities  
@@ -177,11 +178,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 12),
                 Text(
-                  'We use simulated BTC earnings to enhance gameplay. These do not represent actual financial value or cryptocurrency holdings.\n',
-                  style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                      fontStyle: FontStyle.italic),
+                  '⚠️ This is a virtual mining simulation app. All BTC shown is virtual. Withdrawals are enabled only when minimum thresholds are reached and verified.',
+                  style: TextStyle(fontSize: 16, color: Colors.black87),
+                  textAlign: TextAlign.center,
                 ),
                 Text(
                   'Your privacy is important to us. This Privacy Policy explains how we collect, use, and protect your information when you use our app.\n\nWe do not share your personal information with third parties except as necessary to provide our services or as required by law.\n\nWe may update this Privacy Policy from time to time. Continued use of the app after updates constitutes acceptance of the revised policy.\n\nFor any questions, contact us at bitcoincloudminingformobile@gmail.com.',

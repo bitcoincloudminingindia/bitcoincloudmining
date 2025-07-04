@@ -343,489 +343,504 @@ class _SignUpDialogState extends State<SignUpDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color.fromRGBO(26, 35, 126, 0.95),
-              Color.fromRGBO(13, 71, 161, 0.95),
-            ],
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) {
+          await Future.delayed(Duration(milliseconds: 100));
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const LoginDialog(),
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color.fromRGBO(26, 35, 126, 0.95),
+                Color.fromRGBO(13, 71, 161, 0.95),
+              ],
+            ),
           ),
-        ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: const BoxDecoration(
-                    color: Color.fromRGBO(255, 255, 255, 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.currency_bitcoin,
-                    size: 64,
-                    color: Colors.amber[400],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  AppStrings.appTitle,
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.amber[400],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  AppStrings.createAccount,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white70,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                Container(
-                  constraints: const BoxConstraints(maxWidth: 360),
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color.fromRGBO(255, 255, 255, 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color.fromRGBO(255, 255, 255, 0.1),
-                      width: 1,
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: const BoxDecoration(
+                      color: Color.fromRGBO(255, 255, 255, 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.currency_bitcoin,
+                      size: 64,
+                      color: Colors.amber[400],
                     ),
                   ),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        CustomTextField(
-                          controller: _fullNameController,
-                          label: 'Full Name',
-                          validator:
-                              form_validators.Validators.validateRequired,
-                          prefixIcon: Icons.person,
-                          prefixIconColor: Colors.grey[300],
-                          textStyle: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
+                  const SizedBox(height: 24),
+                  Text(
+                    AppStrings.appTitle,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.amber[400],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    AppStrings.createAccount,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white70,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  Container(
+                    constraints: const BoxConstraints(maxWidth: 360),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color.fromRGBO(255, 255, 255, 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color.fromRGBO(255, 255, 255, 0.1),
+                        width: 1,
+                      ),
+                    ),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          CustomTextField(
+                            controller: _fullNameController,
+                            label: 'Full Name',
+                            validator:
+                                form_validators.Validators.validateRequired,
+                            prefixIcon: Icons.person,
+                            prefixIconColor: Colors.grey[300],
+                            textStyle: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            labelStyle: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                            ),
+                            floatingLabelStyle: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            borderColor: Colors.grey[300]!,
+                            focusedBorderColor: Colors.grey[400]!,
+                            backgroundColor: Colors.grey[900]!.withAlpha(26),
                           ),
-                          labelStyle: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 14,
+                          const SizedBox(height: 12),
+                          CustomTextField(
+                            controller: _usernameController,
+                            label: 'Username',
+                            validator: (value) {
+                              if (_usernameError != null) {
+                                return _usernameError;
+                              }
+                              if (value == null || value.isEmpty) {
+                                return 'Username is required';
+                              }
+                              if (!_isUsernameAvailable) {
+                                return 'Username is not available';
+                              }
+                              return form_validators.Validators
+                                  .validateRequired(value);
+                            },
+                            prefixIcon: Icons.account_circle,
+                            prefixIconColor: Colors.grey[300],
+                            suffix: _isCheckingUsername
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white70),
+                                    ),
+                                  )
+                                : _usernameController.text.isNotEmpty
+                                    ? Icon(
+                                        // Reversed the condition here
+                                        _isUsernameAvailable
+                                            ? Icons
+                                                .cancel // Show cancel icon when username is available
+                                            : Icons
+                                                .check_circle, // Show check icon when username is not available
+                                        color: _isUsernameAvailable
+                                            ? Colors.red[
+                                                400] // Red for available username
+                                            : Colors.green[
+                                                400], // Green for unavailable username
+                                        size: 20,
+                                      )
+                                    : null,
+                            textStyle: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            labelStyle: TextStyle(
+                              color: Colors.grey[300],
+                              fontSize: 13,
+                            ),
+                            floatingLabelStyle: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            borderColor: Colors.grey[300]!,
+                            focusedBorderColor: Colors.grey[400]!,
+                            backgroundColor: Colors.grey[900]!.withAlpha(26),
                           ),
-                          floatingLabelStyle: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          borderColor: Colors.grey[300]!,
-                          focusedBorderColor: Colors.grey[400]!,
-                          backgroundColor: Colors.grey[900]!.withAlpha(26),
-                        ),
-                        const SizedBox(height: 12),
-                        CustomTextField(
-                          controller: _usernameController,
-                          label: 'Username',
-                          validator: (value) {
-                            if (_usernameError != null) {
-                              return _usernameError;
-                            }
-                            if (value == null || value.isEmpty) {
-                              return 'Username is required';
-                            }
-                            if (!_isUsernameAvailable) {
-                              return 'Username is not available';
-                            }
-                            return form_validators.Validators.validateRequired(
-                                value);
-                          },
-                          prefixIcon: Icons.account_circle,
-                          prefixIconColor: Colors.grey[300],
-                          suffix: _isCheckingUsername
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white70),
-                                  ),
-                                )
-                              : _usernameController.text.isNotEmpty
-                                  ? Icon(
-                                      // Reversed the condition here
-                                      _isUsernameAvailable
-                                          ? Icons
-                                              .cancel // Show cancel icon when username is available
-                                          : Icons
-                                              .check_circle, // Show check icon when username is not available
-                                      color: _isUsernameAvailable
-                                          ? Colors.red[
-                                              400] // Red for available username
-                                          : Colors.green[
-                                              400], // Green for unavailable username
-                                      size: 20,
-                                    )
-                                  : null,
-                          textStyle: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          labelStyle: TextStyle(
-                            color: Colors.grey[300],
-                            fontSize: 13,
-                          ),
-                          floatingLabelStyle: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          borderColor: Colors.grey[300]!,
-                          focusedBorderColor: Colors.grey[400]!,
-                          backgroundColor: Colors.grey[900]!.withAlpha(26),
-                        ),
-                        // Username format hint
-                        const Align(
-                          alignment: Alignment.centerLeft,
-                          child: Padding(
-                            padding:
-                                EdgeInsets.only(left: 8.0, top: 2, bottom: 8),
-                            child: Text(
-                              'Format: steve98',
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 12,
+                          // Username format hint
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding:
+                                  EdgeInsets.only(left: 8.0, top: 2, bottom: 8),
+                              child: Text(
+                                'Format: steve98',
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        CustomTextField(
-                          controller: _emailController,
-                          label: 'Email',
-                          keyboardType: TextInputType.emailAddress,
-                          validator: form_validators.Validators.validateEmail,
-                          prefixIcon: Icons.email,
-                          prefixIconColor: Colors.grey[300],
-                          textStyle: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          labelStyle: TextStyle(
-                            color: Colors.grey[300],
-                            fontSize: 13,
-                          ),
-                          floatingLabelStyle: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          borderColor: Colors.grey[300]!,
-                          focusedBorderColor: Colors.grey[400]!,
-                          backgroundColor: Colors.grey[900]!.withAlpha(26),
-                        ),
-                        const SizedBox(height: 12),
-                        CustomTextField(
-                          controller: _passwordController,
-                          label: 'Password',
-                          obscureText: !_isPasswordVisible,
-                          validator:
-                              form_validators.Validators.validatePassword,
-                          prefixIcon: Icons.lock,
-                          prefixIconColor: Colors.grey[300],
-                          suffix: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Password validation indicator
-                              if (_passwordController.text.isNotEmpty)
-                                Icon(
-                                  (_hasCapitalLetter &&
-                                          _hasSpecialChar &&
-                                          _hasNumber &&
-                                          _hasMinLength)
-                                      ? Icons.check_circle
-                                      : Icons.cancel,
-                                  color: (_hasCapitalLetter &&
-                                          _hasSpecialChar &&
-                                          _hasNumber &&
-                                          _hasMinLength)
-                                      ? Colors.green[400]
-                                      : Colors.red[400],
-                                  size: 20,
-                                ),
-                              const SizedBox(width: 4),
-                              // Visibility toggle
-                              IconButton(
-                                icon: Icon(
-                                  _isPasswordVisible
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                  color: Colors.grey[300],
-                                  size: 20,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _isPasswordVisible = !_isPasswordVisible;
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                          textStyle: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          labelStyle: TextStyle(
-                            color: Colors.grey[300],
-                            fontSize: 13,
-                          ),
-                          floatingLabelStyle: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          borderColor: Colors.grey[300]!,
-                          focusedBorderColor: Colors.grey[400]!,
-                          backgroundColor: Colors.grey[900]!.withAlpha(26),
-                        ),
-                        // Password requirements
-                        if (_passwordController.text.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withAlpha(77),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: Colors.grey[600]!,
-                                width: 1,
-                              ),
+                          const SizedBox(height: 12),
+                          CustomTextField(
+                            controller: _emailController,
+                            label: 'Email',
+                            keyboardType: TextInputType.emailAddress,
+                            validator: form_validators.Validators.validateEmail,
+                            prefixIcon: Icons.email,
+                            prefixIconColor: Colors.grey[300],
+                            textStyle: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            labelStyle: TextStyle(
+                              color: Colors.grey[300],
+                              fontSize: 13,
+                            ),
+                            floatingLabelStyle: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            borderColor: Colors.grey[300]!,
+                            focusedBorderColor: Colors.grey[400]!,
+                            backgroundColor: Colors.grey[900]!.withAlpha(26),
+                          ),
+                          const SizedBox(height: 12),
+                          CustomTextField(
+                            controller: _passwordController,
+                            label: 'Password',
+                            obscureText: !_isPasswordVisible,
+                            validator:
+                                form_validators.Validators.validatePassword,
+                            prefixIcon: Icons.lock,
+                            prefixIconColor: Colors.grey[300],
+                            suffix: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text(
-                                  'Password Requirements:',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
+                                // Password validation indicator
+                                if (_passwordController.text.isNotEmpty)
+                                  Icon(
+                                    (_hasCapitalLetter &&
+                                            _hasSpecialChar &&
+                                            _hasNumber &&
+                                            _hasMinLength)
+                                        ? Icons.check_circle
+                                        : Icons.cancel,
+                                    color: (_hasCapitalLetter &&
+                                            _hasSpecialChar &&
+                                            _hasNumber &&
+                                            _hasMinLength)
+                                        ? Colors.green[400]
+                                        : Colors.red[400],
+                                    size: 20,
                                   ),
-                                ),
-                                const SizedBox(height: 4),
-                                _buildPasswordRequirement(
-                                  'At least 8 characters',
-                                  _hasMinLength,
-                                ),
-                                _buildPasswordRequirement(
-                                  'At least 1 capital letter (A-Z)',
-                                  _hasCapitalLetter,
-                                ),
-                                _buildPasswordRequirement(
-                                  'At least 1 number (0-9)',
-                                  _hasNumber,
-                                ),
-                                _buildPasswordRequirement(
-                                  'At least 1 special character (!@#\$%^&*)',
-                                  _hasSpecialChar,
+                                const SizedBox(width: 4),
+                                // Visibility toggle
+                                IconButton(
+                                  icon: Icon(
+                                    _isPasswordVisible
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                    color: Colors.grey[300],
+                                    size: 20,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isPasswordVisible = !_isPasswordVisible;
+                                    });
+                                  },
                                 ),
                               ],
                             ),
-                          ),
-                        ],
-                        // Password format hint
-                        const Align(
-                          alignment: Alignment.centerLeft,
-                          child: Padding(
-                            padding:
-                                EdgeInsets.only(left: 8.0, top: 2, bottom: 8),
-                            child: Text(
-                              'Format: Steve@9876',
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 12,
-                              ),
+                            textStyle: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        CustomTextField(
-                          controller: _confirmPasswordController,
-                          label: 'Confirm Password',
-                          obscureText: !_isConfirmPasswordVisible,
-                          validator: (value) => form_validators.Validators
-                              .validateConfirmPassword(
-                            value,
-                            _passwordController.text,
-                          ),
-                          prefixIcon: Icons.lock_outline,
-                          prefixIconColor: Colors.grey[300],
-                          suffix: IconButton(
-                            icon: Icon(
-                              _isConfirmPasswordVisible
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
+                            labelStyle: TextStyle(
                               color: Colors.grey[300],
-                              size: 20,
+                              fontSize: 13,
                             ),
-                            onPressed: () {
-                              setState(() {
-                                _isConfirmPasswordVisible =
-                                    !_isConfirmPasswordVisible;
-                              });
-                            },
-                          ),
-                          textStyle: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          labelStyle: TextStyle(
-                            color: Colors.grey[300],
-                            fontSize: 13,
-                          ),
-                          floatingLabelStyle: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          borderColor: Colors.grey[300]!,
-                          focusedBorderColor: Colors.grey[400]!,
-                          backgroundColor: Colors.grey[900]!.withAlpha(26),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildReferralCodeField(),
-                        if (_errorMessage != null) ...[
-                          const SizedBox(height: 16),
-                          Text(
-                            _errorMessage!,
-                            style: const TextStyle(
-                              color: Colors.red,
+                            floatingLabelStyle: TextStyle(
+                              color: Colors.grey[400],
                               fontSize: 14,
+                              fontWeight: FontWeight.w500,
                             ),
+                            borderColor: Colors.grey[300]!,
+                            focusedBorderColor: Colors.grey[400]!,
+                            backgroundColor: Colors.grey[900]!.withAlpha(26),
                           ),
-                        ],
-                        const SizedBox(height: 16),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Checkbox(
-                              value: _agreedToTerms,
-                              onChanged: (val) {
-                                setState(() {
-                                  _agreedToTerms = val ?? false;
-                                });
-                              },
-                              activeColor: Colors.amber[400],
-                            ),
-                            Expanded(
-                              child: Wrap(
-                                crossAxisAlignment: WrapCrossAlignment.center,
+                          // Password requirements
+                          if (_passwordController.text.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withAlpha(77),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.grey[600]!,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    'I agree to the ',
+                                    'Password Requirements:',
                                     style: TextStyle(
-                                        color: Colors.white70, fontSize: 14),
-                                  ),
-                                  GestureDetector(
-                                    onTap: () async {
-                                      final url = Uri.parse(
-                                          'https://doc-hosting.flycricket.io/bitcoin-cloud-mining-terms-of-use/44cea453-e05c-463b-bfb6-cd64fbdfe0a7/terms');
-                                      await launchUrl(url,
-                                          mode: LaunchMode.externalApplication);
-                                    },
-                                    child: const Text(
-                                      'Terms & Conditions',
-                                      style: TextStyle(
-                                        color: Colors.amber,
-                                        fontWeight: FontWeight.bold,
-                                        decoration: TextDecoration.underline,
-                                        fontSize: 14,
-                                      ),
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  const Text(
-                                    ' & ',
-                                    style: TextStyle(
-                                        color: Colors.white70, fontSize: 14),
+                                  const SizedBox(height: 4),
+                                  _buildPasswordRequirement(
+                                    'At least 8 characters',
+                                    _hasMinLength,
                                   ),
-                                  GestureDetector(
-                                    onTap: () async {
-                                      final url = Uri.parse(
-                                          'https://doc-hosting.flycricket.io/bitcoin-cloud-mining-privacy-policy/e7bf1a89-eb0d-4b5b-bf33-f72ca57b4e64/privacy');
-                                      await launchUrl(url,
-                                          mode: LaunchMode.externalApplication);
-                                    },
-                                    child: const Text(
-                                      'Privacy Policy',
-                                      style: TextStyle(
-                                        color: Colors.amber,
-                                        fontWeight: FontWeight.bold,
-                                        decoration: TextDecoration.underline,
-                                        fontSize: 14,
-                                      ),
-                                    ),
+                                  _buildPasswordRequirement(
+                                    'At least 1 capital letter (A-Z)',
+                                    _hasCapitalLetter,
+                                  ),
+                                  _buildPasswordRequirement(
+                                    'At least 1 number (0-9)',
+                                    _hasNumber,
+                                  ),
+                                  _buildPasswordRequirement(
+                                    'At least 1 special character (!@#\$%^&*)',
+                                    _hasSpecialChar,
                                   ),
                                 ],
                               ),
                             ),
                           ],
-                        ),
-                        const SizedBox(height: 16),
-                        CustomButton(
-                          onPressed: _agreedToTerms
-                              ? () => _handleSignup(
-                                    email: _emailController.text,
-                                    password: _passwordController.text,
-                                    fullName: _fullNameController.text,
-                                    username: _usernameController.text,
-                                    referredByCode:
-                                        _referralCodeController.text.trim(),
-                                  )
-                              : () {},
-                          text: 'Sign Up',
-                          isLoading: _isLoading,
-                        ),
-                      ],
+                          // Password format hint
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding:
+                                  EdgeInsets.only(left: 8.0, top: 2, bottom: 8),
+                              child: Text(
+                                'Format: Steve@9876',
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          CustomTextField(
+                            controller: _confirmPasswordController,
+                            label: 'Confirm Password',
+                            obscureText: !_isConfirmPasswordVisible,
+                            validator: (value) => form_validators.Validators
+                                .validateConfirmPassword(
+                              value,
+                              _passwordController.text,
+                            ),
+                            prefixIcon: Icons.lock_outline,
+                            prefixIconColor: Colors.grey[300],
+                            suffix: IconButton(
+                              icon: Icon(
+                                _isConfirmPasswordVisible
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: Colors.grey[300],
+                                size: 20,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _isConfirmPasswordVisible =
+                                      !_isConfirmPasswordVisible;
+                                });
+                              },
+                            ),
+                            textStyle: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            labelStyle: TextStyle(
+                              color: Colors.grey[300],
+                              fontSize: 13,
+                            ),
+                            floatingLabelStyle: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            borderColor: Colors.grey[300]!,
+                            focusedBorderColor: Colors.grey[400]!,
+                            backgroundColor: Colors.grey[900]!.withAlpha(26),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildReferralCodeField(),
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              _errorMessage!,
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Checkbox(
+                                value: _agreedToTerms,
+                                onChanged: (val) {
+                                  setState(() {
+                                    _agreedToTerms = val ?? false;
+                                  });
+                                },
+                                activeColor: Colors.amber[400],
+                              ),
+                              Expanded(
+                                child: Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    const Text(
+                                      'I agree to the ',
+                                      style: TextStyle(
+                                          color: Colors.white70, fontSize: 14),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () async {
+                                        final url = Uri.parse(
+                                            'https://doc-hosting.flycricket.io/bitcoin-cloud-mining-terms-of-use/44cea453-e05c-463b-bfb6-cd64fbdfe0a7/terms');
+                                        await launchUrl(url,
+                                            mode:
+                                                LaunchMode.externalApplication);
+                                      },
+                                      child: const Text(
+                                        'Terms & Conditions',
+                                        style: TextStyle(
+                                          color: Colors.amber,
+                                          fontWeight: FontWeight.bold,
+                                          decoration: TextDecoration.underline,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    const Text(
+                                      ' & ',
+                                      style: TextStyle(
+                                          color: Colors.white70, fontSize: 14),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () async {
+                                        final url = Uri.parse(
+                                            'https://doc-hosting.flycricket.io/bitcoin-cloud-mining-privacy-policy/e7bf1a89-eb0d-4b5b-bf33-f72ca57b4e64/privacy');
+                                        await launchUrl(url,
+                                            mode:
+                                                LaunchMode.externalApplication);
+                                      },
+                                      child: const Text(
+                                        'Privacy Policy',
+                                        style: TextStyle(
+                                          color: Colors.amber,
+                                          fontWeight: FontWeight.bold,
+                                          decoration: TextDecoration.underline,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          CustomButton(
+                            onPressed: _agreedToTerms
+                                ? () => _handleSignup(
+                                      email: _emailController.text,
+                                      password: _passwordController.text,
+                                      fullName: _fullNameController.text,
+                                      username: _usernameController.text,
+                                      referredByCode:
+                                          _referralCodeController.text.trim(),
+                                    )
+                                : () {},
+                            text: 'Sign Up',
+                            isLoading: _isLoading,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      AppStrings.alreadyHaveAccount,
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (context) => const LoginDialog(),
-                        );
-                      },
-                      child: const Text(AppStrings.login),
-                    ),
-                  ],
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        AppStrings.alreadyHaveAccount,
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (context) => const LoginDialog(),
+                          );
+                        },
+                        child: const Text(AppStrings.login),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

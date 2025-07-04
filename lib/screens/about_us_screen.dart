@@ -70,6 +70,17 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                   child: Padding(
                     padding: EdgeInsets.all(16.0),
                     child: Text(
+                      '⚠️ This is a virtual mining simulation app. All BTC shown is virtual. Withdrawals are enabled only when minimum thresholds are reached and verified.',
+                      style: TextStyle(fontSize: 16, color: Colors.black87),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+                const _AnimatedSection(
+                  delay: 400,
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text(
                       'Introduction\nWelcome to Bitcoin Cloud Mining, your trusted platform for cloud-based cryptocurrency mining. We provide a secure, efficient, and user-friendly way to mine Bitcoin through our advanced cloud infrastructure.',
                       style: textStyle,
                     ),

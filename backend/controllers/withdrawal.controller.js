@@ -53,7 +53,7 @@ exports.createWithdrawal = async (req, res) => {
 
     // Calculate withdrawal amount in BTC
     const withdrawalAmount = new BigNumber(btcAmount || amount);
-    const minAmount = new BigNumber('0.000000000000000001'); // 1 satoshi
+    const minAmount = new BigNumber('0.00005'); // 0.00005 BTC
 
     // Validate minimum amount
     if (withdrawalAmount.lt(minAmount)) {
@@ -61,7 +61,7 @@ exports.createWithdrawal = async (req, res) => {
       session.endSession();
       return res.status(400).json({
         success: false,
-        message: 'Minimum withdrawal amount is 0.000000000000000001 BTC (1 satoshi)'
+        message: 'Minimum withdrawal amount is 0.00005 BTC'
       });
     }
 
