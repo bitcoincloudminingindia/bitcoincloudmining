@@ -176,12 +176,43 @@ class _ContractScreenState extends State<ContractScreen>
   int _remainingCooldownSeconds = 0;
   bool _isAdInitialized = false;
 
-  // Banner ad futures for 4 positions
+  // Banner ad futures for 5 positions
   Future<Widget?>? _bannerAdFuture1;
   Future<Widget?>? _bannerAdFuture2;
   Future<Widget?>? _bannerAdFuture3;
   Future<Widget?>? _bannerAdFuture4;
   Future<Widget?>? _bannerAdFuture5; // Legendary contract ke niche ke liye
+
+  // Dedicated banner ad load functions
+  void _loadBannerAd1() {
+    setState(() {
+      _bannerAdFuture1 = _adService.getBannerAdWidget();
+    });
+  }
+
+  void _loadBannerAd2() {
+    setState(() {
+      _bannerAdFuture2 = _adService.getBannerAdWidget();
+    });
+  }
+
+  void _loadBannerAd3() {
+    setState(() {
+      _bannerAdFuture3 = _adService.getBannerAdWidget();
+    });
+  }
+
+  void _loadBannerAd4() {
+    setState(() {
+      _bannerAdFuture4 = _adService.getBannerAdWidget();
+    });
+  }
+
+  void _loadBannerAd5() {
+    setState(() {
+      _bannerAdFuture5 = _adService.getBannerAdWidget();
+    });
+  }
 
   @override
   void initState() {
@@ -195,12 +226,11 @@ class _ContractScreenState extends State<ContractScreen>
     _startUiUpdateTimer();
     _loadNativeAd();
     // Banner ad futures
-    _bannerAdFuture1 = _adService.getBannerAdWidget();
-    _bannerAdFuture2 = _adService.getBannerAdWidget();
-    _bannerAdFuture3 = _adService.getBannerAdWidget();
-    _bannerAdFuture4 = _adService.getBannerAdWidget();
-    _bannerAdFuture5 =
-        _adService.getBannerAdWidget(); // Legendary contract ke niche ke liye
+    _loadBannerAd1();
+    _loadBannerAd2();
+    _loadBannerAd3();
+    _loadBannerAd4();
+    _loadBannerAd5();
   }
 
   @override
@@ -229,6 +259,12 @@ class _ContractScreenState extends State<ContractScreen>
     } else if (state == AppLifecycleState.resumed) {
       // App has come to foreground
       _restoreContractStates();
+      // Banner ads reload karo
+      _loadBannerAd1();
+      _loadBannerAd2();
+      _loadBannerAd3();
+      _loadBannerAd4();
+      _loadBannerAd5();
     }
   }
 
@@ -598,20 +634,59 @@ class _ContractScreenState extends State<ContractScreen>
         final nativeAdPositions = <int>{3, 6, 9};
         // 4 banner ad positions: after 2nd, 5th, 8th, 11th contract
         final bannerAdPositions = <int>{2, 5, 8, 11};
+
         final legendaryIndex = 11; // Legendary contract ka index
         final totalItems = contracts.length +
             nativeAdPositions.length +
             bannerAdPositions.length +
-            1; // +1 for banner ad after legendary
+            2; // +1 for banner ad after legendary, +1 for top native ad
 
         return ListView.builder(
           padding: const EdgeInsets.all(16.0),
           itemCount: totalItems,
           itemBuilder: (context, index) {
+            // Sabse upar native ad
+            if (index == 0) {
+              return Container(
+                height: 250,
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                child: _adService.isNativeAdLoaded
+                    ? _adService.getNativeAd()
+                    : Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.ads_click,
+                                  color: Colors.grey, size: 24),
+                              SizedBox(height: 4),
+                              Text(
+                                'Ad Loading...',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+              );
+            }
+
+            // Index adjust karo (kyunki ek ad upar aa gaya)
+            final adjustedIndex = index - 1;
+
             // Banner ad positions
             int bannersShown = 0;
             for (final pos in bannerAdPositions) {
-              if (index == pos + bannersShown) {
+              if (adjustedIndex == pos + bannersShown) {
                 bannersShown++;
                 Future<Widget?>? bannerAdFuture;
                 if (pos == 2) {
@@ -645,7 +720,7 @@ class _ContractScreenState extends State<ContractScreen>
             }
 
             // Legendary contract ke niche banner ad (sabse last)
-            if (index == totalItems - 1) {
+            if (adjustedIndex == totalItems - 2) {
               return Container(
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 child: FutureBuilder<Widget?>(
@@ -662,52 +737,23 @@ class _ContractScreenState extends State<ContractScreen>
               );
             }
 
-            // Native ad positions
+            // Native ad positions (upar waala already ho chuka)
             int adsShown = 0;
             for (final pos in nativeAdPositions) {
-              if (index == pos + bannersShown + adsShown) {
+              if (adjustedIndex == pos + bannersShown + adsShown) {
                 adsShown++;
-                return Container(
-                  height: 250,
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  child: _adService.isNativeAdLoaded
-                      ? _adService.getNativeAd()
-                      : Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.ads_click,
-                                    color: Colors.grey, size: 24),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Ad Loading...',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                );
+                return const SizedBox(height: 0); // Baaki native ad skip kar do
               }
             }
 
             // Contract index nikalna (ads ke hisab se adjust kar ke)
-            int contractIndex = index;
+            int contractIndex = adjustedIndex;
             for (final pos in bannerAdPositions) {
-              if (index > pos) contractIndex--;
+              if (adjustedIndex > pos) contractIndex--;
             }
             for (final pos in nativeAdPositions) {
-              if (index > pos + bannerAdPositions.where((b) => b < pos).length)
+              if (adjustedIndex >
+                  pos + bannerAdPositions.where((b) => b < pos).length)
                 contractIndex--;
             }
             if (contractIndex >= contracts.length) {

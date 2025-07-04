@@ -96,6 +96,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // Banner ad future
   Future<Widget?>? _bannerAdFuture;
 
+  // Home screen ke liye dedicated banner ad load function
+  void _loadHomeBannerAd() {
+    setState(() {
+      _bannerAdFuture = _adService.getBannerAdWidget();
+    });
+  }
+
+  // Home screen ke liye dedicated native ad load function
+  Future<void> _loadHomeNativeAd() async {
+    try {
+      await _adService.loadNativeAd();
+      if (mounted) setState(() {});
+    } catch (e) {}
+  }
+
   @override
   void initState() {
     super.initState();
@@ -104,9 +119,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _audioPlayer = AudioPlayer();
     _adService = AdService();
     Future.microtask(() async {
-      await _initAds();
+      await _adService.initialize();
+      _loadHomeBannerAd();
+      await _loadHomeNativeAd();
     });
-    _bannerAdFuture = _adService.getBannerAdWidget();
     _adUiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) setState(() {});
     });
@@ -170,6 +186,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.resumed:
         // App came to foreground
+        _loadHomeBannerAd();
+        _loadHomeNativeAd(); // Home screen pe wapas aate hi native ad reload karo
         if (_isMining && _miningStartTime != null) {
           _updateMiningProgressFromElapsed();
           _startMiningUiTimer();
@@ -1938,20 +1956,5 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         });
       }
     });
-  }
-
-  // Contract screen ki tarah ad initialize karne wala function
-  Future<void> _initAds() async {
-    try {
-      await _adService.initialize();
-      await _loadNativeAd();
-    } catch (e) {}
-  }
-
-  // Contract screen jaisa native ad load karne ka function
-  Future<void> _loadNativeAd() async {
-    try {
-      await _adService.loadNativeAd();
-    } catch (e) {}
   }
 }
