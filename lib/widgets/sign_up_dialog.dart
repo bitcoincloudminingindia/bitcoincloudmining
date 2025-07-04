@@ -312,14 +312,14 @@ class _SignUpDialogState extends State<SignUpDialog> {
         );
 
         if (verified == true) {
-          Navigator.of(context).pop(); // Close signup dialog
-          Future.delayed(const Duration(milliseconds: 300), () {
-            showDialog(
-              context: context,
-              barrierDismissible: false,
+          Navigator.of(context, rootNavigator: true)
+              .pop(); // Close signup dialog
+          Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(
               builder: (context) => const LoginDialog(),
-            );
-          });
+              fullscreenDialog: true,
+            ),
+          );
         }
       } else {
         setState(() {

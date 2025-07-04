@@ -521,7 +521,7 @@ class _SettingScreenState extends State<SettingScreen> {
                     ),
                     const SizedBox(width: 16),
                     const Text(
-                      'Wallet Balance',
+                      'My Wallet',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 16,

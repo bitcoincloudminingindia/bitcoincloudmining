@@ -7,6 +7,7 @@ import '../providers/auth_provider.dart';
 import '../providers/network_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../services/version_check_service.dart';
+import '../widgets/withdrawal_disclaimer_dialog.dart';
 
 class LoadingUserDataScreen extends StatefulWidget {
   const LoadingUserDataScreen({super.key});
@@ -19,12 +20,20 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
   bool _isLoading = true;
   String _loadingMessage = 'Loading user data...';
   String? _errorMessage;
+  bool _disclaimerShown = false;
 
   @override
   void initState() {
     super.initState();
     VersionCheckService.checkForUpdate(context);
     _checkAndRequestPermissions();
+    // Disclaimer dialog show karne ke liye post frame callback
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_disclaimerShown) {
+        _disclaimerShown = true;
+        showWithdrawalDisclaimerDialog(context: context);
+      }
+    });
   }
 
   Future<void> _checkAndRequestPermissions() async {

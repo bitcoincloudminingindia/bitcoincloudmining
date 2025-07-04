@@ -1,12 +1,16 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
 
-/// Ek reusable withdrawal disclaimer dialog widget.
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 class WithdrawalDisclaimerDialog extends StatelessWidget {
   final String title;
   final String message;
   final VoidCallback? onContinue;
-  final VoidCallback? onCancel;
   final IconData icon;
+
+  static const Color kBlue = Color(0xFF1976D2); // Material Blue 700
 
   const WithdrawalDisclaimerDialog({
     super.key,
@@ -14,80 +18,153 @@ class WithdrawalDisclaimerDialog extends StatelessWidget {
     this.message =
         'This app is a simulation game. The BTC shown here is virtual and has no real monetary value. The withdrawal feature is for demo purposes only.',
     this.onContinue,
-    this.onCancel,
     this.icon = Icons.warning_amber_rounded,
   });
 
+  void _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  void _exitApp(BuildContext context) {
+    // Android/iOS दोनों के लिए exit
+    Navigator.of(context).pop();
+    exit(0);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Row(
-        children: [
-          Icon(icon, color: Colors.orange, size: 32),
-          const SizedBox(width: 12),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Top bar indicator (like image)
+            Container(
+              width: 40,
+              height: 5,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: kBlue,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 18),
+            Icon(icon, color: kBlue, size: 56),
+            const SizedBox(height: 18),
+            Text(
+              message,
+              style: const TextStyle(fontSize: 16, color: Colors.black87),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 28),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kBlue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      if (onContinue != null) onContinue!();
+                    },
+                    child: const Text(
+                      'Agree and Continue',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () => _exitApp(context),
+              child: const Text(
+                'Skip',
+                style: TextStyle(
+                  color: kBlue,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text.rich(
+              TextSpan(
+                text: 'By continuing, you agree with our ',
+                style: const TextStyle(fontSize: 13, color: Colors.black54),
+                children: [
+                  TextSpan(
+                    text: 'Privacy Policy',
+                    style: const TextStyle(
+                      color: kBlue,
+                      decoration: TextDecoration.underline,
+                    ),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () => _launchUrl(
+                          'https://doc-hosting.flycricket.io/bitcoin-cloud-mining-privacy-policy/e7bf1a89-eb0d-4b5b-bf33-f72ca57b4e64/privacy'),
+                  ),
+                  const TextSpan(text: ' & '),
+                  TextSpan(
+                    text: 'Terms and Conditions',
+                    style: const TextStyle(
+                      color: kBlue,
+                      decoration: TextDecoration.underline,
+                    ),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () => _launchUrl(
+                          'https://doc-hosting.flycricket.io/bitcoin-cloud-mining-terms-of-use/44cea453-e05c-463b-bfb6-cd64fbdfe0a7/terms'),
+                  ),
+                ],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
-      content: Text(message, style: const TextStyle(fontSize: 16)),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-            if (onCancel != null) onCancel!();
-          },
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange,
-            foregroundColor: Colors.white,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          onPressed: () {
-            Navigator.of(context).pop();
-            if (onContinue != null) onContinue!();
-          },
-          child: const Text('I Understand, Continue'),
-        ),
-      ],
     );
   }
 }
 
-/// Helper function jo dialog show karta hai
-dynamic showWithdrawalDisclaimerDialog({
+// Helper function
+Future<void> showWithdrawalDisclaimerDialog({
   required BuildContext context,
   String? title,
   String? message,
   VoidCallback? onContinue,
-  VoidCallback? onCancel,
   IconData? icon,
-}) {
-  return showDialog(
+}) async {
+  await showDialog(
     context: context,
+    barrierDismissible: false,
     builder: (ctx) => WithdrawalDisclaimerDialog(
       title: title ?? 'Disclaimer',
       message: message ??
           'This app is a simulation game. The BTC shown here is virtual and has no real monetary value. The withdrawal feature is for demo purposes only.',
       onContinue: onContinue,
-      onCancel: onCancel,
       icon: icon ?? Icons.warning_amber_rounded,
     ),
   );
 }
-
-/// Example usage (comment):
-///
-/// ElevatedButton(
-///   onPressed: () {
-///     showWithdrawalDisclaimerDialog(
-///       context: context,
-///       onContinue: () {
-///         // Yahan aap withdrawal screen open kar sakte hain
-///       },
-///     );
-///   },
-///   child: Text('Withdraw'),
-/// )
