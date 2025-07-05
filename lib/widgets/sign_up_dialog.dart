@@ -219,6 +219,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
       _referralCodeDebounce?.cancel();
     }
 
+    // Clear previous state
     setState(() {
       _isCheckingReferralCode = true;
       _isReferralCodeValid = false;
@@ -226,10 +227,33 @@ class _SignUpDialogState extends State<SignUpDialog> {
       _referrerName = null;
     });
 
+    // If empty, don't validate
+    if (value.trim().isEmpty) {
+      setState(() {
+        _isCheckingReferralCode = false;
+        _isReferralCodeValid = false;
+        _referralCodeError = null;
+        _referrerName = null;
+      });
+      return;
+    }
+
+    // Validate format first
+    if (!RegExp(r'^REF[A-Z0-9]{8}$').hasMatch(value.trim().toUpperCase())) {
+      setState(() {
+        _isCheckingReferralCode = false;
+        _isReferralCodeValid = false;
+        _referralCodeError =
+            'Referral code must be in format: REF + 8 characters (e.g., REF12345678)';
+        _referrerName = null;
+      });
+      return;
+    }
+
     _referralCodeDebounce = Timer(const Duration(milliseconds: 300), () async {
       try {
-        final result = await ApiService.post(
-            ApiConfig.validateReferralCode, {'code': value.trim()});
+        final result = await ApiService.post(ApiConfig.validateReferralCode,
+            {'code': value.trim().toUpperCase()});
 
         if (mounted) {
           setState(() {
@@ -285,7 +309,6 @@ class _SignUpDialogState extends State<SignUpDialog> {
     });
 
     try {
-
       final response = await ApiService().signup(
         fullName: _fullNameController.text.trim(),
         userName: _usernameController.text.trim(),
@@ -293,7 +316,6 @@ class _SignUpDialogState extends State<SignUpDialog> {
         password: _passwordController.text,
         referredByCode: referredByCode,
       );
-
 
       if (!mounted) return;
 

@@ -12,7 +12,7 @@ const {
 // Transaction related routes are now handled in transaction.routes.js
 
 // Validate referral code
-router.post('/validate', validateReferralCode);
+router.post('/validate', referralController.validateReferralCode);
 
 // Get user's referrals
 router.get('/list', authenticate, getReferrals);
