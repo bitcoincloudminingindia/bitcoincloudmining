@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:bitcoin_cloud_mining/models/user.dart';
 import 'package:bitcoin_cloud_mining/services/analytics_service.dart';
 import 'package:bitcoin_cloud_mining/services/api_service.dart';
+import 'package:bitcoin_cloud_mining/services/google_auth_service.dart';
 // wallet_service.dart file does not exist, so it has been removed
 import 'package:bitcoin_cloud_mining/utils/constants.dart';
 import 'package:bitcoin_cloud_mining/utils/error_handler.dart';
@@ -1408,5 +1409,94 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       return false;
     }
+  }
+
+  /// Google Sign-In method
+  Future<Map<String, dynamic>> signInWithGoogle() async {
+    try {
+      // Check connectivity first
+      if (!await checkConnectivity()) {
+        return {
+          'success': false,
+          'message': 'No internet connection',
+          'error': 'NETWORK_ERROR'
+        };
+      }
+
+      // Use Google Auth Service
+      final result = await GoogleAuthService().signInWithGoogle();
+
+      if (result['success']) {
+        // Update user state with Google user data
+        await _updateUserState(result['data']);
+
+        // Track analytics
+        AnalyticsService().logEvent('google_sign_in_success');
+
+        return {
+          'success': true,
+          'message': 'Google Sign-In successful',
+          'data': result['data']
+        };
+      } else {
+        return {
+          'success': false,
+          'message': result['message'],
+          'error': 'GOOGLE_SIGN_IN_FAILED'
+        };
+      }
+    } catch (e) {
+      AnalyticsService().logEvent('google_sign_in_error',
+          parameters: {'error': e.toString()});
+
+      return {
+        'success': false,
+        'message': 'Google Sign-In failed: ${e.toString()}',
+        'error': 'GOOGLE_SIGN_IN_ERROR'
+      };
+    }
+  }
+
+  /// Sign out from Google and clear all data
+  Future<void> signOut() async {
+    try {
+      // Sign out from Google Auth Service
+      await GoogleAuthService().signOut();
+
+      // Clear local data
+      await _clearUserData();
+
+      // Track analytics
+      AnalyticsService().logEvent('user_sign_out');
+
+      notifyListeners();
+    } catch (e) {
+      // Handle sign out error
+    }
+  }
+
+  Future<void> _clearUserData() async {
+    _userId = null;
+    _fullName = null;
+    _userName = null;
+    _email = null;
+    _profileImagePath = null;
+    _is2FAEnabled = false;
+    _isBiometricEnabled = false;
+    _isNotificationsEnabled = true;
+    _isSecurityAlertsEnabled = true;
+    _password = null;
+    _walletBalance = 0.0;
+    _referralCode = null;
+    _referredBy = null;
+    _referralCount = 0;
+    _isLoggedIn = false;
+    _token = null;
+    _refreshToken = null;
+    _userData = null;
+    _user = null;
+    _referralEarnings = null;
+    await StorageUtils.clearAll();
+    notifyListeners();
   }
 }

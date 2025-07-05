@@ -12,7 +12,20 @@
           "package_name": "com.example.bitcoin_cloud_mining"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "486206486627-tnhp292jlak09lvs5pl82edp60tivg2d.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.bitcoin_cloud_mining",
+            "certificate_hash": "5e1172aa458da170db8ec165b12661c31782fd77"
+          }
+        },
+        {
+          "client_id": "486206486627-l4844u55h2fdsn8ooqfe87e51pupgqhq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAwS7-6JQyZVEsnEg72ZZf-LQ0872lHLiM"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "486206486627-l4844u55h2fdsn8ooqfe87e51pupgqhq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

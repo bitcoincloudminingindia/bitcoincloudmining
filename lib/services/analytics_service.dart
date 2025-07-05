@@ -140,4 +140,11 @@ class AnalyticsService {
       await _analytics.setAnalyticsCollectionEnabled(enabled);
     } catch (e) {}
   }
+
+  void logEvent(String name, {Map<String, dynamic>? parameters}) {
+    // Yahan aap FirebaseAnalytics ya custom logging laga sakte hain
+    // Example (agar FirebaseAnalytics use kar rahe ho):
+    // FirebaseAnalytics.instance.logEvent(name: name, parameters: parameters);
+    print('Analytics Event: $name, params: $parameters');
+  }
 }

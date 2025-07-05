@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:bitcoin_cloud_mining/screens/loading_user_data_screen.dart';
+import 'package:bitcoin_cloud_mining/widgets/google_sign_in_button.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -830,6 +832,56 @@ class _SignUpDialogState extends State<SignUpDialog> {
                                 : () {},
                             text: 'Sign Up',
                             isLoading: _isLoading,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Divider with "OR"
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  height: 1,
+                                  color: Colors.grey[400]!.withAlpha(77),
+                                ),
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  'OR',
+                                  style: TextStyle(
+                                    color: Colors.grey[300],
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Container(
+                                  height: 1,
+                                  color: Colors.grey[400]!.withAlpha(77),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Google Sign-Up Button
+                          GoogleSignInButton(
+                            onSuccess: () {
+                              Navigator.of(context, rootNavigator: true).pop();
+                              Navigator.of(context, rootNavigator: true)
+                                  .pushReplacement(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const LoadingUserDataScreen(),
+                                ),
+                              );
+                            },
+                            onError: () {
+                              // Error will be handled by the button itself
+                            },
+                            buttonText: 'Sign up with Google',
                           ),
                         ],
                       ),

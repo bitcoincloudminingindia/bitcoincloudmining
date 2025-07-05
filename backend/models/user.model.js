@@ -12,16 +12,20 @@ const { generateReferralCode } = require('../utils/generators');
 const userSchema = new mongoose.Schema({
   userId: {
     type: String,
-    required: true,
-    // unique: true, // Removed to avoid duplicate index
-    default: () => 'USER' + crypto.randomBytes(6).toString('hex').toUpperCase()
+    unique: true,
+    required: [true, 'User ID is required']
+  },
+  firebaseUid: {
+    type: String,
+    unique: true,
+    sparse: true // Allow multiple null values
   },
   fullName: {
     type: String,
     required: [true, 'Full name is required'],
     trim: true,
     minlength: [2, 'Full name must be at least 2 characters long'],
-    maxlength: [50, 'Full name cannot be more than 50 characters']
+    maxlength: [50, 'Full name cannot exceed 50 characters']
   },
   userEmail: {
     type: String,

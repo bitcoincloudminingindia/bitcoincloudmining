@@ -1,5 +1,6 @@
 import 'dart:io' show exit, Platform;
 
+import 'package:bitcoin_cloud_mining/widgets/google_sign_in_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -319,6 +320,59 @@ class _LoginDialogState extends State<LoginDialog> {
                               text: AppStrings.login,
                               isLoading: _isLoading,
                             ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Divider with "OR"
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  height: 1,
+                                  color: Colors.grey[400]!.withAlpha(77),
+                                ),
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  'OR',
+                                  style: TextStyle(
+                                    color: Colors.grey[300],
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Container(
+                                  height: 1,
+                                  color: Colors.grey[400]!.withAlpha(77),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Google Sign-In Button
+                          GoogleSignInButton(
+                            onSuccess: () {
+                              Navigator.of(context, rootNavigator: true).pop();
+                              Navigator.of(context, rootNavigator: true)
+                                  .pushReplacement(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const LoadingUserDataScreen(),
+                                ),
+                              );
+                            },
+                            onError: () {
+                              setState(() {
+                                _errorMessage =
+                                    'Google Sign-In failed. Please try again.';
+                              });
+                            },
+                            buttonText: 'Continue with Google',
                           ),
                           const SizedBox(height: 16),
                           TextButton(

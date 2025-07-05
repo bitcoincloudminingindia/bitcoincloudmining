@@ -16,8 +16,15 @@ const {
   requestPasswordReset,
   resetPassword,
   checkEmail,
-  validateToken
+  validateToken,
+  refreshToken,
+  profile,
+  userProfile,
+  updateProfile,
+  changePassword,
+  verifyResetOtp
 } = require('../controllers/auth.controller');
+const { googleSignIn, linkGoogleAccount } = require('../controllers/google_auth.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 
 // Health check route
@@ -160,6 +167,10 @@ router.post('/verify-reset-otp', async (req, res) => {
 });
 router.post('/reset-password', resetPassword);
 router.post('/request-password-reset', requestPasswordReset); // Keep old route for backward compatibility
+
+// Google authentication routes
+router.post('/google', googleSignIn);
+router.post('/google/link', authenticate, linkGoogleAccount);
 
 // Add catch-all route handler
 router.all('*', (req, res) => {

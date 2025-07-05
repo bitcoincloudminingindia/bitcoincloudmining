@@ -27,6 +27,7 @@ const nodemailer = require('nodemailer');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const { connectDB } = require('./config/database');
+const { initializeFirebase } = require('./config/firebase.config');
 
 const app = express();
 const server = http.createServer(app);
@@ -287,6 +288,13 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS
   }
 });
+
+// Initialize Firebase Admin SDK
+try {
+  initializeFirebase();
+} catch (error) {
+  console.error('❌ Firebase initialization failed:', error);
+}
 
 // Connect to MongoDB
 connectDB();
