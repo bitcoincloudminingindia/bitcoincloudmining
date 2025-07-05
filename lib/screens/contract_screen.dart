@@ -176,41 +176,13 @@ class _ContractScreenState extends State<ContractScreen>
   int _remainingCooldownSeconds = 0;
   bool _isAdInitialized = false;
 
-  // Banner ad futures for 5 positions
+  // Banner ad futures for 1 position only
   Future<Widget?>? _bannerAdFuture1;
-  Future<Widget?>? _bannerAdFuture2;
-  Future<Widget?>? _bannerAdFuture3;
-  Future<Widget?>? _bannerAdFuture4;
-  Future<Widget?>? _bannerAdFuture5; // Legendary contract ke niche ke liye
 
   // Dedicated banner ad load functions
   void _loadBannerAd1() {
     setState(() {
       _bannerAdFuture1 = _adService.getBannerAdWidget();
-    });
-  }
-
-  void _loadBannerAd2() {
-    setState(() {
-      _bannerAdFuture2 = _adService.getBannerAdWidget();
-    });
-  }
-
-  void _loadBannerAd3() {
-    setState(() {
-      _bannerAdFuture3 = _adService.getBannerAdWidget();
-    });
-  }
-
-  void _loadBannerAd4() {
-    setState(() {
-      _bannerAdFuture4 = _adService.getBannerAdWidget();
-    });
-  }
-
-  void _loadBannerAd5() {
-    setState(() {
-      _bannerAdFuture5 = _adService.getBannerAdWidget();
     });
   }
 
@@ -225,12 +197,8 @@ class _ContractScreenState extends State<ContractScreen>
     _restoreContractStates();
     _startUiUpdateTimer();
     _loadNativeAd();
-    // Banner ad futures
+    // Banner ad future
     _loadBannerAd1();
-    _loadBannerAd2();
-    _loadBannerAd3();
-    _loadBannerAd4();
-    _loadBannerAd5();
   }
 
   @override
@@ -259,12 +227,10 @@ class _ContractScreenState extends State<ContractScreen>
     } else if (state == AppLifecycleState.resumed) {
       // App has come to foreground
       _restoreContractStates();
-      // Banner ads reload karo
-      _loadBannerAd1();
-      _loadBannerAd2();
-      _loadBannerAd3();
-      _loadBannerAd4();
-      _loadBannerAd5();
+      // Banner ad reload karo
+      if (mounted) {
+        setState(_loadBannerAd1);
+      }
     }
   }
 
@@ -630,23 +596,43 @@ class _ContractScreenState extends State<ContractScreen>
           }
         });
 
-        // 3 ad positions: after 3rd, 6th, 9th contract
-        final nativeAdPositions = <int>{3, 6, 9};
-        // 4 banner ad positions: after 2nd, 5th, 8th, 11th contract
-        final bannerAdPositions = <int>{2, 5, 8, 11};
+        // 1 native ad position: after 1st contract
+        final nativeAdPositions = <int>{1};
+        // 1 banner ad position: top
+        final bannerAdPositions = <int>{};
 
-        final legendaryIndex = 11; // Legendary contract ka index
         final totalItems = contracts.length +
             nativeAdPositions.length +
             bannerAdPositions.length +
-            2; // +1 for banner ad after legendary, +1 for top native ad
+            1; // +1 for top banner ad
 
         return ListView.builder(
           padding: const EdgeInsets.all(16.0),
           itemCount: totalItems,
           itemBuilder: (context, index) {
-            // Sabse upar native ad
+            // Sabse upar banner ad
             if (index == 0) {
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                child: FutureBuilder<Widget?>(
+                  future: _bannerAdFuture1,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.done &&
+                        snapshot.data != null) {
+                      return snapshot.data!;
+                    } else {
+                      return const SizedBox(height: 50);
+                    }
+                  },
+                ),
+              );
+            }
+
+            // Index adjust karo (kyunki ek banner ad upar aa gaya)
+            final adjustedIndex = index - 1;
+
+            // Native ad position: after 1st contract
+            if (adjustedIndex == 1) {
               return Container(
                 height: 250,
                 margin: const EdgeInsets.symmetric(vertical: 8),
@@ -680,82 +666,9 @@ class _ContractScreenState extends State<ContractScreen>
               );
             }
 
-            // Index adjust karo (kyunki ek ad upar aa gaya)
-            final adjustedIndex = index - 1;
-
-            // Banner ad positions
-            int bannersShown = 0;
-            for (final pos in bannerAdPositions) {
-              if (adjustedIndex == pos + bannersShown) {
-                bannersShown++;
-                Future<Widget?>? bannerAdFuture;
-                if (pos == 2) {
-                  bannerAdFuture = _bannerAdFuture1;
-                } else if (pos == 5) {
-                  bannerAdFuture = _bannerAdFuture2;
-                } else if (pos == 8) {
-                  bannerAdFuture = _bannerAdFuture3;
-                } else if (pos == 11) {
-                  bannerAdFuture = _bannerAdFuture4;
-                }
-                // Legendary contract ke upar (index == 11)
-                if (pos == legendaryIndex) {
-                  bannerAdFuture = _bannerAdFuture4;
-                }
-                return Container(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  child: FutureBuilder<Widget?>(
-                    future: bannerAdFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.done &&
-                          snapshot.data != null) {
-                        return snapshot.data!;
-                      } else {
-                        return const SizedBox(height: 50);
-                      }
-                    },
-                  ),
-                );
-              }
-            }
-
-            // Legendary contract ke niche banner ad (sabse last)
-            if (adjustedIndex == totalItems - 2) {
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                child: FutureBuilder<Widget?>(
-                  future: _bannerAdFuture5,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.done &&
-                        snapshot.data != null) {
-                      return snapshot.data!;
-                    } else {
-                      return const SizedBox(height: 50);
-                    }
-                  },
-                ),
-              );
-            }
-
-            // Native ad positions (upar waala already ho chuka)
-            int adsShown = 0;
-            for (final pos in nativeAdPositions) {
-              if (adjustedIndex == pos + bannersShown + adsShown) {
-                adsShown++;
-                return const SizedBox(height: 0); // Baaki native ad skip kar do
-              }
-            }
-
             // Contract index nikalna (ads ke hisab se adjust kar ke)
             int contractIndex = adjustedIndex;
-            for (final pos in bannerAdPositions) {
-              if (adjustedIndex > pos) contractIndex--;
-            }
-            for (final pos in nativeAdPositions) {
-              if (adjustedIndex >
-                  pos + bannerAdPositions.where((b) => b < pos).length)
-                contractIndex--;
-            }
+            if (adjustedIndex > 1) contractIndex--; // Native ad ke liye adjust
             if (contractIndex >= contracts.length) {
               return const SizedBox.shrink();
             }

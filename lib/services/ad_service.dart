@@ -39,6 +39,10 @@ class AdService {
   RewardedAd? _rewardedAd;
   NativeAd? _nativeAd;
 
+  // Multiple Native Ads Manager
+  final Map<String, NativeAd> _nativeAds = {};
+  final Map<String, bool> _nativeAdLoadedStates = {};
+
   // Ad states
   bool _isBannerAdLoaded = false;
   bool _isRewardedAdLoaded = false;
@@ -861,5 +865,210 @@ class AdService {
       loadRewardedInterstitialAd();
       return false;
     }
+  }
+
+  // Multiple Native Ads Methods
+  Future<void> loadNativeAdWithId(String adId) async {
+    if (kIsWeb) return;
+
+    // Dispose existing ad if any
+    _nativeAds[adId]?.dispose();
+    _nativeAds.remove(adId);
+    _nativeAdLoadedStates[adId] = false;
+
+    final adUnitId = _getAdUnitId('native');
+    if (adUnitId.isEmpty) return;
+
+    final startTime = DateTime.now();
+
+    await _loadAdWithRetry(
+      'native',
+      () async {
+        final nativeAd = NativeAd(
+          adUnitId: adUnitId,
+          factoryId: 'listTile',
+          request: const AdRequest(),
+          listener: NativeAdListener(
+            onAdLoaded: (ad) {
+              _nativeAdLoadedStates[adId] = true;
+              _nativeAdLoadCount++;
+              _nativeAdFirstLoadTime ??= DateTime.now();
+
+              final loadTime = DateTime.now().difference(startTime);
+              _nativeAdAverageLoadTime =
+                  (_nativeAdAverageLoadTime * (_nativeAdLoadCount - 1) +
+                          loadTime.inMilliseconds) /
+                      _nativeAdLoadCount;
+            },
+            onAdFailedToLoad: (ad, error) {
+              _nativeAdLoadedStates[adId] = false;
+              _nativeAdFailCount++;
+              ad.dispose();
+              throw error;
+            },
+            onAdClicked: (ad) {
+              _nativeAdClickCount++;
+            },
+            onAdImpression: (ad) {
+              _nativeAdImpressionCount++;
+            },
+          ),
+        );
+
+        await nativeAd.load();
+        _nativeAds[adId] = nativeAd;
+      },
+      (success) {
+        _nativeAdLoadedStates[adId] = success;
+      },
+    );
+  }
+
+  bool isNativeAdLoadedWithId(String adId) {
+    return _nativeAdLoadedStates[adId] ?? false;
+  }
+
+  Widget getNativeAdWithId(String adId) {
+    final nativeAd = _nativeAds[adId];
+    final isLoaded = _nativeAdLoadedStates[adId] ?? false;
+
+    if (!isLoaded || nativeAd == null) {
+      return Container(
+        height: 250,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.ads_click, color: Colors.grey, size: 24),
+            const SizedBox(height: 4),
+            const Text(
+              'Ad Loading...',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Add refresh button for failed ads
+            GestureDetector(
+              onTap: () {
+                loadNativeAdWithId(adId);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withAlpha(51),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'Refresh',
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      height: 250,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(26),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Stack(
+          children: [
+            // Native ad content with error boundary
+            Positioned.fill(
+              child: Builder(
+                builder: (context) {
+                  try {
+                    return AdWidget(ad: nativeAd);
+                  } catch (e) {
+                    // Return fallback UI if ad rendering fails
+                    return Container(
+                      color: Colors.grey[100],
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline,
+                                color: Colors.grey, size: 20),
+                            SizedBox(height: 4),
+                            Text(
+                              'Ad Unavailable',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ),
+            // Close button for better UX
+            Positioned(
+              top: 4,
+              right: 4,
+              child: GestureDetector(
+                onTap: () {
+                  // Optionally track ad dismissal
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha(179),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 12,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void disposeNativeAdWithId(String adId) {
+    _nativeAds[adId]?.dispose();
+    _nativeAds.remove(adId);
+    _nativeAdLoadedStates.remove(adId);
+  }
+
+  void disposeAllNativeAds() {
+    for (final ad in _nativeAds.values) {
+      ad.dispose();
+    }
+    _nativeAds.clear();
+    _nativeAdLoadedStates.clear();
   }
 }

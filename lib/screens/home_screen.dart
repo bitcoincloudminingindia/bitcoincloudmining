@@ -103,13 +103,70 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
-  // Home screen ke liye dedicated native ad load function
-  Future<void> _loadHomeNativeAd() async {
+  // Home screen ke liye dedicated native ad widget function
+  Future<Widget?> _getHomeNativeAdWidget() async {
     try {
       await _adService.loadNativeAd();
-      if (mounted) setState(() {});
-    } catch (e) {}
+      if (_adService.isNativeAdLoaded) {
+        return _adService.getNativeAd();
+      } else {
+        return Container(
+          height: 250,
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.ads_click, color: Colors.grey, size: 24),
+                SizedBox(height: 4),
+                Text(
+                  'Ad Loading...',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      return Container(
+        height: 250,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, color: Colors.grey, size: 24),
+              SizedBox(height: 4),
+              Text(
+                'Ad Unavailable',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
+
+  // Native ad future
+  Future<Widget?>? _nativeAdFuture;
 
   @override
   void initState() {
@@ -121,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     Future.microtask(() async {
       await _adService.initialize();
       _loadHomeBannerAd();
-      await _loadHomeNativeAd();
+      _nativeAdFuture = _getHomeNativeAdWidget();
     });
     _adUiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) setState(() {});
@@ -186,8 +243,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.resumed:
         // App came to foreground
-        _loadHomeBannerAd();
-        _loadHomeNativeAd(); // Home screen pe wapas aate hi native ad reload karo
+        if (mounted) {
+          setState(() {
+            _loadHomeBannerAd();
+            _nativeAdFuture = _getHomeNativeAdWidget(); // Native ad reload karo
+          });
+        }
         if (_isMining && _miningStartTime != null) {
           _updateMiningProgressFromElapsed();
           _startMiningUiTimer();
@@ -1057,9 +1118,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             Container(
               height: 250,
               margin: const EdgeInsets.symmetric(vertical: 8),
-              child: _adService.isNativeAdLoaded
-                  ? _adService.getNativeAd()
-                  : Container(
+              child: FutureBuilder<Widget?>(
+                future: _nativeAdFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.done &&
+                      snapshot.data != null) {
+                    return snapshot.data!;
+                  } else {
+                    return Container(
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
                         borderRadius: BorderRadius.circular(8),
@@ -1082,7 +1148,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           ],
                         ),
                       ),
-                    ),
+                    );
+                  }
+                },
+              ),
             ),
             const SizedBox(height: 16),
             // Add Server Connection Animation
