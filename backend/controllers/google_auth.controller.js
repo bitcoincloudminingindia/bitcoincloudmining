@@ -12,6 +12,47 @@ const generateUserId = () => {
     return `USR${timestamp}${random}`;
 };
 
+// Generate unique username from email
+const generateUniqueUsername = async (email, displayName) => {
+    try {
+        // Extract base username from email
+        let baseUsername = email?.split('@')[0]?.toLowerCase() || 'user';
+
+        // Clean username (remove special characters, keep only letters, numbers, underscore)
+        baseUsername = baseUsername.replace(/[^a-z0-9_]/g, '');
+
+        // If base username is empty or too short, use display name
+        if (!baseUsername || baseUsername.length < 3) {
+            baseUsername = displayName?.toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user';
+        }
+
+        // Ensure minimum length
+        if (baseUsername.length < 3) {
+            baseUsername = 'user';
+        }
+
+        // Check if username exists
+        let username = baseUsername;
+        let counter = 1;
+
+        while (await User.findOne({ userName: username })) {
+            username = `${baseUsername}${counter}`;
+            counter++;
+
+            // Prevent infinite loop
+            if (counter > 1000) {
+                username = `${baseUsername}${Date.now()}`;
+                break;
+            }
+        }
+
+        return username;
+    } catch (error) {
+        // Fallback to timestamp-based username
+        return `user${Date.now()}`;
+    }
+};
+
 // Google Sign-In authentication
 exports.googleSignIn = async (req, res) => {
     try {
@@ -95,13 +136,14 @@ exports.googleSignIn = async (req, res) => {
         // Step 4: Create new user
         const userId = generateUserId();
         const userReferralCode = generateReferralCode();
+        const uniqueUsername = await generateUniqueUsername(email, displayName);
 
         user = await User.create({
             userId,
             firebaseUid,
             fullName: displayName || 'Google User',
             userEmail: email?.toLowerCase(),
-            userName: email?.split('@')[0]?.toLowerCase() || `user${Date.now()}`,
+            userName: uniqueUsername,
             profilePicture: photoURL,
             isEmailVerified: true, // Google users are pre-verified
             userReferralCode,

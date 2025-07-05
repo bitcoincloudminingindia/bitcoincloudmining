@@ -170,6 +170,7 @@ router.post('/request-password-reset', requestPasswordReset); // Keep old route 
 
 // Google authentication routes
 router.post('/google', googleSignIn);
+router.post('/google-signin', googleSignIn); // Add this new route for frontend compatibility
 router.post('/google/link', authenticate, linkGoogleAccount);
 
 // Add catch-all route handler
