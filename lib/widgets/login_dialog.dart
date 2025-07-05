@@ -132,7 +132,7 @@ class _LoginDialogState extends State<LoginDialog> {
           ),
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -159,7 +159,7 @@ class _LoginDialogState extends State<LoginDialog> {
                       color: Colors.amber[400],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   ShaderMask(
                     shaderCallback: (bounds) => LinearGradient(
                       colors: [Colors.amber[400]!, Colors.amber[700]!],
@@ -167,25 +167,25 @@ class _LoginDialogState extends State<LoginDialog> {
                     child: const Text(
                       AppStrings.appTitle,
                       style: TextStyle(
-                        fontSize: 32,
+                        fontSize: 28,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
                     AppStrings.welcomeBack,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 14,
                       color: Colors.white.withAlpha(179),
                       letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
                   Container(
                     constraints: const BoxConstraints(maxWidth: 360),
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: const Color.fromRGBO(255, 255, 255, 0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -224,7 +224,7 @@ class _LoginDialogState extends State<LoginDialog> {
                             focusedBorderColor: Colors.grey[400]!,
                             backgroundColor: Colors.grey[900]!.withAlpha(26),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           CustomTextField(
                             controller: _passwordController,
                             label: 'Password',
@@ -265,7 +265,7 @@ class _LoginDialogState extends State<LoginDialog> {
                             focusedBorderColor: Colors.grey[400]!,
                             backgroundColor: Colors.grey[900]!.withAlpha(26),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
                           if (_errorMessage != null) ...[
                             Container(
                               padding: const EdgeInsets.all(12),
@@ -296,7 +296,7 @@ class _LoginDialogState extends State<LoginDialog> {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
                           ],
                           Container(
                             decoration: BoxDecoration(
@@ -321,7 +321,7 @@ class _LoginDialogState extends State<LoginDialog> {
                               isLoading: _isLoading,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
 
                           // Divider with "OR"
                           Row(
@@ -352,7 +352,7 @@ class _LoginDialogState extends State<LoginDialog> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
 
                           // Google Sign-In Button
                           GoogleSignInButton(
@@ -374,7 +374,7 @@ class _LoginDialogState extends State<LoginDialog> {
                             },
                             buttonText: 'Continue with Google',
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8),
                           TextButton(
                             onPressed: () {
                               Navigator.of(context).pop();
@@ -402,7 +402,7 @@ class _LoginDialogState extends State<LoginDialog> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   TextButton(
                     onPressed: () {
                       Navigator.of(context).pop();
@@ -424,7 +424,7 @@ class _LoginDialogState extends State<LoginDialog> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Center(

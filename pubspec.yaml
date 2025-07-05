@@ -42,6 +42,7 @@ dependencies:
   flutter_secure_storage: ^9.0.0  # Keep current for security
   fl_chart: ^1.0.0
   flutter_animate: ^4.5.0
+  flutter_svg: ^2.0.9
   socket_io_client: ^3.1.2
   timeago: ^3.5.0
   rxdart: ^0.28.0
@@ -100,6 +101,7 @@ flutter:
     - assets/sounds/
    
     - assets/images/app_logo.png
+    - assets/images/google_logo.svg
     # Explicit sound files
     - assets/sounds/success_chime.mp3
     - assets/sounds/earning_notification.mp3

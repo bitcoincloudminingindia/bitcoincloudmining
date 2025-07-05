@@ -1,8 +1,62 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../utils/color_constants.dart';
+
+// Custom Google Logo Widget with fallback
+class GoogleLogo extends StatelessWidget {
+  final double size;
+
+  const GoogleLogo({super.key, this.size = 20});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: SvgPicture.asset(
+        'assets/images/google_logo.svg',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        placeholderBuilder: (context) => _buildFallbackLogo(),
+      ),
+    );
+  }
+
+  Widget _buildFallbackLogo() {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(4),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF4285F4), // Blue
+            Color(0xFF34A853), // Green
+            Color(0xFFFBBC05), // Yellow
+            Color(0xFFEA4335), // Red
+          ],
+        ),
+      ),
+      child: const Center(
+        child: Text(
+          'G',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class GoogleSignInButton extends StatefulWidget {
   final VoidCallback? onSuccess;
@@ -37,11 +91,11 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
           foregroundColor: Colors.black87,
-          elevation: 2,
-          shadowColor: Colors.black26,
+          elevation: 1,
+          shadowColor: Colors.black12,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
-            side: BorderSide(color: Colors.grey.shade300),
+            side: BorderSide(color: Colors.grey.shade300, width: 1),
           ),
         ),
         child: _isLoading
@@ -56,34 +110,16 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Google Icon
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'G',
-                        style: TextStyle(
-                          color: Colors.blue,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
+                  // Real Google Logo with fallback
+                  const GoogleLogo(size: 20),
                   const SizedBox(width: 12),
-                  // Button Text
+                  // Button Text with Google Font
                   Text(
                     widget.buttonText ?? 'Continue with Google',
-                    style: const TextStyle(
+                    style: GoogleFonts.roboto(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: Colors.black87,
+                      color: const Color(0xFF3C4043),
                     ),
                   ),
                 ],
@@ -190,31 +226,13 @@ class _GoogleSignInButtonOutlinedState
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Google Icon
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'G',
-                        style: TextStyle(
-                          color: Colors.blue,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
+                  // Real Google Logo with fallback
+                  const GoogleLogo(size: 20),
                   const SizedBox(width: 12),
-                  // Button Text
+                  // Button Text with Google Font
                   Text(
                     widget.buttonText ?? 'Sign in with Google',
-                    style: TextStyle(
+                    style: GoogleFonts.roboto(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                       color: ColorConstants.primaryColor,

@@ -389,7 +389,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
           ),
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -405,27 +405,27 @@ class _SignUpDialogState extends State<SignUpDialog> {
                       color: Colors.amber[400],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   Text(
                     AppStrings.appTitle,
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Colors.amber[400],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   const Text(
                     AppStrings.createAccount,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 14,
                       color: Colors.white70,
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
                   Container(
                     constraints: const BoxConstraints(maxWidth: 360),
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: const Color.fromRGBO(255, 255, 255, 0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -464,7 +464,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
                             focusedBorderColor: Colors.grey[400]!,
                             backgroundColor: Colors.grey[900]!.withAlpha(26),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           CustomTextField(
                             controller: _usernameController,
                             label: 'Username',
@@ -542,7 +542,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           CustomTextField(
                             controller: _emailController,
                             label: 'Email',
@@ -568,7 +568,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
                             focusedBorderColor: Colors.grey[400]!,
                             backgroundColor: Colors.grey[900]!.withAlpha(26),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           CustomTextField(
                             controller: _passwordController,
                             label: 'Password',
@@ -637,7 +637,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
                           if (_passwordController.text.isNotEmpty) ...[
                             const SizedBox(height: 8),
                             Container(
-                              padding: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 color: Colors.black.withAlpha(77),
                                 borderRadius: BorderRadius.circular(8),
@@ -657,7 +657,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 2),
                                   _buildPasswordRequirement(
                                     'At least 8 characters',
                                     _hasMinLength,
@@ -738,7 +738,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
                             focusedBorderColor: Colors.grey[400]!,
                             backgroundColor: Colors.grey[900]!.withAlpha(26),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           _buildReferralCodeField(),
                           if (_errorMessage != null) ...[
                             const SizedBox(height: 16),
@@ -750,7 +750,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
                               ),
                             ),
                           ],
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
@@ -818,7 +818,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           CustomButton(
                             onPressed: _agreedToTerms
                                 ? () => _handleSignup(
@@ -833,7 +833,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
                             text: 'Sign Up',
                             isLoading: _isLoading,
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
 
                           // Divider with "OR"
                           Row(
@@ -864,7 +864,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
 
                           // Google Sign-Up Button
                           GoogleSignInButton(
@@ -887,7 +887,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
