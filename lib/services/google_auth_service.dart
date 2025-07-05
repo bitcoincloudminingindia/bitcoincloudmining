@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/api_config.dart';
@@ -13,66 +13,59 @@ class GoogleAuthService {
   GoogleAuthService._internal();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
-  /// Google Sign-In process (Mobile compatible)
   Future<Map<String, dynamic>> signInWithGoogle() async {
     try {
-      // Step 1: Create Google Auth Provider
-      final GoogleAuthProvider googleProvider = GoogleAuthProvider();
-      googleProvider.addScope('email');
-      googleProvider.addScope('profile');
-
-      // Step 2: Sign in with Firebase (platform specific)
-      UserCredential userCredential;
-
-      if (Platform.isAndroid || Platform.isIOS) {
-        // Use signInWithRedirect for mobile
-        await _auth.signInWithRedirect(googleProvider);
-
-        // Get the result from redirect
-        userCredential = await _auth.getRedirectResult();
-      } else {
-        // Use popup for web
-        userCredential = await _auth.signInWithPopup(googleProvider);
+      // Step 1: Google account select karen
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        return {
+          'success': false,
+          'message': 'Google Sign-In cancelled by user',
+          'error': 'SIGN_IN_CANCELLED'
+        };
       }
 
+      // Step 2: Auth details lein
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      final String? accessToken = googleAuth.accessToken;
+      final String? idToken = googleAuth.idToken;
+
+      // Step 3: Firebase credential banayein
+      final credential = GoogleAuthProvider.credential(
+        accessToken: accessToken,
+        idToken: idToken,
+      );
+
+      // Step 4: Firebase me sign-in karein
+      final UserCredential userCredential =
+          await _auth.signInWithCredential(credential);
       final User? user = userCredential.user;
 
       if (user == null) {
         return {
           'success': false,
-          'message': 'Failed to get user from Firebase',
+          'message': 'Firebase user not found',
           'error': 'FIREBASE_USER_NULL'
         };
       }
 
-      // Step 3: Get ID token for backend verification
-      final String? idToken = await user.getIdToken();
-
-      if (idToken == null) {
-        return {
-          'success': false,
-          'message': 'Failed to get ID token from Firebase',
-          'error': 'ID_TOKEN_NULL'
-        };
-      }
-
-      // Step 4: Send to backend for user creation/verification
-      final backendResponse = await _sendToBackend(user, idToken);
+      // Step 5: Backend ko call karein
+      final String? firebaseIdToken = await user.getIdToken();
+      final backendResponse = await _sendToBackend(user, firebaseIdToken!);
 
       if (backendResponse['success']) {
-        // Store tokens
         await StorageUtils.saveToken(backendResponse['data']['token']);
-
         return {
           'success': true,
           'message': 'Google Sign-In successful',
           'data': backendResponse['data']
         };
       } else {
-        // Sign out from Firebase if backend fails
         await _auth.signOut();
-
+        await _googleSignIn.signOut();
         return {
           'success': false,
           'message':
@@ -81,13 +74,8 @@ class GoogleAuthService {
         };
       }
     } catch (e) {
-      // Clean up on error
-      try {
-        await _auth.signOut();
-      } catch (cleanupError) {
-        // Ignore cleanup errors
-      }
-
+      await _auth.signOut();
+      await _googleSignIn.signOut();
       return {
         'success': false,
         'message': 'Google Sign-In failed: ${e.toString()}',
@@ -96,11 +84,9 @@ class GoogleAuthService {
     }
   }
 
-  /// Send user data to backend for authentication
   Future<Map<String, dynamic>> _sendToBackend(User user, String idToken) async {
     try {
       final url = Uri.parse('${ApiConfig.baseUrl}/api/auth/google-signin');
-
       final response = await http
           .post(
             url,
@@ -137,19 +123,14 @@ class GoogleAuthService {
     }
   }
 
-  /// Sign out from Firebase
   Future<void> signOut() async {
     try {
       await _auth.signOut();
+      await _googleSignIn.signOut();
       await StorageUtils.clearAll();
-    } catch (e) {
-      // Handle sign out error
-    }
+    } catch (e) {}
   }
 
-  /// Check if user is signed in
   bool get isSignedIn => _auth.currentUser != null;
-
-  /// Get current Firebase user
   dynamic get currentUser => _auth.currentUser;
 }
