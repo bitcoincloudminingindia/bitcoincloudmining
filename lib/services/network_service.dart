@@ -71,7 +71,7 @@ class NetworkService {
     _updateConnectionStatus(isConnected);
   }
 
-  // Check if we can actually reach the internet
+  // Optimized connection check with reduced overhead
   Future<bool> _canReachInternet() async {
     try {
       if (kIsWeb) {
@@ -79,11 +79,19 @@ class NetworkService {
         return true;
       }
 
-      // Try to reach a reliable host
-      final result = await InternetAddress.lookup('google.com');
+      // Use a faster DNS lookup with shorter timeout
+      final result = await InternetAddress.lookup('8.8.8.8')
+          .timeout(const Duration(seconds: 3)); // Reduced timeout
       return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
     } catch (e) {
-      return false;
+      // Try alternative DNS if first fails
+      try {
+        final result = await InternetAddress.lookup('1.1.1.1')
+            .timeout(const Duration(seconds: 2)); // Even shorter timeout
+        return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+      } catch (e) {
+        return false;
+      }
     }
   }
 
@@ -96,11 +104,11 @@ class NetworkService {
     }
   }
 
-  // Start periodic connection check
+  // Start periodic connection check - Reduced frequency for better performance
   void _startPeriodicConnectionCheck() {
     _connectionCheckTimer?.cancel();
     _connectionCheckTimer =
-        Timer.periodic(const Duration(seconds: 10), (timer) {
+        Timer.periodic(const Duration(seconds: 30), (timer) { // Increased from 10 to 30 seconds
       _checkConnectionStatus();
     });
   }
@@ -111,12 +119,12 @@ class NetworkService {
     return _isConnected;
   }
 
-  // Get connection type
+  // Get connection type with optimization
   Future<String> getConnectionType() async {
     try {
       final results = await _connectivity.checkConnectivity();
-      final result =
-          results.isNotEmpty ? results.first : ConnectivityResult.none;
+      final result = results.isNotEmpty ? results.first : ConnectivityResult.none;
+      
       switch (result) {
         case ConnectivityResult.wifi:
           return 'WiFi';
@@ -124,8 +132,6 @@ class NetworkService {
           return 'Mobile Data';
         case ConnectivityResult.ethernet:
           return 'Ethernet';
-        case ConnectivityResult.none:
-          return 'No Connection';
         default:
           return 'Unknown';
       }
@@ -136,8 +142,8 @@ class NetworkService {
 
   // Dispose resources
   void dispose() {
-    _connectivitySubscription?.cancel();
     _connectionCheckTimer?.cancel();
+    _connectivitySubscription?.cancel();
     _connectionStatusController.close();
   }
 }

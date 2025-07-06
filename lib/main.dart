@@ -18,6 +18,7 @@ import 'package:bitcoin_cloud_mining/services/api_service.dart';
 import 'package:bitcoin_cloud_mining/services/mining_notification_service.dart';
 import 'package:bitcoin_cloud_mining/services/notification_service.dart';
 import 'package:bitcoin_cloud_mining/utils/enums.dart';
+import 'package:bitcoin_cloud_mining/utils/network_optimizer.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -116,6 +117,12 @@ void main() async {
       // Removed periodic mining and cloud mining task registration for manual mining only
     } catch (e) {}
   }
+
+  // Initialize network optimizer
+  await NetworkOptimizer.initialize();
+
+  // Clear any stale cache on app startup
+  ApiService.clearCache();
 
   // Initialize services
   final apiService = ApiService();

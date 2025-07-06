@@ -40,6 +40,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
   String? _adError;
   bool _isDoubleMiningActive = false;
   Timer? _doubleMiningTimer;
+  int? _pendingAdLevel;
 // default reward
 
   @override
@@ -52,6 +53,16 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     _adTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
       if (mounted) {
         _showRewardedInterstitialAd();
+      }
+    });
+    // Pending ad level load karo
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _pendingAdLevel = prefs.getInt('pendingAdLevel');
+      });
+      if (_pendingAdLevel != null) {
+        _showWatchAdToContinueDialog(_pendingAdLevel!);
       }
     });
   }
@@ -68,37 +79,6 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     _adTimer?.cancel();
     _doubleMiningTimer?.cancel();
     _adService.dispose();
-
-    if (_sessionEarnings > 0) {
-      try {
-        _walletProvider
-            .addEarning(
-          _sessionEarnings,
-          type: 'tap',
-          description: 'Crypto Craze Game Earnings - Level $_currentLevel',
-        )
-            .then((_) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                    'Added ${_sessionEarnings.toStringAsFixed(18)} BTC to wallet'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          }
-        }).catchError((error) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Failed to add earnings to wallet'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        });
-      } catch (error) {}
-    }
 
     super.dispose();
   }
@@ -140,6 +120,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
   }
 
   void _tapCrypto(int index) {
+    if (_pendingAdLevel != null) return;
     setState(() {
       _tapCount++;
       const double earnedAmount = 0.00000000000000001;
@@ -154,7 +135,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     _checkLevelUp();
   }
 
-  void _checkLevelUp() {
+  void _checkLevelUp() async {
     final int newLevel = (_tapCount ~/ 100) + 1;
     if (newLevel > _currentLevel && newLevel <= 1000) {
       setState(() {
@@ -166,6 +147,17 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
       });
 
       _saveGameData();
+
+      // Agar 5, 10, 15... par hai to ad gating lagao
+      if (newLevel % 5 == 0) {
+        final prefs = await SharedPreferences.getInstance();
+        setState(() {
+          _pendingAdLevel = newLevel;
+        });
+        prefs.setInt('pendingAdLevel', newLevel);
+        _showWatchAdToContinueDialog(newLevel);
+        return;
+      }
 
       showDialog(
         context: context,
@@ -290,7 +282,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     );
   }
 
-  Future<void> _showRewardedInterstitialAd() async {
+  Future<void> _showRewardedInterstitialAd({int? forceForLevel}) async {
     if (_isAdLoading) return;
     setState(() {
       _isAdLoading = true;
@@ -321,17 +313,30 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                 );
               }
             }
+            // Agar forceForLevel diya hai to ad gating hatao
+            if (forceForLevel != null) {
+              final prefs = await SharedPreferences.getInstance();
+              setState(() {
+                _pendingAdLevel = null;
+              });
+              prefs.remove('pendingAdLevel');
+            }
           },
           onAdDismissed: () {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text(
-                      'Please watch the full ad to activate double mining.'),
+                  content: Text('Please watch the full ad to continue.'),
                   backgroundColor: Colors.orange,
                   duration: Duration(seconds: 2),
                 ),
               );
+              // Ad dismiss hua bina reward ke, firse dialog dikhao
+              if (forceForLevel != null) {
+                Future.delayed(const Duration(milliseconds: 500), () {
+                  _showWatchAdToContinueDialog(forceForLevel);
+                });
+              }
             }
           },
         );
@@ -453,10 +458,89 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     // Save game data
     _saveGameData();
 
+    // Earnings reset karo
+    _sessionEarnings = 0.0;
+
     // Navigate back
     if (mounted) {
       Navigator.pop(context);
     }
+  }
+
+  Future<void> _showRewardedAdForLevel(int level) async {
+    setState(() {
+      _isAdLoading = true;
+    });
+    try {
+      if (!_adService.isRewardedAdLoaded) {
+        await _adService.loadRewardedAd();
+      }
+      if (mounted) {
+        await _adService.showRewardedAd(
+          onRewarded: (amount) async {
+            // Ad dekhne ke baad gating hatao
+            final prefs = await SharedPreferences.getInstance();
+            setState(() {
+              _pendingAdLevel = null;
+            });
+            prefs.remove('pendingAdLevel');
+          },
+          onAdDismissed: () {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please watch the full ad to continue.'),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+              // Ad dismiss hua bina reward ke, firse dialog dikhao
+              Future.delayed(const Duration(milliseconds: 500), () {
+                _showWatchAdToContinueDialog(level);
+              });
+            }
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to show ad. Please try again later.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAdLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showWatchAdToContinueDialog(int level) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text('Watch Ad to Continue'),
+        content: Text(
+            'To continue playing after reaching level $level, please watch a rewarded ad.'),
+        actions: [
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _showRewardedAdForLevel(level);
+            },
+            icon: const Icon(Icons.play_circle_fill),
+            label: const Text('Watch Ad'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -540,7 +624,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        SizedBox(height: 60),
+                        SizedBox(height: 40),
                         // Tap Object Box
                         Container(
                           width: boxWidth,
@@ -568,7 +652,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                             ],
                           ),
                         ),
-                        SizedBox(height: 24),
+                        SizedBox(height: 12),
                         // Watch Ad Button
                         ElevatedButton.icon(
                           onPressed: _showRewardedInterstitialAd,
@@ -589,7 +673,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                             shadowColor: Colors.orange.withAlpha(100),
                           ),
                         ),
-                        SizedBox(height: 16),
+                        SizedBox(height: 8),
                         // BTC Wallet Section
                         Container(
                           padding: const EdgeInsets.all(12),
@@ -603,7 +687,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                                 color: Colors.yellowAccent, fontSize: 18),
                           ),
                         ),
-                        SizedBox(height: 24),
+                        SizedBox(height: 12),
                         // Banner Ad
                         Container(
                           height: 60,
@@ -621,7 +705,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                                   ),
                                 ),
                         ),
-                        SizedBox(height: 16),
+                        SizedBox(height: 8),
                       ],
                     ),
                   ),

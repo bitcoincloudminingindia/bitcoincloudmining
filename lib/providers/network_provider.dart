@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:bitcoin_cloud_mining/services/api_service.dart';
 import 'package:bitcoin_cloud_mining/services/network_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geocoding/geocoding.dart';
@@ -39,6 +40,12 @@ class NetworkProvider extends ChangeNotifier {
       _networkService.connectionStatus.listen((isConnected) {
         _isConnected = isConnected;
         _updateConnectionType();
+
+        // Clear cache when network changes to ensure fresh data
+        if (isConnected) {
+          ApiService.clearCache();
+        }
+
         notifyListeners();
       });
 

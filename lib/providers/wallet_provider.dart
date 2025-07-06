@@ -161,6 +161,9 @@ class WalletProvider extends ChangeNotifier {
       _balance = newBalance;
       notifyListeners();
 
+      // Clear wallet balance cache since it's been updated
+      ApiService.removeFromCache('GET_/api/wallet/balance');
+
       // Save to local storage first (fast operation)
       final formattedBalance = NumberFormatter.formatBTCAmount(newBalance);
       await StorageUtils.saveWalletBalance(formattedBalance);

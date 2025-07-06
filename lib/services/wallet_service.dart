@@ -38,10 +38,8 @@ class WalletService {
 
   Future<double> getWalletBalance() async {
     try {
-      final response = await _apiService.makeRequest(
-        endpoint: '/api/wallet/balance',
-        method: 'GET',
-      );
+      // Use cached data if available
+      final response = await ApiService.getWithCache('/api/wallet/balance');
 
       if (!response['success']) {
         throw Exception(response['message'] ?? 'Failed to get wallet balance');

@@ -364,6 +364,9 @@ class AuthProvider extends ChangeNotifier {
           _profileImagePath = profileImagePath;
         }
 
+        // Clear user profile cache since it's been updated
+        ApiService.removeFromCache('GET_/api/auth/profile');
+
         // Update local storage
         final userData = {
           'userId': _userId,

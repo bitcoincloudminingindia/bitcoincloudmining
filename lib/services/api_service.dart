@@ -7,6 +7,7 @@ import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 import '../config/api_config.dart';
 import '../utils/error_handler.dart';
+import '../utils/network_optimizer.dart'; // Added import for NetworkOptimizer
 import '../utils/number_formatter.dart';
 import '../utils/storage_utils.dart';
 
@@ -15,18 +16,26 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
 
-  // Constants for retry logic
-  static const int maxRetries = 3;
-  static const Duration retryDelay = Duration(seconds: 2);
+  // Simple cache for frequently accessed data
+  static final Map<String, dynamic> _cache = {};
+  static final Map<String, DateTime> _cacheTimestamps = {};
+  static const Duration _cacheExpiry = Duration(minutes: 5); // 5 minutes cache
+
+  // Constants for retry logic - Optimized for speed
+  static const int maxRetries = 1; // Reduced from 3 to 1
+  static const Duration retryDelay =
+      Duration(seconds: 1); // Reduced from 2 to 1
 
   // Other instance variables
   bool _isConnected = false;
   IO.Socket? _socket;
-  static const int maxReconnectAttempts = 5;
-  static const Duration reconnectDelay = Duration(seconds: 2);
+  static const int maxReconnectAttempts = 3; // Reduced from 5 to 3
+  static const Duration reconnectDelay =
+      Duration(seconds: 1); // Reduced from 2 to 1
   int _reconnectAttempts = 0;
   bool _isReconnecting = false;
-  static const Duration _timeout = Duration(seconds: 30);
+  static const Duration _timeout =
+      Duration(seconds: 15); // Reduced from 30 to 15
 
   // Add callbacks
   Function(double)? onBalanceUpdate;
@@ -158,11 +167,13 @@ class ApiService {
     Map<String, String>? headers,
   }) async {
     int retryCount = 0;
-    const maxRetries = 2;
+    const maxRetries = 1; // Reduced from 2 to 1 for faster failure detection
 
     while (retryCount <= maxRetries) {
+      final stopwatch = Stopwatch()..start();
+
       try {
-        // Use fallback URL for DNS resolution issues
+        // Use primary URL first, only fallback on DNS errors
         final urlString = retryCount == 0
             ? buildUrl(endpoint)
             : await buildUrlWithFallback(endpoint);
@@ -184,12 +195,16 @@ class ApiService {
           }
         }
 
+        // Use dynamic timeout based on network performance
+        final dynamicTimeout = NetworkOptimizer.getOptimalTimeout();
+
         late http.Response response;
 
         switch (method.toUpperCase()) {
           case 'GET':
-            response =
-                await http.get(url, headers: finalHeaders).timeout(_timeout);
+            response = await http
+                .get(url, headers: finalHeaders)
+                .timeout(dynamicTimeout);
             break;
           case 'POST':
             response = await http
@@ -198,7 +213,7 @@ class ApiService {
                   headers: finalHeaders,
                   body: body != null ? jsonEncode(body) : null,
                 )
-                .timeout(_timeout);
+                .timeout(dynamicTimeout);
             break;
           case 'PUT':
             response = await http
@@ -207,15 +222,19 @@ class ApiService {
                   headers: finalHeaders,
                   body: body != null ? jsonEncode(body) : null,
                 )
-                .timeout(_timeout);
+                .timeout(dynamicTimeout);
             break;
           case 'DELETE':
-            response =
-                await http.delete(url, headers: finalHeaders).timeout(_timeout);
+            response = await http
+                .delete(url, headers: finalHeaders)
+                .timeout(dynamicTimeout);
             break;
           default:
             throw Exception('Unsupported HTTP method: $method');
         }
+
+        stopwatch.stop();
+        NetworkOptimizer.trackResponseTime(stopwatch.elapsed);
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
           final data = jsonDecode(response.body);
@@ -229,19 +248,21 @@ class ApiService {
           };
         }
       } catch (e) {
-        // Check if it's a DNS resolution error
+        stopwatch.stop();
+        NetworkOptimizer.trackResponseTime(stopwatch.elapsed);
+
+        // Only retry on DNS resolution errors, not on other network errors
         if (e.toString().contains('Failed host lookup') ||
-            e.toString().contains('no address associated with hostname') ||
-            e.toString().contains('SocketException')) {
+            e.toString().contains('no address associated with hostname')) {
           if (retryCount < maxRetries) {
             retryCount++;
             await Future.delayed(
-                Duration(seconds: retryCount * 2)); // Exponential backoff
+                Duration(seconds: retryCount)); // Simple linear backoff
             continue;
           }
         }
 
-        // If it's not a DNS error or we've exhausted retries, return error
+        // If it's not a DNS error or we've exhausted retries, return error immediately
         return {
           'success': false,
           'message': 'Network error: ${e.toString()}',
@@ -1525,5 +1546,56 @@ class ApiService {
     } catch (e) {
       rethrow;
     }
+  }
+
+  // Cache management methods
+  static dynamic _getFromCache(String key) {
+    final timestamp = _cacheTimestamps[key];
+    if (timestamp != null &&
+        DateTime.now().difference(timestamp) < _cacheExpiry) {
+      return _cache[key];
+    }
+    // Remove expired cache entry
+    _cache.remove(key);
+    _cacheTimestamps.remove(key);
+    return null;
+  }
+
+  static void _setCache(String key, dynamic data) {
+    _cache[key] = data;
+    _cacheTimestamps[key] = DateTime.now();
+  }
+
+  // TODO: Will be used for logout and cache management
+  static void clearCache() {
+    _cache.clear();
+    _cacheTimestamps.clear();
+  }
+
+  // TODO: Will be used for removing specific cached data
+  static void removeFromCache(String key) {
+    _cache.remove(key);
+    _cacheTimestamps.remove(key);
+  }
+
+  // Get cached data or make API call
+  static Future<Map<String, dynamic>> getWithCache(String endpoint) async {
+    final cacheKey = 'GET_$endpoint';
+    final cachedData = _getFromCache(cacheKey);
+
+    if (cachedData != null) {
+      return cachedData;
+    }
+
+    final data = await _instance._makeRequest(
+      endpoint: endpoint,
+      method: 'GET',
+    );
+
+    if (data['success'] == true) {
+      _setCache(cacheKey, data);
+    }
+
+    return data;
   }
 }
