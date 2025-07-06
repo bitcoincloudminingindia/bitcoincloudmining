@@ -5,7 +5,8 @@ import 'package:bitcoin_cloud_mining/firebase_options.dart';
 import 'package:bitcoin_cloud_mining/models/notification.dart' as model;
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/network_provider.dart';
-import 'package:bitcoin_cloud_mining/providers/notification_provider.dart';
+import 'package:bitcoin_cloud_mining/providers/notification_provider.dart'
+    hide callbackDispatcher;
 import 'package:bitcoin_cloud_mining/providers/reward_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/screens/launch_screen.dart';
@@ -31,6 +32,7 @@ import 'package:workmanager/workmanager.dart';
 
 import 'fcm_service.dart';
 import 'services/audio_service.dart';
+import 'services/background_notification_service.dart';
 import 'services/sound_notification_service.dart';
 import 'utils/storage_utils.dart';
 
@@ -170,6 +172,9 @@ class _MyAppState extends State<MyApp>
 
       // Initialize sound notification service
       await SoundNotificationService.initialize();
+
+      // Initialize background notification service
+      await BackgroundNotificationService.initialize();
     } catch (e) {}
   }
 
