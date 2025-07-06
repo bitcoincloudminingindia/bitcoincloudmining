@@ -103,13 +103,17 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     super.dispose();
   }
 
+  final double boxWidth = 320;
+  final double boxHeight = 420;
+  final double objectSize = 50;
+
   void _initializeCryptoPositions() {
     if (!mounted) return;
     _cryptoPositions = List.generate(
       6,
       (index) => Offset(
-        _random.nextDouble() * (MediaQuery.of(context).size.width - 50),
-        _random.nextDouble() * (MediaQuery.of(context).size.height - 200),
+        _random.nextDouble() * (boxWidth - objectSize),
+        _random.nextDouble() * (boxHeight - objectSize),
       ),
     );
   }
@@ -142,8 +146,8 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
       _btcScore += earnedAmount;
       _sessionEarnings += earnedAmount;
       _cryptoPositions[index] = Offset(
-        _random.nextDouble() * (MediaQuery.of(context).size.width - 50),
-        _random.nextDouble() * (MediaQuery.of(context).size.height - 200),
+        _random.nextDouble() * (boxWidth - objectSize),
+        _random.nextDouble() * (boxHeight - objectSize),
       );
     });
 
@@ -491,19 +495,6 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                 ),
                 child: Stack(
                   children: [
-                    for (int i = 0; i < _cryptoPositions.length; i++)
-                      Positioned(
-                        left: _cryptoPositions[i].dx,
-                        top: _cryptoPositions[i].dy,
-                        child: GestureDetector(
-                          onTap: () => _tapCrypto(i),
-                          child: const Icon(
-                            Icons.currency_bitcoin,
-                            size: 50,
-                            color: Colors.yellowAccent,
-                          ),
-                        ),
-                      ),
                     Positioned(
                       top: 20,
                       left: 20,
@@ -661,6 +652,34 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                         ),
                       ),
                   ],
+                ),
+              ),
+              Center(
+                child: Container(
+                  width: boxWidth,
+                  height: boxHeight,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha((255 * 0.2).toInt()),
+                    border: Border.all(color: Colors.yellow, width: 2),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Stack(
+                    children: [
+                      for (int i = 0; i < _cryptoPositions.length; i++)
+                        Positioned(
+                          left: _cryptoPositions[i].dx,
+                          top: _cryptoPositions[i].dy,
+                          child: GestureDetector(
+                            onTap: () => _tapCrypto(i),
+                            child: Icon(
+                              Icons.currency_bitcoin,
+                              size: objectSize,
+                              color: Colors.yellowAccent,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ],

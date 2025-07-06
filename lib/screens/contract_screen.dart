@@ -17,7 +17,7 @@ class ContractScreen extends StatefulWidget {
 class _ContractScreenState extends State<ContractScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
-  final AdService _adService = AdService();
+  AdService _adService = AdService();
   double totalEarnedBTC = 0.0;
   TextEditingController btcAddressController = TextEditingController();
   TextEditingController withdrawAmountController = TextEditingController();
@@ -180,13 +180,6 @@ class _ContractScreenState extends State<ContractScreen>
   Future<Widget?>? _bannerAdFuture1;
   Future<Widget?>? _nativeAdFuture;
 
-  // Dedicated banner ad load functions
-  void _loadBannerAd1() {
-    setState(() {
-      _bannerAdFuture1 = _getContractBannerAdWidget();
-    });
-  }
-
   // Enhanced banner ad loading with better error handling
   Future<Widget?> _getContractBannerAdWidget() async {
     try {
@@ -342,13 +335,16 @@ class _ContractScreenState extends State<ContractScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(length: 2, vsync: this);
+    _adService = AdService();
     _initializeAdService();
     _loadWatchAdsCounts();
     _loadEarnings();
     _restoreContractStates();
     _startUiUpdateTimer();
-    _nativeAdFuture = _getNativeAdWidget(); // Sirf ek baar set karo
-    _loadBannerAd1();
+    setState(() {
+      _nativeAdFuture = _getNativeAdWidget();
+      _bannerAdFuture1 = _getContractBannerAdWidget();
+    });
   }
 
   @override
@@ -361,6 +357,9 @@ class _ContractScreenState extends State<ContractScreen>
     }
     _tabController.dispose();
     _saveEarnings();
+    try {
+      _adService.dispose();
+    } catch (e) {}
     super.dispose();
   }
 
@@ -379,10 +378,9 @@ class _ContractScreenState extends State<ContractScreen>
       _restoreContractStates();
       // Banner ad reload karo
       if (mounted) {
-        setState(_loadBannerAd1);
-        // Native ad ko bhi force reload karo
         setState(() {
           _nativeAdFuture = _getNativeAdWidget();
+          _bannerAdFuture1 = _getContractBannerAdWidget();
         });
       }
     }

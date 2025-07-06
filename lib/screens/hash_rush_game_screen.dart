@@ -652,17 +652,42 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
                                   ),
                                 ),
                               ),
+                              // Tap button ke niche, isRewardedAdRequired true ho to:
                               if (isRewardedAdRequired)
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 12.0),
-                                  child: Text(
-                                    'Watch rewarded ad to continue!',
-                                    style: TextStyle(
-                                      color: Colors.redAccent,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
+                                Column(
+                                  children: [
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 12.0),
+                                      child: Text(
+                                        'Watch rewarded ad to continue!',
+                                        style: TextStyle(
+                                          color: Colors.redAccent,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    const SizedBox(height: 8),
+                                    ElevatedButton.icon(
+                                      onPressed: isAdLoading
+                                          ? null
+                                          : () async {
+                                              await showRewardedAd(() {
+                                                setState(() {
+                                                  isRewardedAdRequired = false;
+                                                });
+                                                _saveAdRequiredState(false);
+                                              });
+                                            },
+                                      icon: const Icon(Icons.ondemand_video),
+                                      label: Text(isAdLoading
+                                          ? 'Loading Ad...'
+                                          : 'Watch Ad'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.orange,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               const SizedBox(height: 24),
                               Row(

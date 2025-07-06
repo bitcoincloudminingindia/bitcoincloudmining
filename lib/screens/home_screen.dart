@@ -109,13 +109,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
-  void _loadMiddleBannerAd({bool force = false}) {
-    if (_middleBannerAdFuture != null && !force) return;
-    setState(() {
-      _middleBannerAdFuture = _getMiddleBannerAdWidget();
-    });
-  }
-
   // Enhanced middle banner ad loading
   Future<Widget?> _getMiddleBannerAdWidget() async {
     try {
@@ -302,9 +295,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _adService = AdService();
     Future.microtask(() async {
       await _adService.initialize();
-      // Load bottom section ads only once
-      _loadBottomNativeAd();
-      _loadMiddleBannerAd();
+      // Har baar naya future set karo
+      setState(() {
+        _bottomNativeAdFuture = _getBottomNativeAdWidget();
+        _middleBannerAdFuture = _getMiddleBannerAdWidget();
+      });
     });
     // _adUiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
     //   if (mounted) setState(() {});
@@ -363,9 +358,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       case AppLifecycleState.resumed:
         // App came to foreground
         if (mounted) {
-          // Ad ko sirf force reload karna ho to karo, warna nahi
-          _loadBottomNativeAd(force: true);
-          _loadMiddleBannerAd(force: true);
+          setState(() {
+            _bottomNativeAdFuture = _getBottomNativeAdWidget();
+            _middleBannerAdFuture = _getMiddleBannerAdWidget();
+          });
         }
         if (_isMining && _miningStartTime != null) {
           _updateMiningProgressFromElapsed();
@@ -2121,70 +2117,70 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       } catch (saveError) {}
 
       // Show rewarded ad every 5 taps
-      if (_sciFiTapCount >= 5) {
-        _sciFiTapCount = 0;
+      // if (_sciFiTapCount >= 5) {
+      //   _sciFiTapCount = 0;
 
-        try {
-          final bool adWatched = await _adService.showRewardedAd(
-            onRewarded: (double amount) async {
-              if (!mounted) return;
+      //   try {
+      //     final bool adWatched = await _adService.showRewardedAd(
+      //       onRewarded: (double amount) async {
+      //         if (!mounted) return;
 
-              try {
-                const double adReward = 0.000000000000000500;
-                final walletProvider =
-                    Provider.of<WalletProvider>(context, listen: false);
+      //         try {
+      //           const double adReward = 0.000000000000000500;
+      //           final walletProvider =
+      //               Provider.of<WalletProvider>(context, listen: false);
 
-                // Add ad reward non-blocking
-                walletProvider.addEarning(
-                  adReward,
-                  type: 'ad_reward',
-                  description: 'Sci-Fi Ad Reward (5x Bonus)',
-                );
+      //           // Add ad reward non-blocking
+      //           walletProvider.addEarning(
+      //             adReward,
+      //             type: 'ad_reward',
+      //             description: 'Sci-Fi Ad Reward (5x Bonus)',
+      //           );
 
-                // Play sci-fi achievement sound (non-blocking)
-                SoundNotificationService.playSciFiAchievementSound();
+      //           // Play sci-fi achievement sound (non-blocking)
+      //           SoundNotificationService.playSciFiAchievementSound();
 
-                if (mounted) {
-                  Fluttertoast.showToast(
-                    msg:
-                        '🎉 Ad reward earned! +${adReward.toStringAsFixed(18)} BTC',
-                    backgroundColor: Colors.green,
-                    textColor: Colors.white,
-                  );
-                }
-              } catch (adRewardError) {
-                if (mounted) {
-                  Fluttertoast.showToast(
-                    msg: 'Failed to add ad reward. Please try again.',
-                    backgroundColor: Colors.red,
-                  );
-                }
-              }
-            },
-            onAdDismissed: () {
-              if (!mounted) return;
-              Fluttertoast.showToast(
-                msg: 'Watch the full ad to get a bonus!',
-                backgroundColor: Colors.orange,
-              );
-            },
-          );
+      //           if (mounted) {
+      //             Fluttertoast.showToast(
+      //               msg:
+      //                   '🎉 Ad reward earned! +${adReward.toStringAsFixed(18)} BTC',
+      //               backgroundColor: Colors.green,
+      //               textColor: Colors.white,
+      //             );
+      //           }
+      //         } catch (adRewardError) {
+      //           if (mounted) {
+      //             Fluttertoast.showToast(
+      //               msg: 'Failed to add ad reward. Please try again.',
+      //               backgroundColor: Colors.red,
+      //             );
+      //           }
+      //         }
+      //       },
+      //       onAdDismissed: () {
+      //         if (!mounted) return;
+      //         Fluttertoast.showToast(
+      //           msg: 'Watch the full ad to get a bonus!',
+      //           backgroundColor: Colors.orange,
+      //         );
+      //       },
+      //     );
 
-          if (!adWatched && mounted) {
-            Fluttertoast.showToast(
-              msg: 'Ad not available. Please try again later.',
-              backgroundColor: Colors.orange,
-            );
-          }
-        } catch (adError) {
-          if (mounted) {
-            Fluttertoast.showToast(
-              msg: 'Error showing ad. Please try again.',
-              backgroundColor: Colors.red,
-            );
-          }
-        }
-      }
+      //     if (!adWatched && mounted) {
+      //       Fluttertoast.showToast(
+      //         msg: 'Ad not available. Please try again later.',
+      //         backgroundColor: Colors.orange,
+      //       );
+      //     }
+      //   } catch (adError) {
+      //     if (mounted) {
+      //       Fluttertoast.showToast(
+      //         msg: 'Error showing ad. Please try again.',
+      //         backgroundColor: Colors.red,
+      //       );
+      //     }
+      //   }
+      // }
     } catch (generalError) {
       if (mounted) {
         Fluttertoast.showToast(

@@ -80,6 +80,7 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     _loadAd();
+    _showRewardedInterstitialAdOnEntry();
   }
 
   Future<void> _loadAd() async {
@@ -89,6 +90,36 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       isAdLoaded = _adService.isBannerAdLoaded;
     });
+  }
+
+  Future<void> _showRewardedInterstitialAdOnEntry() async {
+    try {
+      await _adService.loadRewardedInterstitialAd();
+      await _adService.showRewardedInterstitialAd(
+        onRewarded: (amount) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Thanks for watching the ad!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        },
+        onAdDismissed: () {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Ad closed.'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        },
+      );
+    } catch (e) {
+      // Optionally handle ad load/show error
+    }
   }
 
   void navigateToGameScreen(String title, double winAmount) async {
