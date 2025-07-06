@@ -182,8 +182,83 @@ class _ContractScreenState extends State<ContractScreen>
   // Dedicated banner ad load functions
   void _loadBannerAd1() {
     setState(() {
-      _bannerAdFuture1 = _adService.getBannerAdWidget();
+      _bannerAdFuture1 = _getContractBannerAdWidget();
     });
+  }
+
+  // Enhanced banner ad loading with better error handling
+  Future<Widget?> _getContractBannerAdWidget() async {
+    try {
+      // Check if banner ad is already loaded
+      if (_adService.isBannerAdLoaded) {
+        return _adService.getBannerAd();
+      }
+
+      // Load banner ad with timeout
+      await _adService.loadBannerAd().timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {
+          throw Exception('Banner ad loading timeout');
+        },
+      );
+
+      if (_adService.isBannerAdLoaded) {
+        return _adService.getBannerAd();
+      } else {
+        return Container(
+          height: 50,
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: const Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Loading Banner Ad...',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      // Return a minimal placeholder for banner ad
+      return Container(
+        height: 50,
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: const Center(
+          child: Text(
+            'Ad',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -533,8 +608,26 @@ class _ContractScreenState extends State<ContractScreen>
 
   Future<void> _loadNativeAd() async {
     try {
-      await _adService.loadNativeAd();
-    } catch (e) {}
+      // Check if native ad is already loaded
+      if (_adService.isNativeAdLoaded) {
+        return;
+      }
+
+      // Load native ad with timeout
+      await _adService.loadNativeAd().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Native ad loading timeout');
+        },
+      );
+    } catch (e) {
+      // Retry after 5 seconds on failure
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted) {
+          _loadNativeAd();
+        }
+      });
+    }
   }
 
   @override
@@ -620,8 +713,60 @@ class _ContractScreenState extends State<ContractScreen>
                     if (snapshot.connectionState == ConnectionState.done &&
                         snapshot.data != null) {
                       return snapshot.data!;
+                    } else if (snapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return Container(
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: const Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.grey),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Loading Banner Ad...',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
                     } else {
-                      return const SizedBox(height: 50);
+                      return Container(
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Ad',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      );
                     }
                   },
                 ),
@@ -640,7 +785,7 @@ class _ContractScreenState extends State<ContractScreen>
                     ? _adService.getNativeAd()
                     : Container(
                         decoration: BoxDecoration(
-                          color: Colors.grey[200],
+                          color: Colors.grey[100],
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: Colors.grey[300]!),
                         ),
@@ -648,11 +793,18 @@ class _ContractScreenState extends State<ContractScreen>
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.ads_click,
-                                  color: Colors.grey, size: 24),
-                              SizedBox(height: 4),
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.grey),
+                                ),
+                              ),
+                              SizedBox(height: 8),
                               Text(
-                                'Ad Loading...',
+                                'Loading Native Ad...',
                                 style: TextStyle(
                                   color: Colors.grey,
                                   fontSize: 12,

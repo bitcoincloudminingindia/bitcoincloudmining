@@ -99,14 +99,101 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // Home screen ke liye dedicated banner ad load function
   void _loadHomeBannerAd() {
     setState(() {
-      _bannerAdFuture = _adService.getBannerAdWidget();
+      _bannerAdFuture = _getHomeBannerAdWidget();
     });
+  }
+
+  // Enhanced banner ad loading with better error handling
+  Future<Widget?> _getHomeBannerAdWidget() async {
+    try {
+      // Check if banner ad is already loaded
+      if (_adService.isBannerAdLoaded) {
+        return _adService.getBannerAd();
+      }
+
+      // Load banner ad with timeout
+      await _adService.loadBannerAd().timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {
+          throw Exception('Banner ad loading timeout');
+        },
+      );
+
+      if (_adService.isBannerAdLoaded) {
+        return _adService.getBannerAd();
+      } else {
+        return Container(
+          height: 50,
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: const Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Loading Banner Ad...',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      // Return a minimal placeholder for banner ad
+      return Container(
+        height: 50,
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: const Center(
+          child: Text(
+            'Ad',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   // Home screen ke liye dedicated native ad widget function
   Future<Widget?> _getHomeNativeAdWidget() async {
     try {
-      await _adService.loadNativeAd();
+      // Check if ad is already loaded
+      if (_adService.isNativeAdLoaded) {
+        return _adService.getNativeAd();
+      }
+
+      // Load native ad with timeout
+      await _adService.loadNativeAd().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Ad loading timeout');
+        },
+      );
+
       if (_adService.isNativeAdLoaded) {
         return _adService.getNativeAd();
       } else {
@@ -137,25 +224,59 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         );
       }
     } catch (e) {
+      // Return a more user-friendly error state
       return Container(
         height: 250,
         decoration: BoxDecoration(
-          color: Colors.grey[200],
+          color: Colors.grey[100],
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey[300]!),
         ),
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, color: Colors.grey, size: 24),
-              SizedBox(height: 4),
-              Text(
+              const Icon(Icons.ads_click, color: Colors.grey, size: 24),
+              const SizedBox(height: 8),
+              const Text(
                 'Ad Unavailable',
                 style: TextStyle(
                   color: Colors.grey,
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Check your internet connection',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Add refresh button
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _nativeAdFuture = _getHomeNativeAdWidget();
+                  });
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withAlpha(51),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'Retry',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -168,6 +289,276 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // Native ad future
   Future<Widget?>? _nativeAdFuture;
 
+  // Bottom section ads (Click for Magic & Reward ke niche)
+  Future<Widget?>? _bottomBannerAdFuture;
+  Future<Widget?>? _bottomNativeAdFuture;
+  Future<Widget?>? _middleBannerAdFuture;
+
+  // Bottom section ad load functions
+  void _loadBottomBannerAd() {
+    setState(() {
+      _bottomBannerAdFuture = _getBottomBannerAdWidget();
+    });
+  }
+
+  void _loadBottomNativeAd() {
+    setState(() {
+      _bottomNativeAdFuture = _getBottomNativeAdWidget();
+    });
+  }
+
+  void _loadMiddleBannerAd() {
+    setState(() {
+      _middleBannerAdFuture = _getMiddleBannerAdWidget();
+    });
+  }
+
+  // Enhanced middle banner ad loading
+  Future<Widget?> _getMiddleBannerAdWidget() async {
+    try {
+      // Load banner ad with timeout
+      await _adService.loadBannerAd().timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {
+          throw Exception('Middle banner ad loading timeout');
+        },
+      );
+
+      if (_adService.isBannerAdLoaded) {
+        return _adService.getBannerAd();
+      } else {
+        return Container(
+          height: 50,
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: const Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Loading Middle Banner...',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      return Container(
+        height: 50,
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: const Center(
+          child: Text(
+            'Ad',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  // Enhanced bottom banner ad loading
+  Future<Widget?> _getBottomBannerAdWidget() async {
+    try {
+      // Load banner ad with timeout
+      await _adService.loadBannerAd().timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {
+          throw Exception('Bottom banner ad loading timeout');
+        },
+      );
+
+      if (_adService.isBannerAdLoaded) {
+        return _adService.getBannerAd();
+      } else {
+        return Container(
+          height: 50,
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: const Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Loading Bottom Banner...',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      return Container(
+        height: 50,
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: const Center(
+          child: Text(
+            'Ad',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  // Enhanced bottom native ad loading
+  Future<Widget?> _getBottomNativeAdWidget() async {
+    try {
+      // Load native ad with timeout
+      await _adService.loadNativeAd().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Bottom native ad loading timeout');
+        },
+      );
+
+      if (_adService.isNativeAdLoaded) {
+        return _adService.getNativeAd();
+      } else {
+        return Container(
+          height: 250,
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Loading Bottom Native Ad...',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      return Container(
+        height: 250,
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.ads_click, color: Colors.grey, size: 24),
+              const SizedBox(height: 8),
+              const Text(
+                'Bottom Ad Unavailable',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Check your internet connection',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _bottomNativeAdFuture = _getBottomNativeAdWidget();
+                  });
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withAlpha(51),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'Retry',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -179,6 +570,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await _adService.initialize();
       _loadHomeBannerAd();
       _nativeAdFuture = _getHomeNativeAdWidget();
+      // Load bottom section ads separately
+      _loadBottomBannerAd();
+      _loadBottomNativeAd();
+      _loadMiddleBannerAd();
     });
     _adUiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) setState(() {});
@@ -247,6 +642,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           setState(() {
             _loadHomeBannerAd();
             _nativeAdFuture = _getHomeNativeAdWidget(); // Native ad reload karo
+            // Reload bottom section ads separately
+            _loadBottomBannerAd();
+            _loadBottomNativeAd();
+            _loadMiddleBannerAd();
           });
         }
         if (_isMining && _miningStartTime != null) {
@@ -1109,8 +1508,62 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     margin: const EdgeInsets.only(bottom: 12),
                     child: snapshot.data,
                   );
+                } else if (snapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return Container(
+                    height: 50,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: const Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.grey),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Loading Banner Ad...',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 } else {
-                  return const SizedBox(height: 50);
+                  return Container(
+                    height: 50,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Ad',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  );
                 }
               },
             ),
@@ -1124,10 +1577,44 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   if (snapshot.connectionState == ConnectionState.done &&
                       snapshot.data != null) {
                     return snapshot.data!;
+                  } else if (snapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.grey),
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Loading Ad...',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
                   } else {
                     return Container(
                       decoration: BoxDecoration(
-                        color: Colors.grey[200],
+                        color: Colors.grey[100],
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.grey[300]!),
                       ),
@@ -1136,9 +1623,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.ads_click, color: Colors.grey, size: 24),
-                            SizedBox(height: 4),
+                            SizedBox(height: 8),
                             Text(
-                              'Ad Loading...',
+                              'Ad Unavailable',
                               style: TextStyle(
                                 color: Colors.grey,
                                 fontSize: 12,
@@ -1175,6 +1662,75 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             const SizedBox(height: 16),
             buildGameSection(),
             const SizedBox(height: 16),
+            // Middle Banner Ad (Game section ke niche, mining state ke upar)
+            FutureBuilder<Widget?>(
+              future: _middleBannerAdFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.done &&
+                    snapshot.data != null) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: snapshot.data,
+                  );
+                } else if (snapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return Container(
+                    height: 50,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: const Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.grey),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Loading Middle Banner...',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                } else {
+                  return Container(
+                    height: 50,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Ad',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
             Row(
               children: [
                 buildStatCard(
@@ -1335,6 +1891,151 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
             const SizedBox(height: 24),
+            // Bottom Banner Ad (Click for Magic & Reward ke niche)
+            FutureBuilder<Widget?>(
+              future: _bottomBannerAdFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.done &&
+                    snapshot.data != null) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: snapshot.data,
+                  );
+                } else if (snapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return Container(
+                    height: 50,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: const Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.grey),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Loading Bottom Banner...',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                } else {
+                  return Container(
+                    height: 50,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Ad',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
+            // Bottom Native Ad (Banner ad ke niche)
+            FutureBuilder<Widget?>(
+              future: _bottomNativeAdFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.done &&
+                    snapshot.data != null) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: snapshot.data,
+                  );
+                } else if (snapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return Container(
+                    height: 250,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.grey),
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Loading Bottom Native Ad...',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                } else {
+                  return Container(
+                    height: 250,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.ads_click, color: Colors.grey, size: 24),
+                          SizedBox(height: 8),
+                          Text(
+                            'Bottom Ad Unavailable',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
             Row(
               children: [
                 buildInfoCard(
