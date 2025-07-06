@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
+import 'package:bitcoin_cloud_mining/utils/storage_utils.dart';
 import 'package:bitcoin_cloud_mining/widgets/login_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -48,6 +49,20 @@ class _LaunchScreenState extends State<LaunchScreen>
   Future<void> _checkIfFirstLaunch() async {
     final prefs = await SharedPreferences.getInstance();
     _isFirstLaunch = prefs.getBool('is_first_launch') ?? true;
+
+    // Check if user is logged out (no token in storage)
+    final token = await StorageUtils.getToken();
+    final isLoggedOut = token == null;
+
+    // If logged out, show login dialog immediately
+    if (isLoggedOut) {
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted && !_isAnimationComplete) {
+          _showLoginDialogImmediately();
+        }
+      });
+      return;
+    }
 
     // Set delay based on whether it's first launch or reload
     final delay = _isFirstLaunch ? 10 : 5;
@@ -152,6 +167,19 @@ class _LaunchScreenState extends State<LaunchScreen>
     if (!mounted) return;
     _stopAnimations();
     // Remove the launch screen from the stack and show login as a full screen route
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => const LoginDialog(),
+        fullscreenDialog: true,
+      ),
+    );
+  }
+
+  // Method to show login dialog immediately (for logout scenario)
+  void _showLoginDialogImmediately() {
+    if (!mounted) return;
+    _stopAnimations();
+    // Show login dialog immediately without delay
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (context) => const LoginDialog(),

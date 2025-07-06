@@ -145,6 +145,5 @@ class AnalyticsService {
     // Yahan aap FirebaseAnalytics ya custom logging laga sakte hain
     // Example (agar FirebaseAnalytics use kar rahe ho):
     // FirebaseAnalytics.instance.logEvent(name: name, parameters: parameters);
-    print('Analytics Event: $name, params: $parameters');
   }
 }

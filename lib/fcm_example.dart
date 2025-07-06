@@ -45,13 +45,11 @@ class _MyAppState extends State<MyApp> {
       final response = await http.post(
         url,
         headers: headers,
-        body: '{"token": "$token"}',
+        body: '{"fcmToken": "$token"}',
       );
       if (response.statusCode == 200) {
-      } else {
-      }
-    } catch (e) {
-    }
+      } else {}
+    } catch (e) {}
   }
 
   @override

@@ -173,6 +173,31 @@ router.post('/google', googleSignIn);
 router.post('/google-signin', googleSignIn); // Add this new route for frontend compatibility
 router.post('/google/link', authenticate, linkGoogleAccount);
 
+// Logout endpoint
+router.post('/logout', authenticate, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { walletBalance } = req.body;
+
+    // Log the logout action
+    console.log(`User ${userId} logged out with wallet balance: ${walletBalance}`);
+
+    // You can add additional logout logic here if needed
+    // For example, update last logout time, clear FCM token, etc.
+
+    res.status(200).json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Logout failed'
+    });
+  }
+});
+
 // Add catch-all route handler
 router.all('*', (req, res) => {
   res.status(404).json({

@@ -142,6 +142,10 @@ class StorageUtils {
 
       // Update API config
       ApiConfig.setUserId(id);
+
+      // Debug print after save
+      final savedId = await getUserId();
+      print('UserId saved in storage: $savedId');
     } catch (e) {
       rethrow;
     }
@@ -565,10 +569,8 @@ class StorageUtils {
         throw Exception('No auth token found');
       }
 
-      
-
       // Make API request
-      const url = ' {ApiConfig.baseUrl}/api/wallet/sync-balance';
+      final url = '${ApiConfig.baseUrl}/api/wallet/sync-balance';
 
       final data = {'balance': balance};
 

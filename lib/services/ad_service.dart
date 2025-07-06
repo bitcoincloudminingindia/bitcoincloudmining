@@ -18,21 +18,23 @@ class AdService {
   static const int MAX_OTHER_ADS_PER_HOUR = 20;
   static const Duration FREQUENCY_CAP_DURATION = Duration(hours: 1);
 
-  // Ad unit IDs - Use TEST AdMob IDs for development
+  // Ad unit IDs - Real AdMob IDs for production
   final Map<String, Map<String, String>> _adUnitIds = {
     'android': {
-      'banner': 'ca-app-pub-3940256099942544/6300978111', // Test Banner Ad
+      'banner': 'ca-app-pub-3537329799200606/2028008282', // Home_Banner_Ad
       'rewardedInterstitial':
-          'ca-app-pub-3940256099942544/5354046379', // Test Rewarded Interstitial
-      'rewarded': 'ca-app-pub-3940256099942544/5224354917', // Test Rewarded Ad
-      'native': 'ca-app-pub-3940256099942544/2247696110', // Test Native Ad
+          'ca-app-pub-3537329799200606/5712102428', // RewardedInterstitial_GameOver
+      'rewarded': 'ca-app-pub-3537329799200606/7827129874', // Rewarded_BTC_Ad
+      'native':
+          'ca-app-pub-3537329799200606/2260507229', // Native_Contract_Card
     },
     'ios': {
-      'banner': 'ca-app-pub-3940256099942544/2934735716', // Test Banner Ad
+      'banner': 'ca-app-pub-3537329799200606/2028008282', // Home_Banner_Ad
       'rewardedInterstitial':
-          'ca-app-pub-3940256099942544/6978759866', // Test Rewarded Interstitial
-      'rewarded': 'ca-app-pub-3940256099942544/1712485313', // Test Rewarded Ad
-      'native': 'ca-app-pub-3940256099942544/3985214057', // Test Native Ad
+          'ca-app-pub-3537329799200606/5712102428', // RewardedInterstitial_GameOver
+      'rewarded': 'ca-app-pub-3537329799200606/7827129874', // Rewarded_BTC_Ad
+      'native':
+          'ca-app-pub-3537329799200606/2260507229', // Native_Contract_Card
     },
   };
 
@@ -730,13 +732,13 @@ class AdService {
   }
 
   static const String bannerAdUnitId =
-      'ca-app-pub-3940256099942544/6300978111'; // Test Banner Ad
+      'ca-app-pub-3537329799200606/2028008282'; // Home_Banner_Ad
   static const String rewardedAdUnitId =
-      'ca-app-pub-3940256099942544/5224354917'; // Test Rewarded Ad
+      'ca-app-pub-3537329799200606/7827129874'; // Rewarded_BTC_Ad
   static const String nativeAdUnitId =
-      'ca-app-pub-3940256099942544/2247696110'; // Test Native Ad
+      'ca-app-pub-3537329799200606/2260507229'; // Native_Contract_Card
   static const String rewardedInterstitialAdUnitId =
-      'ca-app-pub-3940256099942544/5354046379'; // Test Rewarded Interstitial
+      'ca-app-pub-3537329799200606/5712102428'; // RewardedInterstitial_GameOver
 
   Future<RewardedAd?> getRewardedAd() async {
     if (_rewardedAd != null) {
@@ -751,8 +753,7 @@ class AdService {
 
     try {
       await RewardedAd.load(
-        adUnitId:
-            rewardedAdUnitId, // Always use test ad unit ID for development
+        adUnitId: rewardedAdUnitId, // Real ad unit ID for production
         request: const AdRequest(),
         rewardedAdLoadCallback: RewardedAdLoadCallback(
           onAdLoaded: (ad) {
@@ -760,13 +761,11 @@ class AdService {
             _isRewardedAdLoading = false;
           },
           onAdFailedToLoad: (error) {
-            print('Rewarded ad failed to load: $error');
             _isRewardedAdLoading = false;
           },
         ),
       );
     } catch (e) {
-      print('Error loading rewarded ad: $e');
       _isRewardedAdLoading = false;
     }
 

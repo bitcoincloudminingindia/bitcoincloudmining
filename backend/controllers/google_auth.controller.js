@@ -94,6 +94,9 @@ exports.googleSignIn = async (req, res) => {
         });
 
         if (user) {
+            // User ko dobara find karo taki mongoose document mile aur _id confirm ho
+            user = await User.findById(user._id);
+
             // Update existing user with latest Firebase info
             user.firebaseUid = firebaseUid;
             user.fullName = displayName || user.fullName;
@@ -108,11 +111,7 @@ exports.googleSignIn = async (req, res) => {
             await user.save();
 
             // Generate new token
-            const token = generateToken({
-                userId: user.userId,
-                id: user._id,
-                timestamp: new Date().toISOString()
-            });
+            const token = generateToken(user);
 
             return res.status(200).json({
                 success: true,
@@ -121,6 +120,7 @@ exports.googleSignIn = async (req, res) => {
                     token,
                     user: {
                         userId: user.userId,
+                        id: user._id,
                         fullName: user.fullName,
                         userName: user.userName,
                         userEmail: user.userEmail,
@@ -146,7 +146,7 @@ exports.googleSignIn = async (req, res) => {
             userName: uniqueUsername,
             profilePicture: photoURL,
             isEmailVerified: true, // Google users are pre-verified
-            userReferralCode,
+            referralCode: userReferralCode, // yahan sahi field set ki
             status: 'active',
             lastLoginAt: new Date(),
             loginHistory: [{
@@ -155,6 +155,9 @@ exports.googleSignIn = async (req, res) => {
                 userAgent: req.get('User-Agent')
             }]
         });
+
+        // User ko dobara findById se fetch karo taki _id confirm ho
+        user = await User.findById(user._id);
 
         // Step 5: Create wallet for new user
         const wallet = new Wallet({
@@ -169,11 +172,7 @@ exports.googleSignIn = async (req, res) => {
         await wallet.save();
 
         // Step 6: Generate token
-        const token = generateToken({
-            userId: user.userId,
-            id: user._id,
-            timestamp: new Date().toISOString()
-        });
+        const token = generateToken(user);
 
         logger.info(`Google Sign-In successful for user: ${user.userId}`);
 
@@ -184,6 +183,7 @@ exports.googleSignIn = async (req, res) => {
                 token,
                 user: {
                     userId: user.userId,
+                    id: user._id,
                     fullName: user.fullName,
                     userName: user.userName,
                     userEmail: user.userEmail,

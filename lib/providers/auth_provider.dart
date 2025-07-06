@@ -12,7 +12,6 @@ import 'package:bitcoin_cloud_mining/utils/error_handler.dart';
 import 'package:bitcoin_cloud_mining/utils/number_formatter.dart';
 import 'package:bitcoin_cloud_mining/utils/storage_utils.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1412,7 +1411,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Google Sign-In method
-  Future<Map<String, dynamic>> signInWithGoogle() async {
+  Future<Map<String, dynamic>> signInWithGoogle(BuildContext context) async {
     try {
       // Check connectivity first
       if (!await checkConnectivity()) {
@@ -1424,7 +1423,7 @@ class AuthProvider extends ChangeNotifier {
       }
 
       // Use Google Auth Service
-      final result = await GoogleAuthService().signInWithGoogle();
+      final result = await GoogleAuthService().signInWithGoogle(context);
 
       if (result['success']) {
         // Update user state with Google user data

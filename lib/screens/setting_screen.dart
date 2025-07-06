@@ -5,6 +5,7 @@ import 'package:bitcoin_cloud_mining/screens/about_us_screen.dart';
 import 'package:bitcoin_cloud_mining/screens/contact_support_screen.dart';
 import 'package:bitcoin_cloud_mining/screens/terms_condition_screen.dart';
 import 'package:bitcoin_cloud_mining/services/api_service.dart';
+import 'package:bitcoin_cloud_mining/services/google_auth_service.dart';
 import 'package:bitcoin_cloud_mining/utils/storage_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -16,7 +17,6 @@ import '../providers/auth_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../screens/notification_screen.dart';
 import '../utils/number_formatter.dart';
-import '../widgets/login_dialog.dart';
 
 // Define your premium colors.
 const Color primaryColor = Color(0xFF1E88E5); // Deep blue
@@ -175,7 +175,14 @@ class _SettingScreenState extends State<SettingScreen> {
         final formattedBalance =
             NumberFormatter.formatBTCAmount(currentBalance);
         final token = await StorageUtils.getToken();
-        final userId = await StorageUtils.getUserId();
+        var userId = await StorageUtils.getUserId();
+
+        // Agar storage se userId null hai to provider se lo
+        if (userId == null) {
+          final authProvider =
+              Provider.of<AuthProvider>(context, listen: false);
+          userId = authProvider.userId;
+        }
 
         if (token == null || userId == null) {
           throw Exception('Authentication data not found');
@@ -208,6 +215,8 @@ class _SettingScreenState extends State<SettingScreen> {
         await Future.wait([
           walletProvider.onLogout(),
           StorageUtils.clearAll(),
+          // Google Sign-Out
+          GoogleAuthService().signOut(),
         ]);
 
         // Step 4: Show success message
@@ -223,15 +232,13 @@ class _SettingScreenState extends State<SettingScreen> {
           // Wait for snackbar to show
           await Future.delayed(const Duration(seconds: 1));
 
-          // Close all dialogs and show login dialog
-          if (mounted) {
-            Navigator.of(context).popUntil((route) => route.isFirst);
-            await showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => const LoginDialog(),
-            );
-          }
+          // Set global flag to prevent background API calls after logout
+          // ignore: invalid_use_of_visible_for_testing_member, invalid_use_of_protected_member
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            // Forcefully redirect to launch/login screen
+            Navigator.of(context)
+                .pushNamedAndRemoveUntil('/launch', (route) => false);
+          });
         }
       } catch (e) {
         // Close loading indicator if open

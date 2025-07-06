@@ -1,10 +1,14 @@
 import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/widgets.dart'; // Added for BuildContext
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart'; // Added for Provider
 
 import '../config/api_config.dart';
+import '../providers/auth_provider.dart'
+    as my_auth; // Added for AuthProvider with alias
 import '../utils/storage_utils.dart';
 
 class GoogleAuthService {
@@ -15,7 +19,7 @@ class GoogleAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
-  Future<Map<String, dynamic>> signInWithGoogle() async {
+  Future<Map<String, dynamic>> signInWithGoogle(BuildContext context) async {
     try {
       // Step 1: Google account select karen
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -57,7 +61,25 @@ class GoogleAuthService {
       final backendResponse = await _sendToBackend(user, firebaseIdToken!);
 
       if (backendResponse['success']) {
+        // Save token
         await StorageUtils.saveToken(backendResponse['data']['token']);
+
+        // Save user data
+        if (backendResponse['data']['user'] != null) {
+          await StorageUtils.saveUserData(backendResponse['data']['user']);
+          // Try to save userId from userId or id
+          final userObj = backendResponse['data']['user'];
+          if (userObj['userId'] != null) {
+            await StorageUtils.saveUserId(userObj['userId']);
+          } else if (userObj['id'] != null) {
+            await StorageUtils.saveUserId(userObj['id']);
+          }
+          // AuthProvider update
+          final authProvider =
+              Provider.of<my_auth.AuthProvider>(context, listen: false);
+          await authProvider.updateUserData(userObj);
+        }
+
         return {
           'success': true,
           'message': 'Google Sign-In successful',

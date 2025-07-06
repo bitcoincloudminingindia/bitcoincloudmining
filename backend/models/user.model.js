@@ -46,7 +46,10 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
+    required: function () {
+      // Agar firebaseUid nahi hai to password required hai (normal signup)
+      return !this.firebaseUid;
+    },
     minlength: [6, 'Password must be at least 6 characters long'],
     select: false
   },
