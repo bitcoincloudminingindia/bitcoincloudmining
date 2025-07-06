@@ -112,9 +112,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return _adService.getBannerAd();
       }
 
-      // Load banner ad with timeout
+      // Load banner ad with shorter timeout
       await _adService.loadBannerAd().timeout(
-        const Duration(seconds: 8),
+        const Duration(seconds: 5), // Reduced from 8 to 5 seconds
         onTimeout: () {
           throw Exception('Banner ad loading timeout');
         },
@@ -187,9 +187,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return _adService.getNativeAd();
       }
 
-      // Load native ad with timeout
+      // Load native ad with shorter timeout
       await _adService.loadNativeAd().timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 7), // Reduced from 10 to 7 seconds
         onTimeout: () {
           throw Exception('Ad loading timeout');
         },
@@ -317,9 +317,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // Enhanced middle banner ad loading
   Future<Widget?> _getMiddleBannerAdWidget() async {
     try {
-      // Load banner ad with timeout
+      // Load banner ad with shorter timeout
       await _adService.loadBannerAd().timeout(
-        const Duration(seconds: 8),
+        const Duration(seconds: 5), // Reduced from 8 to 5 seconds
         onTimeout: () {
           throw Exception('Middle banner ad loading timeout');
         },
@@ -386,9 +386,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // Enhanced bottom banner ad loading
   Future<Widget?> _getBottomBannerAdWidget() async {
     try {
-      // Load banner ad with timeout
+      // Load banner ad with shorter timeout
       await _adService.loadBannerAd().timeout(
-        const Duration(seconds: 8),
+        const Duration(seconds: 5), // Reduced from 8 to 5 seconds
         onTimeout: () {
           throw Exception('Bottom banner ad loading timeout');
         },
@@ -455,9 +455,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // Enhanced bottom native ad loading
   Future<Widget?> _getBottomNativeAdWidget() async {
     try {
-      // Load native ad with timeout
+      // Load native ad with shorter timeout
       await _adService.loadNativeAd().timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 7), // Reduced from 10 to 7 seconds
         onTimeout: () {
           throw Exception('Bottom native ad loading timeout');
         },
@@ -514,7 +514,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               const Icon(Icons.ads_click, color: Colors.grey, size: 24),
               const SizedBox(height: 8),
               const Text(
-                'Bottom Ad Unavailable',
+                'Ad Unavailable',
                 style: TextStyle(
                   color: Colors.grey,
                   fontSize: 14,
@@ -530,6 +530,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
               ),
               const SizedBox(height: 8),
+              // Add refresh button
               GestureDetector(
                 onTap: () {
                   setState(() {
@@ -906,26 +907,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (earningsToAdd > 0) {
       try {
         final walletProvider = context.read<WalletProvider>();
-        await walletProvider.addEarning(
+
+        // Add earnings non-blocking for immediate UI update
+        walletProvider.addEarning(
           earningsToAdd,
           type: 'mining',
           description: 'Mining session earnings',
         );
 
-        // Show earnings notification
-        await SoundNotificationService.showRewardNotification(
+        // Show earnings notification immediately
+        SoundNotificationService.showRewardNotification(
           amount: earningsToAdd,
           type: 'mining',
         );
 
-        // Play earning sound for mining completion
-        await SoundNotificationService.playEarningSound();
+        // Play earning sound immediately
+        SoundNotificationService.playEarningSound();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'You earned \\${earningsToAdd.toStringAsFixed(18)} BTC from mining! Added to your wallet.',
+                'You earned ${earningsToAdd.toStringAsFixed(18)} BTC from mining! Added to your wallet.',
                 style: const TextStyle(fontSize: 16),
               ),
               backgroundColor: Colors.amber,
@@ -2549,22 +2552,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       try {
         final walletProvider =
             Provider.of<WalletProvider>(context, listen: false);
-        await walletProvider.addEarning(
+
+        // Add reward non-blocking for immediate UI update
+        walletProvider.addEarning(
           TAP_REWARD_RATE,
           type: 'tap',
           description: 'Tap reward',
         );
 
-        // Play different sci-fi sounds based on tap count
-        try {
-          if (_sciFiTapCount % 10 == 0) {
-            // Every 10th tap - achievement sound
-            await SoundNotificationService.playSciFiAchievementSound();
-          } else if (_sciFiTapCount % 5 == 0) {
-            // Every 5th tap - power up sound
-            await SoundNotificationService.playSciFiPowerUpSound();
-          }
-        } catch (soundError) {}
+        // Play different sci-fi sounds based on tap count (non-blocking)
+        if (_sciFiTapCount % 10 == 0) {
+          // Every 10th tap - achievement sound
+          SoundNotificationService.playSciFiAchievementSound();
+        } else if (_sciFiTapCount % 5 == 0) {
+          // Every 5th tap - power up sound
+          SoundNotificationService.playSciFiPowerUpSound();
+        }
 
         // Show different messages based on tap count
         if (mounted) {
@@ -2614,16 +2617,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 const double adReward = 0.000000000000000500;
                 final walletProvider =
                     Provider.of<WalletProvider>(context, listen: false);
-                await walletProvider.addEarning(
+
+                // Add ad reward non-blocking
+                walletProvider.addEarning(
                   adReward,
                   type: 'ad_reward',
                   description: 'Sci-Fi Ad Reward (5x Bonus)',
                 );
 
-                // Play sci-fi achievement sound safely
-                try {
-                  await SoundNotificationService.playSciFiAchievementSound();
-                } catch (soundError) {}
+                // Play sci-fi achievement sound (non-blocking)
+                SoundNotificationService.playSciFiAchievementSound();
 
                 if (mounted) {
                   Fluttertoast.showToast(

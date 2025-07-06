@@ -156,32 +156,46 @@ class WalletProvider extends ChangeNotifier {
         return;
       }
 
-      // Update balance on backend
-      final result = await _apiService.updateWalletBalance(newBalance);
+      // Update local balance immediately for better UX
+      _btcBalance = newBalance;
+      _balance = newBalance;
+      notifyListeners();
 
-      if (result['success']) {
-        final formattedBalance = result['data']['balance'] as String;
-        _btcBalance = double.parse(formattedBalance);
-        _balance = _btcBalance;
+      // Save to local storage first (fast operation)
+      final formattedBalance = NumberFormatter.formatBTCAmount(newBalance);
+      await StorageUtils.saveWalletBalance(formattedBalance);
 
-        // Save to local storage
-        await StorageUtils.saveWalletBalance(formattedBalance);
-
-        if (result['skipped'] == true) {
-        } else {}
-
-        // Save to local storage
-        await StorageUtils.saveWalletBalance(formattedBalance);
-
-        notifyListeners();
-      } else {}
+      // Update balance on backend in background (non-blocking)
+      _apiService.updateWalletBalance(newBalance).then((result) async {
+        if (result['success']) {
+          // Update with server response if different
+          if (result['data'] != null && result['data']['balance'] != null) {
+            final serverBalance =
+                double.parse(result['data']['balance'] as String);
+            if (serverBalance != newBalance) {
+              _btcBalance = serverBalance;
+              _balance = serverBalance;
+              await StorageUtils.saveWalletBalance(
+                  result['data']['balance'] as String);
+              notifyListeners();
+            }
+          }
+        } else {
+          // If server update fails, keep local balance (already updated)
+          print('Server balance update failed, keeping local balance');
+        }
+      }).catchError((e) {
+        // If server update fails, keep local balance (already updated)
+        print('Server balance update error: $e');
+      });
     } catch (e) {
-      // Try to recover
+      // Try to recover from local storage
       final String? currentBalanceStr = await StorageUtils.getWalletBalance();
       if (currentBalanceStr != null) {
         final currentBalance = double.parse(currentBalanceStr);
         if (currentBalance != _btcBalance) {
           _btcBalance = currentBalance;
+          _balance = currentBalance;
           notifyListeners();
         }
       }
@@ -208,17 +222,22 @@ class WalletProvider extends ChangeNotifier {
       String? description,
       Map<String, dynamic>? details}) async {
     try {
-      // Track earning event
+      // Track earning event (non-blocking)
       AnalyticsService.trackTransaction(
         type: type,
         amount: amount,
         currency: 'BTC',
       );
 
-      // Always fetch the latest balance from backend before adding
-      await loadWallet();
-      final latestBalance = _btcBalance;
-      final newBalance = latestBalance + amount;
+      // Calculate new balance locally first for immediate UI update
+      final currentBalance = _btcBalance;
+      final newBalance = currentBalance + amount;
+
+      // Update UI immediately for better user experience
+      _btcBalance = newBalance;
+      _balance = newBalance;
+      updateTotalEarned(amount);
+      notifyListeners();
 
       // Create transaction data
       final transactionData = {
@@ -231,25 +250,38 @@ class WalletProvider extends ChangeNotifier {
         if (details != null) 'details': details,
       };
 
-      // Send to backend
-      final result = await _apiService.addTransaction(transactionData);
+      // Send to backend in background (non-blocking)
+      _apiService.addTransaction(transactionData).then((result) async {
+        if (result['success']) {
+          // Update balance on server
+          await updateBalance(newBalance);
 
-      if (result['success']) {
-        await updateBalance(newBalance);
-        // Add to total earned
-        updateTotalEarned(amount);
+          // Show reward notification with sound
+          SoundNotificationService.showRewardNotification(
+            amount: amount,
+            type: type,
+          );
 
-        // Show reward notification with sound
-        SoundNotificationService.showRewardNotification(
-          amount: amount,
-          type: type,
-        );
+          // Play earning sound for immediate feedback
+          await SoundNotificationService.playEarningSound();
+        } else {
+          // If backend update fails, revert local balance
+          _btcBalance = currentBalance;
+          _balance = currentBalance;
+          updateTotalEarned(-amount); // Revert the addition
+          notifyListeners();
 
-        // Play earning sound for immediate feedback
-        await SoundNotificationService.playEarningSound();
-      } else {
-        throw Exception(result['message'] ?? 'Failed to add earning');
-      }
+          throw Exception(result['message'] ?? 'Failed to add earning');
+        }
+      }).catchError((e) {
+        // If backend update fails, revert local balance
+        _btcBalance = currentBalance;
+        _balance = currentBalance;
+        updateTotalEarned(-amount); // Revert the addition
+        notifyListeners();
+
+        print('Background earning update failed: $e');
+      });
     } catch (e) {
       rethrow;
     }

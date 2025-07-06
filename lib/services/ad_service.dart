@@ -12,8 +12,9 @@ class AdService {
   AdService._internal();
 
   // Ad configuration
-  static const int MAX_RETRY_ATTEMPTS = 3;
-  static const Duration RETRY_DELAY = Duration(seconds: 5);
+  static const int MAX_RETRY_ATTEMPTS = 2; // Reduced from 3 to 2
+  static const Duration RETRY_DELAY =
+      Duration(seconds: 3); // Reduced from 5 to 3
   static const Duration AD_CACHE_DURATION = Duration(minutes: 30);
   static const int MAX_OTHER_ADS_PER_HOUR = 20;
   static const Duration FREQUENCY_CAP_DURATION = Duration(hours: 1);
@@ -212,8 +213,11 @@ class AdService {
 
     final startTime = DateTime.now();
     int attempts = 0;
+    const int maxAttempts = 2; // Reduced from 3 to 2 attempts
+    const Duration retryDelay =
+        Duration(seconds: 3); // Reduced from 5 to 3 seconds
 
-    while (attempts < MAX_RETRY_ATTEMPTS) {
+    while (attempts < maxAttempts) {
       try {
         await loadFunction();
         final loadTime = DateTime.now().difference(startTime);
@@ -225,8 +229,8 @@ class AdService {
         attempts++;
         _adLoadAttempts[adType] = attempts;
 
-        if (attempts < MAX_RETRY_ATTEMPTS) {
-          await Future.delayed(RETRY_DELAY * attempts);
+        if (attempts < maxAttempts) {
+          await Future.delayed(retryDelay * attempts);
         }
       }
     }
@@ -299,19 +303,41 @@ class AdService {
     if (_isBannerAdLoaded && _bannerAd != null) {
       return getBannerAd();
     }
+
     // Try to load the banner ad
     await loadBannerAd();
-    // Wait for the ad to be loaded, polling every 100ms, up to 3 seconds
-    const int maxTries = 30;
+
+    // Wait for the ad to be loaded, polling every 50ms, up to 1.5 seconds (faster)
+    const int maxTries = 30; // 30 * 50ms = 1.5 seconds
     int tries = 0;
     while ((!_isBannerAdLoaded || _bannerAd == null) && tries < maxTries) {
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future.delayed(
+          const Duration(milliseconds: 50)); // Reduced from 100ms to 50ms
       tries++;
     }
+
     if (_isBannerAdLoaded && _bannerAd != null) {
       return getBannerAd();
     } else {
-      return const SizedBox(height: 0);
+      // Return a placeholder instead of empty widget for better UX
+      return Container(
+        height: 50,
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: const Center(
+          child: Text(
+            'Ad',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
     }
   }
 
@@ -428,8 +454,6 @@ class AdService {
       },
       (success) {
         _isNativeAdLoaded = success;
-        if (success) {
-        } else {}
       },
     );
     _startNativeAdAutoRefresh();

@@ -223,28 +223,15 @@ class BackgroundNotificationService {
 
   // Check if background notifications are enabled
   static Future<bool> isBackgroundNotificationsEnabled() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getBool('background_notifications_enabled') ?? true;
-    } catch (e) {
-      return true; // Default to enabled
-    }
+    // Always return true - background notifications are always enabled
+    return true;
   }
 
-  // Enable/disable background notifications
+  // Enable/disable background notifications (always enabled)
   static Future<void> setBackgroundNotificationsEnabled(bool enabled) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('background_notifications_enabled', enabled);
-
-      if (enabled) {
-        await _startBackgroundTask();
-      } else {
-        await stopBackgroundTask();
-      }
-    } catch (e) {
-      print('Set background notifications error: $e');
-    }
+    // Background notifications are always enabled, so we ignore the enabled parameter
+    // and always start the background task
+    await _startBackgroundTask();
   }
 
   // Get notification statistics
@@ -294,16 +281,7 @@ class BackgroundNotificationService {
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     try {
-      // Check if background notifications are enabled
-      final prefs = await SharedPreferences.getInstance();
-      final isEnabled =
-          prefs.getBool('background_notifications_enabled') ?? true;
-
-      if (!isEnabled) {
-        return Future.value(true);
-      }
-
-      // Show background notification
+      // Always show background notification (no need to check if enabled)
       await BackgroundNotificationService.showBackgroundNotification();
 
       // Increment notification counter

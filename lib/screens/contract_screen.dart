@@ -261,6 +261,81 @@ class _ContractScreenState extends State<ContractScreen>
     }
   }
 
+  // Enhanced native ad loading for contract screen
+  Future<Widget?> _getNativeAdWidget() async {
+    try {
+      // Check if ad is already loaded
+      if (_adService.isNativeAdLoaded) {
+        return _adService.getNativeAd();
+      }
+
+      // Load native ad with shorter timeout
+      await _adService.loadNativeAd().timeout(
+        const Duration(seconds: 7), // 7 seconds timeout
+        onTimeout: () {
+          throw Exception('Native ad loading timeout');
+        },
+      );
+
+      if (_adService.isNativeAdLoaded) {
+        return _adService.getNativeAd();
+      } else {
+        return Container(
+          height: 250,
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.ads_click, color: Colors.grey, size: 24),
+                SizedBox(height: 8),
+                Text(
+                  'Ad Unavailable',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Check your internet connection',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      return Container(
+        height: 250,
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: const Center(
+          child: Text(
+            'Ad',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -781,9 +856,15 @@ class _ContractScreenState extends State<ContractScreen>
               return Container(
                 height: 250,
                 margin: const EdgeInsets.symmetric(vertical: 8),
-                child: _adService.isNativeAdLoaded
-                    ? _adService.getNativeAd()
-                    : Container(
+                child: FutureBuilder<Widget?>(
+                  future: _getNativeAdWidget(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.done &&
+                        snapshot.data != null) {
+                      return snapshot.data!;
+                    } else if (snapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return Container(
                         decoration: BoxDecoration(
                           color: Colors.grey[100],
                           borderRadius: BorderRadius.circular(8),
@@ -814,7 +895,29 @@ class _ContractScreenState extends State<ContractScreen>
                             ],
                           ),
                         ),
-                      ),
+                      );
+                    } else {
+                      return Container(
+                        height: 250,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Ad',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
               );
             }
 

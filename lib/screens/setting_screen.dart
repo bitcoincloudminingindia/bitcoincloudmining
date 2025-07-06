@@ -608,101 +608,88 @@ class _SettingScreenState extends State<SettingScreen> {
 
   Widget _buildBackgroundNotificationsSection() {
     return _buildGradientCard(
-      child: FutureBuilder<bool>(
-        future:
-            BackgroundNotificationService.isBackgroundNotificationsEnabled(),
-        builder: (context, snapshot) {
-          final isEnabled = snapshot.data ?? true;
-
-          return InkWell(
-            onTap: _showBackgroundNotificationSettings,
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white.withAlpha(51),
-                    Colors.white.withAlpha(26),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+      child: InkWell(
+        onTap: _showBackgroundNotificationSettings,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.white.withAlpha(51),
+                Colors.white.withAlpha(26),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(51),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.schedule,
+                  color: Colors.white,
+                  size: 24,
                 ),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(51),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.schedule,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Background Notifications',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Get updates every 60 minutes',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isEnabled
-                          ? Colors.green.withAlpha(179)
-                          : Colors.red.withAlpha(179),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      isEnabled ? 'ON' : 'OFF',
-                      style: const TextStyle(
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Background Notifications',
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.chevron_right,
-                    color: Colors.white.withAlpha(179),
-                    size: 24,
-                  ),
-                ],
+                    SizedBox(height: 4),
+                    Text(
+                      'Automatic updates every 60 minutes',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green.withAlpha(179),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'ON',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right,
+                color: Colors.white.withAlpha(179),
+                size: 24,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   void _showBackgroundNotificationSettings() async {
     try {
-      final isEnabled = await BackgroundNotificationService
-          .isBackgroundNotificationsEnabled();
       final stats = await BackgroundNotificationService.getNotificationStats();
 
       showDialog(
@@ -721,9 +708,9 @@ class _SettingScreenState extends State<SettingScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Status: ${isEnabled ? "✅ Enabled" : "❌ Disabled"}',
-                style: const TextStyle(color: Colors.white, fontSize: 16),
+              const Text(
+                'Status: ✅ Always Enabled',
+                style: TextStyle(color: Colors.white, fontSize: 16),
               ),
               const SizedBox(height: 8),
               Text(
@@ -737,7 +724,7 @@ class _SettingScreenState extends State<SettingScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Background notifications are sent every 60 minutes to keep you updated about your mining progress, even when the app is closed.',
+                'Background notifications are automatically sent every 60 minutes to keep you updated about your mining progress, even when the app is closed.',
                 style: TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ],
@@ -746,50 +733,9 @@ class _SettingScreenState extends State<SettingScreen> {
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white70),
-              ),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                await BackgroundNotificationService
-                    .setBackgroundNotificationsEnabled(!isEnabled);
-                setState(() {}); // Refresh UI
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      isEnabled
-                          ? 'Background notifications disabled'
-                          : 'Background notifications enabled',
-                    ),
-                    backgroundColor: isEnabled ? Colors.orange : Colors.green,
-                  ),
-                );
-              },
-              child: Text(
-                isEnabled ? 'Disable' : 'Enable',
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                await BackgroundNotificationService
-                    .showBackgroundNotification();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                        'Test notification sent! Check your notification panel.'),
-                    backgroundColor: Colors.blue,
-                  ),
-                );
-              },
-              child: const Text(
-                'Test Now',
+                'Close',
                 style:
-                    TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ),
           ],
