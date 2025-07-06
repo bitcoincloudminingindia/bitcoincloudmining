@@ -483,77 +483,94 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
         ),
         body: SafeArea(
           bottom: true,
-          child: Stack(
-            children: [
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.teal, Colors.black],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.teal, Colors.black],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Stack(
+              children: [
+                // Top bar: Current Level, Taps, FAB
+                Positioned(
+                  top: 20,
+                  left: 20,
+                  child: Text(
+                    'Current Level: $_currentLevel',
+                    style: GoogleFonts.poppins(
+                        color: Colors.greenAccent, fontSize: 18),
                   ),
                 ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: 20,
-                      left: 20,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Current Level: $_currentLevel',
-                            style: GoogleFonts.poppins(
-                                color: Colors.greenAccent, fontSize: 18),
-                          ),
-                        ],
+                Positioned(
+                  top: 20,
+                  right: 20,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Color.fromRGBO(0, 0, 0, 0.7),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Taps: $_tapCount',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    Positioned(
-                      top: 20,
-                      right: 20,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color.fromRGBO(0, 0, 0, 0.7),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          'Taps: $_tapCount',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 12, // chhota font
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 80,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
+                  ),
+                ),
+                Positioned(
+                  top: 20,
+                  right: 70,
+                  child: FloatingActionButton(
+                    onPressed: _showLevelProgress,
+                    backgroundColor: Colors.tealAccent,
+                    mini: true,
+                    child: const Icon(Icons.list),
+                  ),
+                ),
+                // Main vertical content
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(height: 60),
+                        // Tap Object Box
+                        Container(
+                          width: boxWidth,
+                          height: boxHeight,
                           decoration: BoxDecoration(
-                            color: const Color.fromRGBO(0, 0, 0, 0.7),
-                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.black.withAlpha((255 * 0.2).toInt()),
+                            border: Border.all(color: Colors.yellow, width: 2),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          child: Text(
-                            'BTC: ${_btcScore.toStringAsFixed(18)}',
-                            style: GoogleFonts.poppins(
-                                color: Colors.yellowAccent, fontSize: 18),
+                          child: Stack(
+                            children: [
+                              for (int i = 0; i < _cryptoPositions.length; i++)
+                                Positioned(
+                                  left: _cryptoPositions[i].dx,
+                                  top: _cryptoPositions[i].dy,
+                                  child: GestureDetector(
+                                    onTap: () => _tapCrypto(i),
+                                    child: Icon(
+                                      Icons.currency_bitcoin,
+                                      size: objectSize,
+                                      color: Colors.yellowAccent,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 40, // pehle 160 tha, ab 40
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: ElevatedButton.icon(
+                        SizedBox(height: 24),
+                        // Watch Ad Button
+                        ElevatedButton.icon(
                           onPressed: _showRewardedInterstitialAd,
                           icon: const Icon(Icons.play_circle_fill,
                               color: Colors.white),
@@ -572,133 +589,105 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                             shadowColor: Colors.orange.withAlpha(100),
                           ),
                         ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 80,
-                      left: 20,
-                      child: FloatingActionButton(
-                        onPressed: _showLevelProgress,
-                        backgroundColor: Colors.tealAccent,
-                        child: const Icon(Icons.list),
-                      ),
-                    ),
-                    // Stack ke andar, sabse last me (bottom):
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        height: 60,
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: _adService.isBannerAdLoaded
-                            ? _adService.getBannerAd()
-                            : Container(
-                                color: Colors.black.withAlpha(13),
-                                child: const Center(
-                                  child: Text(
-                                    'Ad Space',
-                                    style: TextStyle(
-                                        color: Colors.white54, fontSize: 12),
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ),
-                    if (_isAdLoading)
-                      Container(
-                        color: Colors.black.withAlpha(179),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.orange),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Loading ad...',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    if (_adError != null)
-                      Positioned(
-                        top: 100,
-                        left: 20,
-                        right: 20,
-                        child: Container(
+                        SizedBox(height: 16),
+                        // BTC Wallet Section
+                        Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.red.withAlpha(200),
+                            color: Color.fromRGBO(0, 0, 0, 0.7),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.error_outline,
-                                  color: Colors.white),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _adError!,
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontSize: 14,
+                          child: Text(
+                            'BTC: ${_btcScore.toStringAsFixed(18)}',
+                            style: GoogleFonts.poppins(
+                                color: Colors.yellowAccent, fontSize: 18),
+                          ),
+                        ),
+                        SizedBox(height: 24),
+                        // Banner Ad
+                        Container(
+                          height: 60,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: _adService.isBannerAdLoaded
+                              ? _adService.getBannerAd()
+                              : Container(
+                                  color: Colors.black.withAlpha(13),
+                                  child: const Center(
+                                    child: Text(
+                                      'Ad Space',
+                                      style: TextStyle(
+                                          color: Colors.white54, fontSize: 12),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.close,
-                                    color: Colors.white),
-                                onPressed: () {
-                                  setState(() {
-                                    _adError = null;
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 60), // upar shift
-                  width: boxWidth,
-                  height: boxHeight,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withAlpha((255 * 0.2).toInt()),
-                    border: Border.all(color: Colors.yellow, width: 2),
-                    borderRadius: BorderRadius.circular(16),
+                        SizedBox(height: 16),
+                      ],
+                    ),
                   ),
-                  child: Stack(
-                    children: [
-                      for (int i = 0; i < _cryptoPositions.length; i++)
-                        Positioned(
-                          left: _cryptoPositions[i].dx,
-                          top: _cryptoPositions[i].dy,
-                          child: GestureDetector(
-                            onTap: () => _tapCrypto(i),
-                            child: Icon(
-                              Icons.currency_bitcoin,
-                              size: objectSize,
-                              color: Colors.yellowAccent,
+                ),
+                // Loading/Error overlays
+                if (_isAdLoading)
+                  Container(
+                    color: Colors.black.withAlpha(179),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const CircularProgressIndicator(
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.orange),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Loading ad...',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 16,
                             ),
                           ),
-                        ),
-                    ],
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ],
+                if (_adError != null)
+                  Positioned(
+                    top: 100,
+                    left: 20,
+                    right: 20,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withAlpha(200),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.white),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _adError!,
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            onPressed: () {
+                              setState(() {
+                                _adError = null;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

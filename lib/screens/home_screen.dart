@@ -747,8 +747,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         }
         await prefs.setString('miningStatus', _miningStatus);
         await prefs.setInt('lastMiningTime', _lastMiningTime);
-
-       
       } else {
         // Mining is not active, clear mining-related keys
         await prefs.setBool('isMining', false);
@@ -764,8 +762,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         await prefs.remove('powerBoostStartTime');
         await prefs.setString('miningStatus', 'Inactive');
         await prefs.remove('lastMiningTime');
-
-        
       }
     } catch (e) {
       // Optionally log error
@@ -1492,7 +1488,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 } else if (snapshot.connectionState ==
                     ConnectionState.waiting) {
                   return Container(
-                    height: 400,
+                    height: 350,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
@@ -1527,7 +1523,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   );
                 } else {
                   return Container(
-                    height: 400,
+                    height: 350,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
