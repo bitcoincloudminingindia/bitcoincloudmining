@@ -483,7 +483,7 @@ class AdService {
   Widget getNativeAd() {
     if (!_isNativeAdLoaded || _nativeAd == null) {
       return Container(
-        height: 250,
+        height: 400,
         decoration: BoxDecoration(
           color: Colors.grey[200],
           borderRadius: BorderRadius.circular(8),
@@ -533,7 +533,7 @@ class AdService {
     }
 
     return Container(
-      height: 250,
+      height: 400,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),

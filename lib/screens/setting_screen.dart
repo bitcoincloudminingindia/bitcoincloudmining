@@ -16,7 +16,6 @@ import '../constants/color_constants.dart';
 import '../providers/auth_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../screens/notification_screen.dart';
-import '../services/background_notification_service.dart';
 import '../utils/number_formatter.dart';
 
 // Define your premium colors.
@@ -690,7 +689,8 @@ class _SettingScreenState extends State<SettingScreen> {
 
   void _showBackgroundNotificationSettings() async {
     try {
-      final stats = await BackgroundNotificationService.getNotificationStats();
+      // BackgroundNotificationService se related koi bhi code hatao
+      // final stats = await BackgroundNotificationService.getNotificationStats();
 
       showDialog(
         context: context,
@@ -714,12 +714,12 @@ class _SettingScreenState extends State<SettingScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Total Notifications: ${stats['total_notifications']}',
+                'Total Notifications: 0', // Placeholder, as stats are removed
                 style: const TextStyle(color: Colors.white70, fontSize: 14),
               ),
               const SizedBox(height: 8),
               Text(
-                'Last Notification: ${stats['last_notification_time'] ?? 'Never'}',
+                'Last Notification: Never', // Placeholder
                 style: const TextStyle(color: Colors.white70, fontSize: 14),
               ),
               const SizedBox(height: 16),

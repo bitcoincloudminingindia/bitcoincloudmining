@@ -6,7 +6,6 @@ import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/network_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
-import 'package:bitcoin_cloud_mining/services/background_notification_service.dart';
 import 'package:bitcoin_cloud_mining/services/mining_notification_service.dart';
 import 'package:bitcoin_cloud_mining/services/sound_notification_service.dart';
 import 'package:bitcoin_cloud_mining/widgets/network_status_widget.dart';
@@ -749,13 +748,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         await prefs.setString('miningStatus', _miningStatus);
         await prefs.setInt('lastMiningTime', _lastMiningTime);
 
-        // Update background notification stats
-        final walletProvider = context.read<WalletProvider>();
-        final currentBalance = walletProvider.balance.toStringAsFixed(18);
-        await BackgroundNotificationService.updateUserStats(
-          balance: currentBalance,
-          hashRate: _hashRate.toStringAsFixed(1),
-        );
+       
       } else {
         // Mining is not active, clear mining-related keys
         await prefs.setBool('isMining', false);
@@ -772,13 +765,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         await prefs.setString('miningStatus', 'Inactive');
         await prefs.remove('lastMiningTime');
 
-        // Update background notification stats even when not mining
-        final walletProvider = context.read<WalletProvider>();
-        final currentBalance = walletProvider.balance.toStringAsFixed(18);
-        await BackgroundNotificationService.updateUserStats(
-          balance: currentBalance,
-          hashRate: _hashRate.toStringAsFixed(1),
-        );
+        
       }
     } catch (e) {
       // Optionally log error
@@ -1505,7 +1492,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 } else if (snapshot.connectionState ==
                     ConnectionState.waiting) {
                   return Container(
-                    height: 250,
+                    height: 400,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
@@ -1540,7 +1527,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   );
                 } else {
                   return Container(
-                    height: 250,
+                    height: 400,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],

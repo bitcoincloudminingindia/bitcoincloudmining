@@ -35,7 +35,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
   Timer? _adTimer;
   List<bool> _completedLevels = List.generate(1000, (_) => false);
   late WalletProvider _walletProvider;
-  final bool _isAdLoaded = false;
+
   bool _isAdLoading = false;
   String? _adError;
   bool _isDoubleMiningActive = false;
@@ -513,7 +513,8 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                       top: 20,
                       right: 20,
                       child: Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: const Color.fromRGBO(0, 0, 0, 0.7),
                           borderRadius: BorderRadius.circular(8),
@@ -521,7 +522,10 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                         child: Text(
                           'Taps: $_tapCount',
                           style: GoogleFonts.poppins(
-                              color: Colors.white, fontSize: 18),
+                            color: Colors.white,
+                            fontSize: 12, // chhota font
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),
@@ -545,7 +549,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                       ),
                     ),
                     Positioned(
-                      bottom: 160,
+                      bottom: 40, // pehle 160 tha, ab 40
                       left: 0,
                       right: 0,
                       child: Center(
@@ -579,17 +583,28 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                         child: const Icon(Icons.list),
                       ),
                     ),
-                    if (_isAdLoaded)
-                      Positioned(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        child: Container(
-                          height: 60,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: _adService.getBannerAd(),
-                        ),
+                    // Stack ke andar, sabse last me (bottom):
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 60,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: _adService.isBannerAdLoaded
+                            ? _adService.getBannerAd()
+                            : Container(
+                                color: Colors.black.withAlpha(13),
+                                child: const Center(
+                                  child: Text(
+                                    'Ad Space',
+                                    style: TextStyle(
+                                        color: Colors.white54, fontSize: 12),
+                                  ),
+                                ),
+                              ),
                       ),
+                    ),
                     if (_isAdLoading)
                       Container(
                         color: Colors.black.withAlpha(179),
@@ -656,6 +671,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
               ),
               Center(
                 child: Container(
+                  margin: const EdgeInsets.only(top: 60), // upar shift
                   width: boxWidth,
                   height: boxHeight,
                   decoration: BoxDecoration(
