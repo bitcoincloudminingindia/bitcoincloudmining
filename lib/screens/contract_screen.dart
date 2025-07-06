@@ -178,6 +178,7 @@ class _ContractScreenState extends State<ContractScreen>
 
   // Banner ad futures for 1 position only
   Future<Widget?>? _bannerAdFuture1;
+  Future<Widget?>? _nativeAdFuture;
 
   // Dedicated banner ad load functions
   void _loadBannerAd1() {
@@ -346,8 +347,7 @@ class _ContractScreenState extends State<ContractScreen>
     _loadEarnings();
     _restoreContractStates();
     _startUiUpdateTimer();
-    _loadNativeAd();
-    // Banner ad future
+    _nativeAdFuture = _getNativeAdWidget(); // Sirf ek baar set karo
     _loadBannerAd1();
   }
 
@@ -380,6 +380,10 @@ class _ContractScreenState extends State<ContractScreen>
       // Banner ad reload karo
       if (mounted) {
         setState(_loadBannerAd1);
+        // Native ad ko bhi force reload karo
+        setState(() {
+          _nativeAdFuture = _getNativeAdWidget();
+        });
       }
     }
   }
@@ -672,37 +676,7 @@ class _ContractScreenState extends State<ContractScreen>
 
   void _startUiUpdateTimer() {
     _uiUpdateTimer?.cancel();
-    _uiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {});
-      } else {
-        timer.cancel();
-      }
-    });
-  }
-
-  Future<void> _loadNativeAd() async {
-    try {
-      // Check if native ad is already loaded
-      if (_adService.isNativeAdLoaded) {
-        return;
-      }
-
-      // Load native ad with timeout
-      await _adService.loadNativeAd().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          throw Exception('Native ad loading timeout');
-        },
-      );
-    } catch (e) {
-      // Retry after 5 seconds on failure
-      Future.delayed(const Duration(seconds: 5), () {
-        if (mounted) {
-          _loadNativeAd();
-        }
-      });
-    }
+    // UI update timer hata diya, ab unnecessary setState nahi chalega
   }
 
   @override
@@ -757,12 +731,12 @@ class _ContractScreenState extends State<ContractScreen>
   Widget _buildFreeContractsView() {
     return StatefulBuilder(
       builder: (context, setState) {
-        // Update UI every second
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) {
-            setState(() {});
-          }
-        });
+        // Periodic UI update hata diya
+        // Future.delayed(const Duration(seconds: 1), () {
+        //   if (mounted) {
+        //     setState(() {});
+        //   }
+        // });
 
         // 1 native ad position: after 1st contract
         final nativeAdPositions = <int>{1};
@@ -857,7 +831,7 @@ class _ContractScreenState extends State<ContractScreen>
                 height: 250,
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 child: FutureBuilder<Widget?>(
-                  future: _getNativeAdWidget(),
+                  future: _nativeAdFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.done &&
                         snapshot.data != null) {
@@ -904,14 +878,56 @@ class _ContractScreenState extends State<ContractScreen>
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: Colors.grey[200]!),
                         ),
-                        child: const Center(
-                          child: Text(
-                            'Ad',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.ads_click,
+                                  color: Colors.grey, size: 24),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Ad Unavailable',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Check your internet connection',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              // Add refresh button
+                              GestureDetector(
+                                onTap: () {
+                                  // Sirf yaha se hi force reload karo
+                                  setState(() {
+                                    _nativeAdFuture = _getNativeAdWidget();
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.withAlpha(51),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'Retry',
+                                    style: TextStyle(
+                                      color: Colors.blue,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       );

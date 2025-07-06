@@ -78,6 +78,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // Counter for sci-fi object taps
   int _sciFiTapCount = 0;
   bool _isSciFiLoading = false;
+  int _sciFiCooldownSeconds = 0;
+  Timer? _sciFiCooldownTimer;
 
   // Periodic save timer to save earnings every 30 seconds
   Timer? _periodicSaveTimer;
@@ -99,13 +101,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<Widget?>? _middleBannerAdFuture;
 
   // Bottom section ad load functions
-  void _loadBottomNativeAd() {
+  void _loadBottomNativeAd({bool force = false}) {
+    // Agar already future set hai aur force nahi hai, to dobara setState mat karo
+    if (_bottomNativeAdFuture != null && !force) return;
     setState(() {
       _bottomNativeAdFuture = _getBottomNativeAdWidget();
     });
   }
 
-  void _loadMiddleBannerAd() {
+  void _loadMiddleBannerAd({bool force = false}) {
+    if (_middleBannerAdFuture != null && !force) return;
     setState(() {
       _middleBannerAdFuture = _getMiddleBannerAdWidget();
     });
@@ -261,9 +266,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               // Add refresh button
               GestureDetector(
                 onTap: () {
-                  setState(() {
-                    _bottomNativeAdFuture = _getBottomNativeAdWidget();
-                  });
+                  // Sirf yaha se hi force reload karo
+                  _loadBottomNativeAd(force: true);
                 },
                 child: Container(
                   padding:
@@ -298,21 +302,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _adService = AdService();
     Future.microtask(() async {
       await _adService.initialize();
-      // Load bottom section ads separately
+      // Load bottom section ads only once
       _loadBottomNativeAd();
       _loadMiddleBannerAd();
     });
-    _adUiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) setState(() {});
-    });
+    // _adUiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    //   if (mounted) setState(() {});
+    // });
     _initializeData();
     _loadUserProfile();
     _loadPercentage();
-
     _loadSavedSettings();
     _startAdReloadTimer();
     _startAdTimer();
-
     // Add scroll listener
     _scrollController.addListener(() {
       if (_scrollController.offset > 50 && !_isScrolled) {
@@ -321,18 +323,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         setState(() => _isScrolled = false);
       }
     });
-
     // Start mining UI update timer if mining is active
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_isMining && _miningStartTime != null) {
         _startMiningUiTimer();
       }
     });
-
-    // Start periodic save timer
     _startPeriodicSaveTimer();
-
-    // Start server connection simulation
     _startServerConnectionSimulation();
   }
 
@@ -366,18 +363,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       case AppLifecycleState.resumed:
         // App came to foreground
         if (mounted) {
-          setState(() {
-            // Reload bottom section ads separately
-            _loadBottomNativeAd();
-            _loadMiddleBannerAd();
-          });
+          // Ad ko sirf force reload karna ho to karo, warna nahi
+          _loadBottomNativeAd(force: true);
+          _loadMiddleBannerAd(force: true);
         }
         if (_isMining && _miningStartTime != null) {
           _updateMiningProgressFromElapsed();
           _startMiningUiTimer();
-
-          // Don't start notification here as it's already active from _startMiningProcess
-          // Just update the existing notification if needed
           if (MiningNotificationService.isActive) {
             final walletProvider = context.read<WalletProvider>();
             final currentBalance = walletProvider.balance.toStringAsFixed(18);
@@ -1423,9 +1415,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       width: 120 + _percentage.toDouble(),
                       height: 120 + _percentage.toDouble(),
                       decoration: BoxDecoration(
-                        color: _currentColor == Colors.blue
-                            ? Colors.blueAccent
-                            : Colors.purple,
+                        color: (_sciFiCooldownSeconds > 0)
+                            ? Colors.grey.shade400
+                            : (_currentColor == Colors.blue
+                                ? Colors.blueAccent
+                                : Colors.purple),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
@@ -1468,6 +1462,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       '$_sciFiTapCount',
                                       style: const TextStyle(
                                         color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                  if (_sciFiCooldownSeconds > 0) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Cooldown: $_sciFiCooldownSeconds s',
+                                      style: const TextStyle(
+                                        color: Colors.yellow,
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -2044,8 +2049,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _onSciFiObjectTapped() async {
-    // Prevent multiple taps while loading
-    if (_isSciFiLoading) return;
+    // Prevent multiple taps while loading or cooldown
+    if (_isSciFiLoading || _sciFiCooldownSeconds > 0) return;
 
     // Check if widget is still mounted
     if (!mounted) return;
@@ -2192,6 +2197,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (mounted) {
         setState(() {
           _isSciFiLoading = false;
+          _sciFiCooldownSeconds = 15;
+        });
+        _sciFiCooldownTimer?.cancel();
+        _sciFiCooldownTimer =
+            Timer.periodic(const Duration(seconds: 1), (timer) {
+          if (!mounted) {
+            timer.cancel();
+            return;
+          }
+          setState(() {
+            if (_sciFiCooldownSeconds > 0) {
+              _sciFiCooldownSeconds--;
+            } else {
+              timer.cancel();
+            }
+          });
         });
       }
     }
