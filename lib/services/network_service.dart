@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 class NetworkService {
   static final NetworkService _instance = NetworkService._internal();
@@ -143,6 +144,34 @@ class NetworkService {
     } catch (e) {
       return 'Unknown';
     }
+  }
+
+  /// Utility: Check internet (multi-host) + backend health with timeout & retry
+  Future<bool> checkInternetAndBackendHealth({int retries = 2}) async {
+    final hosts = ['google.com', 'cloudflare.com', 'example.com'];
+    bool internetOk = false;
+    for (final host in hosts) {
+      try {
+        final result = await InternetAddress.lookup(host)
+            .timeout(const Duration(seconds: 3));
+        if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+          internetOk = true;
+          break;
+        }
+      } catch (_) {}
+    }
+    if (!internetOk) return false;
+    // Backend health check
+    for (int attempt = 0; attempt <= retries; attempt++) {
+      try {
+        final response = await http
+            .get(Uri.parse('https://bitcoincloudmining.onrender.com/health'))
+            .timeout(const Duration(seconds: 4));
+        if (response.statusCode == 200) return true;
+      } catch (_) {}
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+    return false;
   }
 
   // Dispose resources

@@ -600,12 +600,12 @@ class _ContractScreenState extends State<ContractScreen>
   bool _canWatchAd() {
     if (_lastAdWatchTime == null) return true;
     final difference = DateTime.now().difference(_lastAdWatchTime!);
-    return difference.inSeconds >= 60;
+    return difference.inSeconds >= 300; // 5 minutes
   }
 
   void _startAdCooldown() {
     _lastAdWatchTime = DateTime.now();
-    _remainingCooldownSeconds = 60;
+    _remainingCooldownSeconds = 300; // 5 minutes
 
     _adCooldownTimer?.cancel();
     _adCooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -634,7 +634,7 @@ class _ContractScreenState extends State<ContractScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              'Please wait $_remainingCooldownSeconds seconds before watching another ad'),
+              'Please wait $_remainingCooldownSeconds seconds (${(_remainingCooldownSeconds / 60).ceil()} min) before watching another ad'),
           duration: const Duration(seconds: 2),
         ),
       );
