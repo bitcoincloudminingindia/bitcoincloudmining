@@ -320,4 +320,7 @@ class ApiConfig {
     'memory_warning':
         'Application is running low on memory. Please restart if issues persist.',
   };
+
+  // Image API endpoint
+  static String get imagesApi => '$baseUrl/api/images';
 }

@@ -117,7 +117,8 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     setState(() {
       _tapCount++;
       const double earnedAmount = 0.00000000000000001;
-      final double reward = _isDoubleMiningActive ? earnedAmount * 2 : earnedAmount;
+      final double reward =
+          _isDoubleMiningActive ? earnedAmount * 2 : earnedAmount;
       _btcScore += reward;
       _sessionEarnings += reward;
       _cryptoPositions[index] = Offset(

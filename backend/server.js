@@ -22,6 +22,7 @@ const rewardsRoutes = require('./routes/rewards');
 const referralRoutes = require('./routes/referral.routes');
 const transactionRoutes = require('./routes/transaction.routes');
 const marketRoutes = require('./routes/market.routes');
+const imagesRoutes = require('./routes/images.routes');
 const { authenticate } = require('./middleware/auth.middleware');
 const nodemailer = require('nodemailer');
 const mongoSanitize = require('express-mongo-sanitize');
@@ -163,6 +164,7 @@ app.use('/api/referral', referralRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/wallet/transactions', transactionRoutes);  // Keep existing wallet transactions route
 app.use('/api/market', marketRoutes);
+app.use('/api/images', imagesRoutes);
 
 // Handle transaction claim endpoint
 app.post('/api/transactions/claim', authenticate, (req, res) => {
@@ -400,6 +402,9 @@ const referralController = require('./controllers/referral.controller');
 // Add direct endpoints for referral list and earnings
 app.get('/api/referral/list', authenticate, referralController.getReferrals);
 app.get('/api/referral/earnings', authenticate, referralController.getReferralEarnings);
+
+// Static folder for images
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
 // Start server
 const PORT = process.env.PORT || 5000;
