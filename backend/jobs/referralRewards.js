@@ -36,7 +36,9 @@ const scheduleDailyRewards = () => {
       }
 
       // Get all active referrals with lean() for better performance
-      const referrals = await Referral.find({ status: 'active' }).lean();
+      const referrals = await Referral.find({ status: 'active' })
+        .populate('referred', 'walletBalance')
+        .lean();
 
       logger.info(`Found ${referrals.length} active referrals`);
 
@@ -52,21 +54,12 @@ const scheduleDailyRewards = () => {
             break;
           }
 
-          // Get referred user data
-          const referredUser = await User.findOne({ userId: referral.referredId });
-          if (!referredUser) {
-            logger.warn(`Skipping referral ${referral._id}: Referred user not found`);
+          if (!referral.referred) {
+            logger.warn(`Skipping referral ${referral._id}: No referred user`);
             continue;
           }
 
-          // Get referral document instance
-          const referralDoc = await Referral.findById(referral._id);
-          if (!referralDoc) {
-            logger.warn(`Skipping referral ${referral._id}: Referral document not found`);
-            continue;
-          }
-
-          const reward = await referralDoc.calculateDailyReward(referredUser);
+          const reward = await referral.calculateDailyReward(referral.referred);
 
           if (reward > 0) {
             logger.info(`Added daily reward of ${reward} BTC for referral ${referral._id}`);

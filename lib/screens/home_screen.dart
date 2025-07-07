@@ -8,7 +8,6 @@ import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:bitcoin_cloud_mining/services/mining_notification_service.dart';
 import 'package:bitcoin_cloud_mining/services/sound_notification_service.dart';
-import 'package:bitcoin_cloud_mining/widgets/network_speed_indicator.dart';
 import 'package:bitcoin_cloud_mining/widgets/network_status_widget.dart';
 import 'package:bitcoin_cloud_mining/widgets/server_connection_animation.dart';
 import 'package:bitcoin_cloud_mining/widgets/world_map_widget.dart';
@@ -1048,9 +1047,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Network Speed Indicator
-              const NetworkSpeedIndicator(),
-              const SizedBox(height: 8),
               GestureDetector(
                 onTap: _navigateToWalletScreen,
                 child: Row(

@@ -115,9 +115,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Add request timeout middleware - Reduced for better performance
+// Add request timeout middleware
 app.use((req, res, next) => {
-  req.setTimeout(15000, () => { // Reduced from 30000 to 15000 ms
+  req.setTimeout(30000, () => {
     logger.error('Request timeout');
     res.status(408).json({
       success: false,

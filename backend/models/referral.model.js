@@ -55,14 +55,6 @@ const referralSchema = new Schema({
     type: Date,
     default: null
   },
-  rewardDaysCount: {
-    type: Number,
-    default: 0
-  },
-  rewardEndDate: {
-    type: Date,
-    default: null
-  },
   earningsHistory: [{
     amount: {
       type: Number,
@@ -102,6 +94,10 @@ const referralSchema = new Schema({
     default: Date.now
   },
   updatedAt: {
+    type: Date,
+    default: Date.now
+  },
+  rewardStartDate: {
     type: Date,
     default: Date.now
   }
@@ -413,32 +409,24 @@ referralSchema.methods.calculateTotalClaims = function (currency) {
 // Method to calculate daily reward from referred user's balance
 referralSchema.methods.calculateDailyReward = async function (referredUser) {
   try {
-    // 30 din se zyada reward nahi dena
-    if ((this.rewardDaysCount || 0) >= 30) {
+    // 30 din ka check
+    const now = new Date();
+    const start = this.rewardStartDate || this.createdAt || now;
+    const daysSinceStart = Math.floor((now - start) / (1000 * 60 * 60 * 24));
+    if (daysSinceStart >= 30) {
+      console.log('30 din ho gaye, ab daily reward nahi milega');
       return 0;
     }
-    // Get referred user's current wallet balance from Wallet model
-    const Wallet = mongoose.model('Wallet');
-    const userWallet = await Wallet.findOne({ userId: referredUser.userId });
-    const referredUserBalance = userWallet ? parseFloat(userWallet.balance) || 0 : 0;
-
+    // Get referred user's current wallet balance
+    const referredUserBalance = parseFloat(referredUser.walletBalance) || 0;
     // Calculate 1% of the balance
     const dailyReward = referredUserBalance * 0.01;
-
     if (dailyReward <= 0) {
       console.log('No daily reward: Referred user has no balance');
       return 0;
     }
-
-    // Add reward to pending earnings (not direct earnings)
-    this.pendingEarnings = (this.pendingEarnings || 0) + dailyReward;
-    this.rewardDaysCount = (this.rewardDaysCount || 0) + 1;
-    // Agar 30 din ho gaye to end date set karo aur status complete karo
-    if (this.rewardDaysCount === 30) {
-      this.rewardEndDate = new Date();
-      this.status = 'completed';
-    }
-
+    // Add reward to earnings
+    this.earnings = (this.earnings || 0) + dailyReward;
     // Add to earnings history
     this.earningsHistory.push({
       amount: dailyReward,
@@ -446,10 +434,8 @@ referralSchema.methods.calculateDailyReward = async function (referredUser) {
       timestamp: new Date(),
       referredUserBalance: referredUserBalance
     });
-
     await this.save();
     console.log(`Added daily reward of ${dailyReward} BTC to referral ${this._id}`);
-
     return dailyReward;
   } catch (error) {
     console.error('Error calculating daily reward:', error);

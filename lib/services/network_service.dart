@@ -38,9 +38,7 @@ class NetworkService {
 
       // Start periodic connection check
       _startPeriodicConnectionCheck();
-
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   // Check current connection status
@@ -71,27 +69,33 @@ class NetworkService {
     _updateConnectionStatus(isConnected);
   }
 
-  // Optimized connection check with reduced overhead
+  // Check if we can actually reach the internet
   Future<bool> _canReachInternet() async {
     try {
       if (kIsWeb) {
         // For web, we'll assume connection is available
         return true;
       }
-
-      // Use a faster DNS lookup with shorter timeout
-      final result = await InternetAddress.lookup('8.8.8.8')
-          .timeout(const Duration(seconds: 3)); // Reduced timeout
-      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-    } catch (e) {
-      // Try alternative DNS if first fails
+      // Try to reach a reliable host with timeout
       try {
-        final result = await InternetAddress.lookup('1.1.1.1')
-            .timeout(const Duration(seconds: 2)); // Even shorter timeout
-        return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-      } catch (e) {
-        return false;
-      }
+        final result = await InternetAddress.lookup('google.com')
+            .timeout(const Duration(seconds: 3));
+        if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+          return true;
+        }
+      } catch (_) {}
+      // Dusra host try karo agar pehla fail ho jaye
+      try {
+        final result2 = await InternetAddress.lookup('cloudflare.com')
+            .timeout(const Duration(seconds: 3));
+        if (result2.isNotEmpty && result2[0].rawAddress.isNotEmpty) {
+          return true;
+        }
+      } catch (_) {}
+      // Dono fail ho gaye
+      return false;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -100,15 +104,14 @@ class NetworkService {
     if (_isConnected != isConnected) {
       _isConnected = isConnected;
       _connectionStatusController.add(isConnected);
-
     }
   }
 
-  // Start periodic connection check - Reduced frequency for better performance
+  // Start periodic connection check
   void _startPeriodicConnectionCheck() {
     _connectionCheckTimer?.cancel();
     _connectionCheckTimer =
-        Timer.periodic(const Duration(seconds: 30), (timer) { // Increased from 10 to 30 seconds
+        Timer.periodic(const Duration(seconds: 10), (timer) {
       _checkConnectionStatus();
     });
   }
@@ -119,12 +122,12 @@ class NetworkService {
     return _isConnected;
   }
 
-  // Get connection type with optimization
+  // Get connection type
   Future<String> getConnectionType() async {
     try {
       final results = await _connectivity.checkConnectivity();
-      final result = results.isNotEmpty ? results.first : ConnectivityResult.none;
-      
+      final result =
+          results.isNotEmpty ? results.first : ConnectivityResult.none;
       switch (result) {
         case ConnectivityResult.wifi:
           return 'WiFi';
@@ -132,6 +135,8 @@ class NetworkService {
           return 'Mobile Data';
         case ConnectivityResult.ethernet:
           return 'Ethernet';
+        case ConnectivityResult.none:
+          return 'No Connection';
         default:
           return 'Unknown';
       }
@@ -142,8 +147,8 @@ class NetworkService {
 
   // Dispose resources
   void dispose() {
-    _connectionCheckTimer?.cancel();
     _connectivitySubscription?.cancel();
+    _connectionCheckTimer?.cancel();
     _connectionStatusController.close();
   }
 }

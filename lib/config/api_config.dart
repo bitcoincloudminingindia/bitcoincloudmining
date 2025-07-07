@@ -54,45 +54,26 @@ class ApiConfig {
     return [baseUrl];
   }
 
-  /// 🌐 Get working URL with optimized DNS fallback
+  /// 🌐 Get working URL with DNS fallback
   static Future<String> getWorkingUrl() async {
-    // Try primary URL first with shorter timeout
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/health'),
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Origin': kIsWeb
-              ? 'https://bitcoincloudmining.onrender.com'
-              : 'http://localhost:3000',
-        },
-      ).timeout(const Duration(seconds: 5)); // Reduced from 10 to 5 seconds
+    for (String url in fallbackUrls) {
+      try {
+        final response = await http.get(
+          Uri.parse('$url/health'),
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Origin': kIsWeb
+                ? 'https://bitcoincloudmining.onrender.com'
+                : 'http://localhost:3000',
+          },
+        ).timeout(const Duration(seconds: 10));
 
-      if (response.statusCode == 200) {
-        return baseUrl;
-      }
-    } catch (e) {
-      // Only try fallback URLs if primary fails
-      for (String url in fallbackUrls.skip(1)) { // Skip first URL as it's the same as baseUrl
-        try {
-          final response = await http.get(
-            Uri.parse('$url/health'),
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              'Origin': kIsWeb
-                  ? 'https://bitcoincloudmining.onrender.com'
-                  : 'http://localhost:3000',
-            },
-          ).timeout(const Duration(seconds: 3)); // Even shorter timeout for fallbacks
-
-          if (response.statusCode == 200) {
-            return url;
-          }
-        } catch (e) {
-          continue;
+        if (response.statusCode == 200) {
+          return url;
         }
+      } catch (e) {
+        continue;
       }
     }
 
@@ -104,27 +85,27 @@ class ApiConfig {
   static const String apiVersion = ''; // No prefix
   static bool get isDebugMode => !kReleaseMode;
 
-  // API Timeout Configuration - Reduced for better performance
-  static const int connectionTimeout = 15000; // 15 seconds (reduced from 30)
-  static const int receiveTimeout = 15000; // 15 seconds (reduced from 30)
-  static const int sendTimeout = 15000; // 15 seconds (reduced from 30)
+  // API Timeout Configuration
+  static const int connectionTimeout = 30000; // 30 seconds
+  static const int receiveTimeout = 30000; // 30 seconds
+  static const int sendTimeout = 30000; // 30 seconds
 
-  // Retry Configuration - Reduced retries for faster failure detection
-  static const int maxRetries = 1; // Reduced from 3 to 1
-  static const Duration retryDelay = Duration(seconds: 1); // Reduced from 2 to 1
+  // Retry Configuration
+  static const int maxRetries = 3;
+  static const Duration retryDelay = Duration(seconds: 2);
 
-  // Connection retry settings - Optimized
-  static const Duration connectionRetryInterval = Duration(seconds: 1); // Reduced from 2
-  static const int maxConnectionRetries = 2; // Reduced from 3 to 2
+  // Connection retry settings
+  static const Duration connectionRetryInterval = Duration(seconds: 2);
+  static const int maxConnectionRetries = 3;
 
-  // Health Check Configuration - Reduced frequency
-  static const Duration healthCheckTimeout = Duration(seconds: 5); // Reduced from 10
-  static const Duration healthCheckTotalTimeout = Duration(seconds: 15); // Reduced from 30
-  static const int maxHealthCheckRetries = 1; // Reduced from 2 to 1
-  static const Duration healthCheckBaseDelay = Duration(seconds: 1); // Reduced from 2
+  // Health Check Configuration
+  static const Duration healthCheckTimeout = Duration(seconds: 10);
+  static const Duration healthCheckTotalTimeout = Duration(seconds: 30);
+  static const int maxHealthCheckRetries = 2;
+  static const Duration healthCheckBaseDelay = Duration(seconds: 2);
 
-  // Health check settings - Increased interval to reduce overhead
-  static const Duration healthCheckInterval = Duration(seconds: 60); // Increased from 30 to 60
+  // Health check settings
+  static const Duration healthCheckInterval = Duration(seconds: 30);
 
   // Get platform name safely
   static String get platformName {

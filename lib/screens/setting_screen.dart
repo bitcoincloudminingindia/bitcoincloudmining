@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:bitcoin_cloud_mining/config/api_config.dart';
 import 'package:bitcoin_cloud_mining/screens/about_us_screen.dart';
 import 'package:bitcoin_cloud_mining/screens/contact_support_screen.dart';
-import 'package:bitcoin_cloud_mining/screens/network_speed_screen.dart';
 import 'package:bitcoin_cloud_mining/screens/terms_condition_screen.dart';
 import 'package:bitcoin_cloud_mining/services/api_service.dart';
 import 'package:bitcoin_cloud_mining/services/google_auth_service.dart';
@@ -220,10 +219,7 @@ class _SettingScreenState extends State<SettingScreen> {
           GoogleAuthService().signOut(),
         ]);
 
-        // Step 4: Clear API cache
-        ApiService.clearCache();
-
-        // Step 5: Show success message
+        // Step 4: Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -803,16 +799,6 @@ class _SettingScreenState extends State<SettingScreen> {
                 );
               }
             },
-          ),
-          const Divider(height: 1),
-          _buildSupportTile(
-            icon: Icons.speed,
-            title: 'Network Speed Test',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const NetworkSpeedScreen()),
-            ),
           ),
         ],
       ),
