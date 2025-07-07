@@ -232,13 +232,9 @@ class _SettingScreenState extends State<SettingScreen> {
           // Wait for snackbar to show
           await Future.delayed(const Duration(seconds: 1));
 
-          // Set global flag to prevent background API calls after logout
-          // ignore: invalid_use_of_visible_for_testing_member, invalid_use_of_protected_member
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            // Forcefully redirect to launch/login screen
-            Navigator.of(context)
-                .pushNamedAndRemoveUntil('/launch', (route) => false);
-          });
+          // Logout ke baad sida launch screen pe bhejo, aur purana stack hata do
+          Navigator.of(context)
+              .pushNamedAndRemoveUntil('/launch', (route) => false);
         }
       } catch (e) {
         // Close loading indicator if open

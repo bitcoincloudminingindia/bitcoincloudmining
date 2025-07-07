@@ -91,6 +91,7 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
 
   Future<void> _loadUserData() async {
     try {
+      print('Loading user profile...');
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final walletProvider =
           Provider.of<WalletProvider>(context, listen: false);
@@ -101,6 +102,7 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
       });
 
       await authProvider.loadUserProfile();
+      print('User profile loaded.');
       if (!mounted) return;
 
       // 2. Load and sync wallet data
@@ -118,18 +120,23 @@ class _LoadingUserDataScreenState extends State<LoadingUserDataScreen> {
       }
 
       // 3. Load wallet balance from server
+      print('Loading wallet from server...');
       await walletProvider.loadWallet();
+      print('Wallet loaded.');
 
       if (!mounted) return;
 
       // 4. All data loaded, navigate to navigation screen
+      print('All data loaded, navigating to /navigation');
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/navigation');
       }
-    } catch (e) {
+    } catch (e, stack) {
+      print('Error loading user data: $e');
+      print(stack);
       if (mounted) {
         setState(() {
-          _errorMessage = 'Error loading user data: ${e.toString()}';
+          _errorMessage = 'Error loading user data: \n${e.toString()}';
           _isLoading = false;
         });
       }

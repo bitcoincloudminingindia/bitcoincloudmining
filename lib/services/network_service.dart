@@ -117,6 +117,19 @@ class NetworkService {
     });
   }
 
+  // Pause periodic connection check
+  void pausePeriodicCheck() {
+    _connectionCheckTimer?.cancel();
+    _connectionCheckTimer = null;
+  }
+
+  // Resume periodic connection check
+  void resumePeriodicCheck() {
+    if (_connectionCheckTimer == null) {
+      _startPeriodicConnectionCheck();
+    }
+  }
+
   // Force check connection status
   Future<bool> checkConnection() async {
     await _checkConnectionStatus();

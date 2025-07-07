@@ -176,6 +176,10 @@ class _ContractScreenState extends State<ContractScreen>
   int _remainingCooldownSeconds = 0;
   bool _isAdInitialized = false;
 
+  // SharedPrefs keys
+  static const String _lastAdWatchTimeKey = 'contract_last_ad_watch_time';
+  static const String _remainingCooldownKey = 'contract_remaining_cooldown';
+
   // Banner ad futures for 1 position only
   Future<Widget?>? _bannerAdFuture1;
   Future<Widget?>? _nativeAdFuture;
@@ -340,10 +344,66 @@ class _ContractScreenState extends State<ContractScreen>
     _loadWatchAdsCounts();
     _loadEarnings();
     _restoreContractStates();
+    _restoreAdCooldown();
     _startUiUpdateTimer();
     setState(() {
       _nativeAdFuture = _getNativeAdWidget();
       _bannerAdFuture1 = _getContractBannerAdWidget();
+    });
+  }
+
+  Future<void> _restoreAdCooldown() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastAdWatchMillis = prefs.getInt(_lastAdWatchTimeKey);
+    final remainingCooldown = prefs.getInt(_remainingCooldownKey) ?? 0;
+    if (lastAdWatchMillis != null) {
+      _lastAdWatchTime = DateTime.fromMillisecondsSinceEpoch(lastAdWatchMillis);
+      final diff = DateTime.now().difference(_lastAdWatchTime!).inSeconds;
+      if (diff < 600) {
+        _remainingCooldownSeconds = 600 - diff;
+        _startAdCooldown(resume: true);
+      } else {
+        _lastAdWatchTime = null;
+        _remainingCooldownSeconds = 0;
+      }
+    } else if (remainingCooldown > 0) {
+      _remainingCooldownSeconds = remainingCooldown;
+      _startAdCooldown(resume: true);
+    }
+  }
+
+  void _saveAdCooldown() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_lastAdWatchTime != null) {
+      await prefs.setInt(
+          _lastAdWatchTimeKey, _lastAdWatchTime!.millisecondsSinceEpoch);
+    }
+    await prefs.setInt(_remainingCooldownKey, _remainingCooldownSeconds);
+  }
+
+  void _clearAdCooldown() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_lastAdWatchTimeKey);
+    await prefs.remove(_remainingCooldownKey);
+  }
+
+  void _startAdCooldown({bool resume = false}) {
+    if (!resume) {
+      _lastAdWatchTime = DateTime.now();
+      _remainingCooldownSeconds = 600; // 10 minutes
+      _saveAdCooldown();
+    }
+    _adCooldownTimer?.cancel();
+    _adCooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        if (_remainingCooldownSeconds > 0) {
+          _remainingCooldownSeconds--;
+          _saveAdCooldown();
+        } else {
+          timer.cancel();
+          _clearAdCooldown();
+        }
+      });
     });
   }
 
@@ -601,22 +661,6 @@ class _ContractScreenState extends State<ContractScreen>
     if (_lastAdWatchTime == null) return true;
     final difference = DateTime.now().difference(_lastAdWatchTime!);
     return difference.inSeconds >= 600; // 10 minutes
-  }
-
-  void _startAdCooldown() {
-    _lastAdWatchTime = DateTime.now();
-    _remainingCooldownSeconds = 600; // 10 minutes
-
-    _adCooldownTimer?.cancel();
-    _adCooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        if (_remainingCooldownSeconds > 0) {
-          _remainingCooldownSeconds--;
-        } else {
-          timer.cancel();
-        }
-      });
-    });
   }
 
   Future<void> watchAd(int index) async {

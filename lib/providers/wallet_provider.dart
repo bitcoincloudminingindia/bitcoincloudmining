@@ -27,6 +27,12 @@ class WalletProvider extends ChangeNotifier {
   String _selectedCurrency = 'USD';
   bool _isSyncing = false;
 
+  // App background/foreground state
+  bool _isAppInBackground = false;
+  set isAppInBackground(bool value) {
+    _isAppInBackground = value;
+  }
+
   // Default rates map
   static const Map<String, double> _defaultRates = {
     'USD': 1.0,
@@ -113,6 +119,10 @@ class WalletProvider extends ChangeNotifier {
 
   Future<void> loadWallet() async {
     try {
+      // Agar app background me hai to server se data load na karo
+      if (_isAppInBackground) {
+        return;
+      }
       // FIX: Only load wallet balance from server, do not initialize
       final double serverBalance = await _walletService.getWalletBalance();
       _btcBalance = serverBalance;

@@ -16,6 +16,7 @@ import 'package:bitcoin_cloud_mining/screens/wallet_screen.dart';
 import 'package:bitcoin_cloud_mining/services/analytics_service.dart';
 import 'package:bitcoin_cloud_mining/services/api_service.dart';
 import 'package:bitcoin_cloud_mining/services/mining_notification_service.dart';
+import 'package:bitcoin_cloud_mining/services/network_service.dart';
 import 'package:bitcoin_cloud_mining/services/notification_service.dart';
 import 'package:bitcoin_cloud_mining/utils/enums.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -251,7 +252,20 @@ class _MyAppState extends State<MyApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // OverlayService se related code hata diya gaya hai
+    final walletProvider = navigatorKey.currentContext != null
+        ? Provider.of<WalletProvider>(navigatorKey.currentContext!,
+            listen: false)
+        : null;
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      // App background me gaya, network check band karo
+      NetworkService().pausePeriodicCheck();
+      if (walletProvider != null) walletProvider.isAppInBackground = true;
+    } else if (state == AppLifecycleState.resumed) {
+      // App wapas aayi, network check fir se start karo
+      NetworkService().resumePeriodicCheck();
+      if (walletProvider != null) walletProvider.isAppInBackground = false;
+    }
   }
 
   @override

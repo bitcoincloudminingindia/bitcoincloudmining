@@ -48,13 +48,6 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     super.initState();
     _loadGameData();
     _adService.loadBannerAd();
-    _adService.loadRewardedInterstitialAd();
-    // 5 minute ka timer: har 5 minute me ad show
-    _adTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
-      if (mounted) {
-        _showRewardedInterstitialAd();
-      }
-    });
     // Pending ad level load karo
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final prefs = await SharedPreferences.getInstance();
@@ -124,8 +117,9 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     setState(() {
       _tapCount++;
       const double earnedAmount = 0.00000000000000001;
-      _btcScore += earnedAmount;
-      _sessionEarnings += earnedAmount;
+      final double reward = _isDoubleMiningActive ? earnedAmount * 2 : earnedAmount;
+      _btcScore += reward;
+      _sessionEarnings += reward;
       _cryptoPositions[index] = Offset(
         _random.nextDouble() * (boxWidth - objectSize),
         _random.nextDouble() * (boxHeight - objectSize),
@@ -282,84 +276,6 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     );
   }
 
-  Future<void> _showRewardedInterstitialAd({int? forceForLevel}) async {
-    if (_isAdLoading) return;
-    setState(() {
-      _isAdLoading = true;
-    });
-    try {
-      if (!_adService.isRewardedInterstitialAdLoaded) {
-        await _adService.loadRewardedInterstitialAd();
-      }
-      if (mounted) {
-        await _adService.showRewardedInterstitialAd(
-          onRewarded: (amount) async {
-            // Ad dekhne par 5 minute ke liye double mining activate karo
-            if (!_isDoubleMiningActive) {
-              setState(() {
-                _isDoubleMiningActive = true;
-              });
-              _startDoubleMiningTimer();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '🎉 Double mining activated for 5 minutes! All rewards are now 2x.',
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    backgroundColor: Colors.green,
-                    duration: const Duration(seconds: 3),
-                  ),
-                );
-              }
-            }
-            // Agar forceForLevel diya hai to ad gating hatao
-            if (forceForLevel != null) {
-              final prefs = await SharedPreferences.getInstance();
-              setState(() {
-                _pendingAdLevel = null;
-              });
-              prefs.remove('pendingAdLevel');
-            }
-          },
-          onAdDismissed: () {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Please watch the full ad to continue.'),
-                  backgroundColor: Colors.orange,
-                  duration: Duration(seconds: 2),
-                ),
-              );
-              // Ad dismiss hua bina reward ke, firse dialog dikhao
-              if (forceForLevel != null) {
-                Future.delayed(const Duration(milliseconds: 500), () {
-                  _showWatchAdToContinueDialog(forceForLevel);
-                });
-              }
-            }
-          },
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to show ad. Please try again later.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isAdLoading = false;
-        });
-      }
-    }
-  }
-
   void _startDoubleMiningTimer() {
     _doubleMiningTimer?.cancel();
     _doubleMiningTimer = Timer(const Duration(minutes: 5), () {
@@ -478,6 +394,11 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
       if (mounted) {
         await _adService.showRewardedAd(
           onRewarded: (amount) async {
+            // Double mining activate karo
+            setState(() {
+              _isDoubleMiningActive = true;
+            });
+            _startDoubleMiningTimer();
             // Ad dekhne ke baad gating hatao
             final prefs = await SharedPreferences.getInstance();
             setState(() {
@@ -655,7 +576,8 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
                         SizedBox(height: 12),
                         // Watch Ad Button
                         ElevatedButton.icon(
-                          onPressed: _showRewardedInterstitialAd,
+                          onPressed: () =>
+                              _showRewardedAdForLevel(_currentLevel),
                           icon: const Icon(Icons.play_circle_fill,
                               color: Colors.white),
                           label: const Text(

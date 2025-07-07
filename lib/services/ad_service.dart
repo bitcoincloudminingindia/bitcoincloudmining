@@ -23,16 +23,12 @@ class AdService {
   final Map<String, Map<String, String>> _adUnitIds = {
     'android': {
       'banner': 'ca-app-pub-3537329799200606/2028008282', // Home_Banner_Ad
-      'rewardedInterstitial':
-          'ca-app-pub-3537329799200606/5712102428', // RewardedInterstitial_GameOver
       'rewarded': 'ca-app-pub-3537329799200606/7827129874', // Rewarded_BTC_Ad
       'native':
           'ca-app-pub-3537329799200606/2260507229', // Native_Contract_Card
     },
     'ios': {
       'banner': 'ca-app-pub-3537329799200606/2028008282', // Home_Banner_Ad
-      'rewardedInterstitial':
-          'ca-app-pub-3537329799200606/5712102428', // RewardedInterstitial_GameOver
       'rewarded': 'ca-app-pub-3537329799200606/7827129874', // Rewarded_BTC_Ad
       'native':
           'ca-app-pub-3537329799200606/2260507229', // Native_Contract_Card
@@ -75,10 +71,6 @@ class AdService {
   int _nativeAdImpressionCount = 0;
   DateTime? _nativeAdFirstLoadTime;
   double _nativeAdAverageLoadTime = 0.0;
-
-  RewardedInterstitialAd? _rewardedInterstitialAd;
-  bool _isRewardedInterstitialAdLoaded = false;
-  bool get isRewardedInterstitialAdLoaded => _isRewardedInterstitialAdLoaded;
 
   // Getters for metrics
   Map<String, dynamic> get adMetrics => {
@@ -761,8 +753,6 @@ class AdService {
       'ca-app-pub-3537329799200606/7827129874'; // Rewarded_BTC_Ad
   static const String nativeAdUnitId =
       'ca-app-pub-3537329799200606/2260507229'; // Native_Contract_Card
-  static const String rewardedInterstitialAdUnitId =
-      'ca-app-pub-3537329799200606/5712102428'; // RewardedInterstitial_GameOver
 
   Future<RewardedAd?> getRewardedAd() async {
     if (_rewardedAd != null) {
@@ -825,71 +815,6 @@ class AdService {
     }
 
     return result;
-  }
-
-  Future<void> loadRewardedInterstitialAd() async {
-    _isRewardedInterstitialAdLoaded = false;
-    try {
-      final adUnitId = rewardedInterstitialAdUnitId;
-      await RewardedInterstitialAd.load(
-        adUnitId: adUnitId,
-        request: const AdRequest(),
-        rewardedInterstitialAdLoadCallback: RewardedInterstitialAdLoadCallback(
-          onAdLoaded: (ad) {
-            _rewardedInterstitialAd = ad;
-            _isRewardedInterstitialAdLoaded = true;
-            ad.fullScreenContentCallback = FullScreenContentCallback(
-              onAdDismissedFullScreenContent: (ad) {
-                ad.dispose();
-                _isRewardedInterstitialAdLoaded = false;
-                loadRewardedInterstitialAd();
-              },
-              onAdFailedToShowFullScreenContent: (ad, error) {
-                ad.dispose();
-                _isRewardedInterstitialAdLoaded = false;
-                loadRewardedInterstitialAd();
-              },
-            );
-          },
-          onAdFailedToLoad: (error) {
-            _isRewardedInterstitialAdLoaded = false;
-          },
-        ),
-      );
-    } catch (e) {
-      _isRewardedInterstitialAdLoaded = false;
-    }
-  }
-
-  Future<bool> showRewardedInterstitialAd({
-    required Function(double) onRewarded,
-    required VoidCallback onAdDismissed,
-  }) async {
-    if (!_isRewardedInterstitialAdLoaded || _rewardedInterstitialAd == null) {
-      return false;
-    }
-    bool rewardGranted = false;
-    try {
-      await _rewardedInterstitialAd!.show(
-        onUserEarnedReward: (ad, reward) {
-          rewardGranted = true;
-          onRewarded(reward.amount.toDouble());
-        },
-      );
-      _isRewardedInterstitialAdLoaded = false;
-      _rewardedInterstitialAd = null;
-      if (!rewardGranted) {
-        onAdDismissed();
-      }
-      loadRewardedInterstitialAd();
-      return true;
-    } catch (e) {
-      _isRewardedInterstitialAdLoaded = false;
-      _rewardedInterstitialAd = null;
-      onAdDismissed();
-      loadRewardedInterstitialAd();
-      return false;
-    }
   }
 
   // Multiple Native Ads Methods
