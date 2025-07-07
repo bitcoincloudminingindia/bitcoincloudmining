@@ -600,12 +600,12 @@ class _ContractScreenState extends State<ContractScreen>
   bool _canWatchAd() {
     if (_lastAdWatchTime == null) return true;
     final difference = DateTime.now().difference(_lastAdWatchTime!);
-    return difference.inSeconds >= 300; // 5 minutes
+    return difference.inSeconds >= 600; // 10 minutes
   }
 
   void _startAdCooldown() {
     _lastAdWatchTime = DateTime.now();
-    _remainingCooldownSeconds = 300; // 5 minutes
+    _remainingCooldownSeconds = 600; // 10 minutes
 
     _adCooldownTimer?.cancel();
     _adCooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {

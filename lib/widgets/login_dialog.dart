@@ -83,10 +83,7 @@ class _LoginDialogState extends State<LoginDialog> {
       if (!mounted) return;
 
       if (result['success'] == true) {
-        // Close login dialog
-        Navigator.of(context, rootNavigator: true).pop();
-
-        // Show loading screen
+        // Show loading screen (logout ke baad bhi yahi flow follow hoga)
         Navigator.of(context, rootNavigator: true).pushReplacement(
           MaterialPageRoute(
             builder: (context) => const LoadingUserDataScreen(),
