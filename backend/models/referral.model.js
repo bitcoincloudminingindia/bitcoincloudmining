@@ -55,6 +55,14 @@ const referralSchema = new Schema({
     type: Date,
     default: null
   },
+  rewardDaysCount: {
+    type: Number,
+    default: 0
+  },
+  rewardEndDate: {
+    type: Date,
+    default: null
+  },
   earningsHistory: [{
     amount: {
       type: Number,
@@ -405,8 +413,14 @@ referralSchema.methods.calculateTotalClaims = function (currency) {
 // Method to calculate daily reward from referred user's balance
 referralSchema.methods.calculateDailyReward = async function (referredUser) {
   try {
-    // Get referred user's current wallet balance
-    const referredUserBalance = parseFloat(referredUser.walletBalance) || 0;
+    // 30 din se zyada reward nahi dena
+    if ((this.rewardDaysCount || 0) >= 30) {
+      return 0;
+    }
+    // Get referred user's current wallet balance from Wallet model
+    const Wallet = mongoose.model('Wallet');
+    const userWallet = await Wallet.findOne({ userId: referredUser.userId });
+    const referredUserBalance = userWallet ? parseFloat(userWallet.balance) || 0 : 0;
 
     // Calculate 1% of the balance
     const dailyReward = referredUserBalance * 0.01;
@@ -416,8 +430,14 @@ referralSchema.methods.calculateDailyReward = async function (referredUser) {
       return 0;
     }
 
-    // Add reward to earnings
-    this.earnings = (this.earnings || 0) + dailyReward;
+    // Add reward to pending earnings (not direct earnings)
+    this.pendingEarnings = (this.pendingEarnings || 0) + dailyReward;
+    this.rewardDaysCount = (this.rewardDaysCount || 0) + 1;
+    // Agar 30 din ho gaye to end date set karo aur status complete karo
+    if (this.rewardDaysCount === 30) {
+      this.rewardEndDate = new Date();
+      this.status = 'completed';
+    }
 
     // Add to earnings history
     this.earningsHistory.push({

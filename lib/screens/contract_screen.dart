@@ -597,15 +597,17 @@ class _ContractScreenState extends State<ContractScreen>
     Workmanager().cancelByUniqueName('mining_periodic_task_$index');
   }
 
+  int _adCooldownSeconds = 300; // 5 minutes cooldown
+
   bool _canWatchAd() {
     if (_lastAdWatchTime == null) return true;
     final difference = DateTime.now().difference(_lastAdWatchTime!);
-    return difference.inSeconds >= 60;
+    return difference.inSeconds >= _adCooldownSeconds;
   }
 
   void _startAdCooldown() {
     _lastAdWatchTime = DateTime.now();
-    _remainingCooldownSeconds = 60;
+    _remainingCooldownSeconds = _adCooldownSeconds;
 
     _adCooldownTimer?.cancel();
     _adCooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
