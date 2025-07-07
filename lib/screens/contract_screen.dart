@@ -279,7 +279,7 @@ class _ContractScreenState extends State<ContractScreen>
         return _adService.getNativeAd();
       } else {
         return Container(
-          height: 350,
+          height: 360,
           decoration: BoxDecoration(
             color: Colors.grey[100],
             borderRadius: BorderRadius.circular(8),
@@ -314,7 +314,7 @@ class _ContractScreenState extends State<ContractScreen>
       }
     } catch (e) {
       return Container(
-        height: 350,
+        height: 360,
         decoration: BoxDecoration(
           color: Colors.grey[50],
           borderRadius: BorderRadius.circular(8),
@@ -870,7 +870,7 @@ class _ContractScreenState extends State<ContractScreen>
             // Native ad position: after 1st contract
             if (adjustedIndex == 1) {
               return Container(
-                height: 350,
+                height: 360,
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 child: FutureBuilder<Widget?>(
                   future: _nativeAdFuture,
@@ -881,7 +881,7 @@ class _ContractScreenState extends State<ContractScreen>
                     } else if (snapshot.connectionState ==
                         ConnectionState.waiting) {
                       return Container(
-                        height: 350,
+                        height: 360,
                         decoration: BoxDecoration(
                           color: Colors.grey[100],
                           borderRadius: BorderRadius.circular(8),
@@ -915,7 +915,7 @@ class _ContractScreenState extends State<ContractScreen>
                       );
                     } else {
                       return Container(
-                        height: 350,
+                        height: 360,
                         decoration: BoxDecoration(
                           color: Colors.grey[50],
                           borderRadius: BorderRadius.circular(8),

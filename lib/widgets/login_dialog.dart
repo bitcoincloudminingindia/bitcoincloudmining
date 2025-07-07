@@ -354,7 +354,7 @@ class _LoginDialogState extends State<LoginDialog> {
                           // Google Sign-In Button
                           GoogleSignInButton(
                             onSuccess: () {
-                              Navigator.of(context, rootNavigator: true).pop();
+                              // pop() hata diya, sirf pushReplacement rakha
                               Navigator.of(context, rootNavigator: true)
                                   .pushReplacement(
                                 MaterialPageRoute(

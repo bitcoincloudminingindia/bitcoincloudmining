@@ -1488,7 +1488,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 } else if (snapshot.connectionState ==
                     ConnectionState.waiting) {
                   return Container(
-                    height: 350,
+                    height: 360,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
@@ -1523,7 +1523,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   );
                 } else {
                   return Container(
-                    height: 350,
+                    height: 360,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
