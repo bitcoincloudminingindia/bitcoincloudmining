@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:bitcoin_cloud_mining/services/analytics_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -109,29 +110,6 @@ class AdService {
 
     final platform = Platform.isAndroid ? 'android' : 'ios';
     return _adUnitIds[platform]?[adType] ?? '';
-  }
-
-  // Check if ad can be shown based on frequency cap
-  bool _canShowAd(String adType) {
-    // No limit for rewarded and banner ads
-    if (adType == 'rewarded' || adType == 'banner') {
-      return true;
-    }
-
-    // For other ads (native), apply frequency cap
-    final now = DateTime.now();
-    final lastShowTime = _lastAdShowTimes[adType];
-    final showCount = _adShowCounts[adType] ?? 0;
-
-    if (lastShowTime != null) {
-      final timeSinceLastShow = now.difference(lastShowTime);
-      if (timeSinceLastShow < FREQUENCY_CAP_DURATION &&
-          showCount >= MAX_OTHER_ADS_PER_HOUR) {
-        return false;
-      }
-    }
-
-    return true;
   }
 
   // Update ad metrics
@@ -375,6 +353,9 @@ class AdService {
           },
           onAdFailedToLoad: (error) {
             _isRewardedAdLoading = false;
+            AnalyticsService.trackCustomEvent(
+                eventName: 'rewarded_ad_failed',
+                parameters: {'stage': 'load', 'error': error.message});
           },
         ),
       );
@@ -614,10 +595,6 @@ class AdService {
       return true;
     }
 
-    if (!_canShowAd('rewarded')) {
-      return false;
-    }
-
     if (!_isRewardedAdLoaded || _rewardedAd == null) {
       await loadRewardedAd();
       if (!_isRewardedAdLoaded || _rewardedAd == null) {
@@ -647,6 +624,9 @@ class AdService {
         onAdFailedToShowFullScreenContent: (ad, error) {
           ad.dispose();
           _isRewardedAdLoaded = false;
+          AnalyticsService.trackCustomEvent(
+              eventName: 'rewarded_ad_failed',
+              parameters: {'stage': 'show', 'error': error.message});
 
           // Preload next ad
           loadRewardedAd();
@@ -658,12 +638,16 @@ class AdService {
         },
         onAdShowedFullScreenContent: (ad) {
           adShown = true;
+          AnalyticsService.trackCustomEvent(
+              eventName: 'rewarded_ad_impression');
         },
       );
 
       await _rewardedAd!.show(
         onUserEarnedReward: (ad, reward) {
           rewardGranted = true;
+          AnalyticsService.trackRewardClaimed(
+              rewardType: 'ad_reward', amount: reward.amount.toDouble());
           onRewarded(reward.amount.toDouble());
         },
       );

@@ -2,10 +2,12 @@ import 'dart:async'; // For Timer
 import 'dart:io' show exit, Platform;
 
 import 'package:audioplayers/audioplayers.dart'; // For AudioPlayer
+import 'package:bitcoin_cloud_mining/config/api_config.dart';
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/network_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
+import 'package:bitcoin_cloud_mining/services/api_service.dart';
 import 'package:bitcoin_cloud_mining/services/mining_notification_service.dart';
 import 'package:bitcoin_cloud_mining/services/sound_notification_service.dart';
 import 'package:bitcoin_cloud_mining/widgets/network_status_widget.dart';
@@ -285,6 +287,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  // 1. State variables add karo (top par):
+  List<String> _imageUrls = [];
+  bool _imageLoading = true;
+  int _carouselIndex = 0;
+  final PageController _carouselController = PageController();
+
   @override
   void initState() {
     super.initState();
@@ -309,6 +317,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _loadSavedSettings();
     _startAdReloadTimer();
     _startAdTimer();
+    _fetchImages();
     // Add scroll listener
     _scrollController.addListener(() {
       if (_scrollController.offset > 50 && !_isScrolled) {
@@ -325,6 +334,132 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
     _startPeriodicSaveTimer();
     _startServerConnectionSimulation();
+  }
+
+  Future<void> _fetchImages() async {
+    setState(() {
+      _imageLoading = true;
+    });
+    try {
+      final res = await ApiService.get(ApiConfig.imagesApi);
+      if (res.containsKey('images')) {
+        setState(() {
+          _imageUrls = List<String>.from(res['images'] ?? []);
+          _imageLoading = false;
+        });
+        _startCarouselAutoScroll();
+      } else {
+        setState(() {
+          _imageLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _imageLoading = false;
+      });
+    }
+  }
+
+  void _startCarouselAutoScroll() {
+    if (_imageUrls.length <= 1) return;
+    Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (!mounted || _imageUrls.length <= 1) {
+        timer.cancel();
+        return;
+      }
+      _carouselIndex = (_carouselIndex + 1) % _imageUrls.length;
+      _carouselController.animateToPage(
+        _carouselIndex,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  Widget _buildImageCarousel() {
+    if (_imageLoading) {
+      return const SizedBox(
+        height: 180,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_imageUrls.isEmpty) {
+      return const SizedBox(
+        height: 180,
+        child: Center(child: Text('No images found.')),
+      );
+    }
+    return Column(
+      children: [
+        SizedBox(
+          height: 180,
+          child: PageView.builder(
+            controller: _carouselController,
+            itemCount: _imageUrls.length,
+            onPageChanged: (index) {
+              setState(() {
+                _carouselIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha((0.12 * 255).toInt()),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.network(
+                    _imageUrls[index],
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: 180,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator()),
+                      );
+                    },
+                    errorBuilder: (context, error, stack) => Container(
+                      color: Colors.grey[200],
+                      child: const Center(
+                          child: Icon(Icons.broken_image, size: 40)),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+              _imageUrls.length,
+              (i) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: _carouselIndex == i ? 18 : 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: _carouselIndex == i
+                          ? Colors.blueAccent
+                          : Colors.grey[400],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  )),
+        ),
+      ],
+    );
   }
 
   void _startMiningUiTimer() {
@@ -1168,7 +1303,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                   );
                 }
-
                 final fullName = authProvider.fullName;
                 if (fullName == null || fullName.isEmpty) {
                   return const Text(
@@ -1180,7 +1314,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                   );
                 }
-
                 return Text(
                   'Welcome Back, $fullName!',
                   style: const TextStyle(
@@ -1191,6 +1324,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 );
               },
             ),
+            const SizedBox(height: 12),
+            _buildImageCarousel(),
+            const SizedBox(height: 16),
             if (_errorMessage != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),

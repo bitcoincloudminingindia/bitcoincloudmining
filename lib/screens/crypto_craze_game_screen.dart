@@ -143,8 +143,8 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
 
       _saveGameData();
 
-      // Agar 5, 10, 15... par hai to ad gating lagao
-      if (newLevel % 5 == 0) {
+      // Agar 2, 4, 6... par hai to ad gating lagao
+      if (newLevel % 2 == 0) {
         final prefs = await SharedPreferences.getInstance();
         setState(() {
           _pendingAdLevel = newLevel;

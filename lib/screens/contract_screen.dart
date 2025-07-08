@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
+
+import '../config/api_config.dart';
 
 class ContractScreen extends StatefulWidget {
   const ContractScreen({super.key});
@@ -23,6 +27,14 @@ class _ContractScreenState extends State<ContractScreen>
   TextEditingController withdrawAmountController = TextEditingController();
   List<String> withdrawalHistory = [];
   Timer? _uiUpdateTimer;
+
+  // Contract image carousel variables
+  List<String> _contractImages = [];
+  bool _contractCarouselLoading = true;
+  int _contractCarouselIndex = 0;
+  final PageController _contractCarouselController =
+      PageController(viewportFraction: 0.85);
+  Timer? _contractCarouselTimer;
 
   List<Map<String, dynamic>> contracts = [
     {
@@ -346,6 +358,7 @@ class _ContractScreenState extends State<ContractScreen>
     _restoreContractStates();
     _restoreAdCooldown();
     _startUiUpdateTimer();
+    _fetchContractImages();
     setState(() {
       _nativeAdFuture = _getNativeAdWidget();
       _bannerAdFuture1 = _getContractBannerAdWidget();
@@ -412,6 +425,8 @@ class _ContractScreenState extends State<ContractScreen>
     WidgetsBinding.instance.removeObserver(this);
     _uiUpdateTimer?.cancel();
     _adCooldownTimer?.cancel();
+    _contractCarouselTimer?.cancel();
+    _contractCarouselController.dispose();
     for (var contract in contracts) {
       contract['timer']?.cancel();
     }
@@ -721,6 +736,137 @@ class _ContractScreenState extends State<ContractScreen>
     // UI update timer hata diya, ab unnecessary setState nahi chalega
   }
 
+  void _fetchContractImages() async {
+    setState(() {
+      _contractCarouselLoading = true;
+    });
+    try {
+      final res = await http.get(Uri.parse(ApiConfig.imagesApi));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        // Sirf 3 images contract screen ke liye (maan lo last 3)
+        final allImages = List<String>.from(data['images']);
+        setState(() {
+          _contractImages = allImages.length >= 3
+              ? allImages.sublist(allImages.length - 3)
+              : allImages;
+          _contractCarouselLoading = false;
+        });
+        _startContractCarouselAutoScroll();
+      } else {
+        setState(() {
+          _contractCarouselLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _contractCarouselLoading = false;
+      });
+    }
+  }
+
+  void _startContractCarouselAutoScroll() {
+    _contractCarouselTimer?.cancel();
+    if (_contractImages.length <= 1) return;
+    _contractCarouselTimer =
+        Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (_contractImages.isEmpty) return;
+      _contractCarouselIndex =
+          (_contractCarouselIndex + 1) % _contractImages.length;
+      _contractCarouselController.animateToPage(
+        _contractCarouselIndex,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  Widget _buildContractImageCarousel() {
+    if (_contractCarouselLoading) {
+      return const SizedBox(
+        height: 180,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_contractImages.isEmpty) {
+      return const SizedBox(
+        height: 180,
+        child: Center(child: Text('No images found.')),
+      );
+    }
+    return Column(
+      children: [
+        SizedBox(
+          height: 180,
+          child: PageView.builder(
+            controller: _contractCarouselController,
+            itemCount: _contractImages.length,
+            onPageChanged: (index) {
+              setState(() {
+                _contractCarouselIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
+                margin: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha((0.12 * 255).toInt()),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.network(
+                    _contractImages[index],
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: 180,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator()),
+                      );
+                    },
+                    errorBuilder: (context, error, stack) => Container(
+                      color: Colors.grey[200],
+                      child: const Center(
+                          child: Icon(Icons.broken_image, size: 40)),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+              _contractImages.length,
+              (i) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: _contractCarouselIndex == i ? 18 : 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: _contractCarouselIndex == i
+                          ? Colors.blueAccent
+                          : Colors.grey[400],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  )),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -760,249 +906,275 @@ class _ContractScreenState extends State<ContractScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildFreeContractsView(),
-          _buildPaidContractsView(),
-        ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildContractImageCarousel(),
+              const SizedBox(height: 16),
+              TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildFreeContractsView(),
+                  _buildPaidContractsView(),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildFreeContractsView() {
-    return StatefulBuilder(
-      builder: (context, setState) {
-        // Periodic UI update hata diya
-        // Future.delayed(const Duration(seconds: 1), () {
-        //   if (mounted) {
-        //     setState(() {});
-        //   }
-        // });
+    return Column(
+      children: [
+        _buildContractImageCarousel(),
+        const SizedBox(height: 12),
+        Expanded(
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              // Periodic UI update hata diya
+              // Future.delayed(const Duration(seconds: 1), () {
+              //   if (mounted) {
+              //     setState(() {});
+              //   }
+              // });
 
-        // 1 native ad position: after 1st contract
-        final nativeAdPositions = <int>{1};
-        // 1 banner ad position: top
-        final bannerAdPositions = <int>{};
+              // 1 native ad position: after 1st contract
+              final nativeAdPositions = <int>{1};
+              // 1 banner ad position: top
+              final bannerAdPositions = <int>{};
 
-        final totalItems = contracts.length +
-            nativeAdPositions.length +
-            bannerAdPositions.length +
-            1; // +1 for top banner ad
+              final totalItems = contracts.length +
+                  nativeAdPositions.length +
+                  bannerAdPositions.length +
+                  1; // +1 for top banner ad
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16.0),
-          itemCount: totalItems,
-          itemBuilder: (context, index) {
-            // Sabse upar banner ad
-            if (index == 0) {
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                child: FutureBuilder<Widget?>(
-                  future: _bannerAdFuture1,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.done &&
-                        snapshot.data != null) {
-                      return snapshot.data!;
-                    } else if (snapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return Container(
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.grey[300]!),
-                        ),
-                        child: const Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.grey),
-                                ),
+              return ListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemCount: totalItems,
+                itemBuilder: (context, index) {
+                  // Sabse upar banner ad
+                  if (index == 0) {
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      child: FutureBuilder<Widget?>(
+                        future: _bannerAdFuture1,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                                  ConnectionState.done &&
+                              snapshot.data != null) {
+                            return snapshot.data!;
+                          } else if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return Container(
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.grey[300]!),
                               ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Loading Banner Ad...',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    } else {
-                      return Container(
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.grey[200]!),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'Ad',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                ),
-              );
-            }
-
-            // Index adjust karo (kyunki ek banner ad upar aa gaya)
-            final adjustedIndex = index - 1;
-
-            // Native ad position: after 1st contract
-            if (adjustedIndex == 1) {
-              return Container(
-                height: 360,
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                child: FutureBuilder<Widget?>(
-                  future: _nativeAdFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.done &&
-                        snapshot.data != null) {
-                      return snapshot.data!;
-                    } else if (snapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return Container(
-                        height: 360,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[300]!),
-                        ),
-                        child: const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.grey),
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Loading Native Ad...',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    } else {
-                      return Container(
-                        height: 360,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[200]!),
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.ads_click,
-                                  color: Colors.grey, size: 24),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Ad Unavailable',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Check your internet connection',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              // Add refresh button
-                              GestureDetector(
-                                onTap: () {
-                                  // Sirf yaha se hi force reload karo
-                                  setState(() {
-                                    _nativeAdFuture = _getNativeAdWidget();
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.withAlpha(51),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Text(
-                                    'Retry',
-                                    style: TextStyle(
-                                      color: Colors.blue,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
+                              child: const Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.grey),
+                                      ),
                                     ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Loading Banner Ad...',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          } else {
+                            return Container(
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.grey[200]!),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'Ad',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                ),
+                            );
+                          }
+                        },
+                      ),
+                    );
+                  }
+
+                  // Index adjust karo (kyunki ek banner ad upar aa gaya)
+                  final adjustedIndex = index - 1;
+
+                  // Native ad position: after 1st contract
+                  if (adjustedIndex == 1) {
+                    return Container(
+                      height: 360,
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      child: FutureBuilder<Widget?>(
+                        future: _nativeAdFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                                  ConnectionState.done &&
+                              snapshot.data != null) {
+                            return snapshot.data!;
+                          } else if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return Container(
+                              height: 360,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey[300]!),
+                              ),
+                              child: const Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.grey),
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'Loading Native Ad...',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          } else {
+                            return Container(
+                              height: 360,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey[200]!),
+                              ),
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.ads_click,
+                                        color: Colors.grey, size: 24),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      'Ad Unavailable',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Check your internet connection',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    // Add refresh button
+                                    GestureDetector(
+                                      onTap: () {
+                                        // Sirf yaha se hi force reload karo
+                                        setState(() {
+                                          _nativeAdFuture =
+                                              _getNativeAdWidget();
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withAlpha(51),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: const Text(
+                                          'Retry',
+                                          style: TextStyle(
+                                            color: Colors.blue,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    );
+                  }
+
+                  // Contract index nikalna (ads ke hisab se adjust kar ke)
+                  int contractIndex = adjustedIndex;
+                  if (adjustedIndex > 1)
+                    contractIndex--; // Native ad ke liye adjust
+                  if (contractIndex >= contracts.length) {
+                    return const SizedBox.shrink();
+                  }
+                  final contract = contracts[contractIndex];
+                  final bool isCompleted = contract['isCompleted'] ?? false;
+                  final bool canWatchAd = _canWatchAd() && _isAdInitialized;
+
+                  return ContractCard(
+                    contract: contract,
+                    onWatchAd: canWatchAd ? () => watchAd(contractIndex) : null,
+                    onStartMining: isCompleted
+                        ? null
+                        : () => _startContractMining(contractIndex),
+                    onStopMining: () => stopMining(contractIndex),
+                    remainingCooldown: _remainingCooldownSeconds,
+                    isAdServiceReady: _isAdInitialized,
+                  );
+                },
               );
-            }
-
-            // Contract index nikalna (ads ke hisab se adjust kar ke)
-            int contractIndex = adjustedIndex;
-            if (adjustedIndex > 1) contractIndex--; // Native ad ke liye adjust
-            if (contractIndex >= contracts.length) {
-              return const SizedBox.shrink();
-            }
-            final contract = contracts[contractIndex];
-            final bool isCompleted = contract['isCompleted'] ?? false;
-            final bool canWatchAd = _canWatchAd() && _isAdInitialized;
-
-            return ContractCard(
-              contract: contract,
-              onWatchAd: canWatchAd ? () => watchAd(contractIndex) : null,
-              onStartMining: isCompleted
-                  ? null
-                  : () => _startContractMining(contractIndex),
-              onStopMining: () => stopMining(contractIndex),
-              remainingCooldown: _remainingCooldownSeconds,
-              isAdServiceReady: _isAdInitialized,
-            );
-          },
-        );
-      },
+            },
+          ),
+        ),
+      ],
     );
   }
 

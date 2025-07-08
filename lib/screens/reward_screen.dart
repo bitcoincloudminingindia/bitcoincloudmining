@@ -34,7 +34,7 @@ class _RewardScreenState extends State<RewardScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _adService.loadRewardedAd();
+    _adService.loadRewardedAd(); // Ensure rewarded ad preloads on screen open
     _confettiController =
         ConfettiController(duration: const Duration(seconds: 3));
     _loadSocialMediaPlatforms();
