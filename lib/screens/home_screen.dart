@@ -2236,70 +2236,61 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       } catch (saveError) {}
 
       // Show rewarded ad every 5 taps
-      // if (_sciFiTapCount >= 5) {
-      //   _sciFiTapCount = 0;
-
-      //   try {
-      //     final bool adWatched = await _adService.showRewardedAd(
-      //       onRewarded: (double amount) async {
-      //         if (!mounted) return;
-
-      //         try {
-      //           const double adReward = 0.000000000000000500;
-      //           final walletProvider =
-      //               Provider.of<WalletProvider>(context, listen: false);
-
-      //           // Add ad reward non-blocking
-      //           walletProvider.addEarning(
-      //             adReward,
-      //             type: 'ad_reward',
-      //             description: 'Sci-Fi Ad Reward (5x Bonus)',
-      //           );
-
-      //           // Play sci-fi achievement sound (non-blocking)
-      //           SoundNotificationService.playSciFiAchievementSound();
-
-      //           if (mounted) {
-      //             Fluttertoast.showToast(
-      //               msg:
-      //                   '🎉 Ad reward earned! +${adReward.toStringAsFixed(18)} BTC',
-      //               backgroundColor: Colors.green,
-      //               textColor: Colors.white,
-      //             );
-      //           }
-      //         } catch (adRewardError) {
-      //           if (mounted) {
-      //             Fluttertoast.showToast(
-      //               msg: 'Failed to add ad reward. Please try again.',
-      //               backgroundColor: Colors.red,
-      //             );
-      //           }
-      //         }
-      //       },
-      //       onAdDismissed: () {
-      //         if (!mounted) return;
-      //         Fluttertoast.showToast(
-      //           msg: 'Watch the full ad to get a bonus!',
-      //           backgroundColor: Colors.orange,
-      //         );
-      //       },
-      //     );
-
-      //     if (!adWatched && mounted) {
-      //       Fluttertoast.showToast(
-      //         msg: 'Ad not available. Please try again later.',
-      //         backgroundColor: Colors.orange,
-      //       );
-      //     }
-      //   } catch (adError) {
-      //     if (mounted) {
-      //       Fluttertoast.showToast(
-      //         msg: 'Error showing ad. Please try again.',
-      //         backgroundColor: Colors.red,
-      //       );
-      //     }
-      //   }
-      // }
+      if (_sciFiTapCount % 5 == 0) {
+        try {
+          final bool adWatched = await _adService.showRewardedAd(
+            onRewarded: (double amount) async {
+              if (!mounted) return;
+              try {
+                const double adReward = 0.000000000000001000;
+                final walletProvider =
+                    Provider.of<WalletProvider>(context, listen: false);
+                walletProvider.addEarning(
+                  adReward,
+                  type: 'ad_reward',
+                  description: 'Sci-Fi Ad Reward (5x Bonus)',
+                );
+                SoundNotificationService.playSciFiAchievementSound();
+                if (mounted) {
+                  Fluttertoast.showToast(
+                    msg:
+                        '🎉 Ad reward earned! +${adReward.toStringAsFixed(18)} BTC',
+                    backgroundColor: Colors.green,
+                    textColor: Colors.white,
+                  );
+                }
+              } catch (adRewardError) {
+                if (mounted) {
+                  Fluttertoast.showToast(
+                    msg: 'Failed to add ad reward. Please try again.',
+                    backgroundColor: Colors.red,
+                  );
+                }
+              }
+            },
+            onAdDismissed: () {
+              if (!mounted) return;
+              Fluttertoast.showToast(
+                msg: 'Watch the full ad to get a bonus!',
+                backgroundColor: Colors.orange,
+              );
+            },
+          );
+          if (!adWatched && mounted) {
+            Fluttertoast.showToast(
+              msg: 'Ad not available. Please try again later.',
+              backgroundColor: Colors.orange,
+            );
+          }
+        } catch (adError) {
+          if (mounted) {
+            Fluttertoast.showToast(
+              msg: 'Error showing ad. Please try again.',
+              backgroundColor: Colors.red,
+            );
+          }
+        }
+      }
     } catch (generalError) {
       if (mounted) {
         Fluttertoast.showToast(
