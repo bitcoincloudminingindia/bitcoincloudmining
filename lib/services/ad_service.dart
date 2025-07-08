@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
-import 'package:bitcoin_cloud_mining/services/analytics_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -17,8 +16,6 @@ class AdService {
   static const Duration RETRY_DELAY =
       Duration(seconds: 3); // Reduced from 5 to 3
   static const Duration AD_CACHE_DURATION = Duration(minutes: 30);
-  static const int MAX_OTHER_ADS_PER_HOUR = 20;
-  static const Duration FREQUENCY_CAP_DURATION = Duration(hours: 1);
 
   // Ad unit IDs - Real AdMob IDs for production
   final Map<String, Map<String, String>> _adUnitIds = {
@@ -353,9 +350,6 @@ class AdService {
           },
           onAdFailedToLoad: (error) {
             _isRewardedAdLoading = false;
-            AnalyticsService.trackCustomEvent(
-                eventName: 'rewarded_ad_failed',
-                parameters: {'stage': 'load', 'error': error.message});
           },
         ),
       );
@@ -624,9 +618,6 @@ class AdService {
         onAdFailedToShowFullScreenContent: (ad, error) {
           ad.dispose();
           _isRewardedAdLoaded = false;
-          AnalyticsService.trackCustomEvent(
-              eventName: 'rewarded_ad_failed',
-              parameters: {'stage': 'show', 'error': error.message});
 
           // Preload next ad
           loadRewardedAd();
@@ -638,16 +629,12 @@ class AdService {
         },
         onAdShowedFullScreenContent: (ad) {
           adShown = true;
-          AnalyticsService.trackCustomEvent(
-              eventName: 'rewarded_ad_impression');
         },
       );
 
       await _rewardedAd!.show(
         onUserEarnedReward: (ad, reward) {
           rewardGranted = true;
-          AnalyticsService.trackRewardClaimed(
-              rewardType: 'ad_reward', amount: reward.amount.toDouble());
           onRewarded(reward.amount.toDouble());
         },
       );

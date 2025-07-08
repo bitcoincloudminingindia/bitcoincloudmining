@@ -29,6 +29,7 @@ class StorageUtils {
   // Secure storage methods for sensitive data
   static Future<void> saveToken(String token) async {
     try {
+      print('saveToken called with: $token');
       if (token.isEmpty) {
         throw Exception('Token cannot be empty');
       }
@@ -51,6 +52,7 @@ class StorageUtils {
           throw Exception('Token missing userId claim');
         }
       } catch (e) {
+        print('saveToken validation error: $e');
         throw Exception('Invalid token format: $e');
       }
 
@@ -68,19 +70,27 @@ class StorageUtils {
 
       // Verify token is saved correctly
       final verifiedToken = await getToken();
+      print('saveToken: verifiedToken after save: $verifiedToken');
       if (verifiedToken != token) {
-      } else {}
+        print('saveToken: token mismatch after save!');
+      } else {
+        print('saveToken: token saved successfully!');
+      }
 
       // Verify token was saved
       final savedToken = await getToken();
+      print('saveToken: savedToken after save: $savedToken');
       if (savedToken == null || savedToken != token) {
         throw Exception('Token was not saved successfully');
       }
     } catch (e) {
+      print('saveToken error: $e');
       // Try to clean up if save failed
       try {
         await removeToken();
-      } catch (cleanupError) {}
+      } catch (cleanupError) {
+        print('saveToken cleanup error: $cleanupError');
+      }
       throw Exception('Failed to save token: $e');
     }
   }
@@ -90,6 +100,7 @@ class StorageUtils {
       // Try secure storage first
       if (!kIsWeb) {
         final secureToken = await _secureStorage.read(key: _tokenKey);
+        print('getToken: secureToken = $secureToken');
         if (secureToken != null && secureToken.isNotEmpty) {
           return secureToken;
         }
@@ -98,12 +109,14 @@ class StorageUtils {
       // Try web storage if not in secure storage
       final prefs = await _getPrefs();
       final token = prefs.getString(_tokenKey);
+      print('getToken: prefs token = $token');
       if (token != null && token.isNotEmpty) {
         return token;
       }
-
+      print('getToken: token not found');
       return null;
     } catch (e) {
+      print('getToken error: $e');
       return null;
     }
   }
@@ -565,24 +578,22 @@ class StorageUtils {
     try {
       // Get auth token
       final token = await getToken();
-      if (token == null) {
-        throw Exception('No auth token found');
-      }
-
-      // Make API request
       final url = '${ApiConfig.baseUrl}/api/wallet/sync-balance';
-
       final data = {'balance': balance};
-
+      print('syncWalletBalance: token=$token, url=$url, data=$data');
+      if (token == null || token.isEmpty) {
+        print('No auth token found for sync-balance!');
+        return {'success': false, 'message': 'No auth token found'};
+      }
+      print('Sync-balance token: $token'); // Debug ke liye
+      // Make API request
       final response = await ApiService.postWithAuth(
         url,
         data,
         authToken: token,
       );
-
       final responseData = response['data'];
       final statusCode = response['statusCode'] as int;
-
       // Handle successful sync
       if (statusCode == 200) {
         if (responseData['success'] == true) {
@@ -594,7 +605,6 @@ class StorageUtils {
               'message': responseData['message']
             };
           }
-
           if (responseData['data'] != null) {
             return {
               'success': true,
@@ -605,7 +615,6 @@ class StorageUtils {
           return {'success': true, 'skipped': false};
         }
       }
-
       throw Exception(responseData['message'] ?? 'Failed to sync balance');
     } catch (e) {
       if (e.toString().contains('Sync skipped')) {

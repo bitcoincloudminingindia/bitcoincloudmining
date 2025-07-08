@@ -200,47 +200,18 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
     final Random random = Random();
     _rewards.clear();
 
-    // Generate base reward ranges (in Satoshis)
-    final List<Map<String, double>> rewardRanges = [
-      {'min': 0.000000000000001, 'max': 0.000000000000009}, // Range 1
-      {'min': 0.000000000000010, 'max': 0.000000000000090}, // Range 2
-      {'min': 0.000000000000100, 'max': 0.000000000000900}, // Range 3
-      {'min': 0.000000000001000, 'max': 0.000000000009000}, // Range 4
-      {'min': 0.000000000010000, 'max': 0.000000000090000}, // Range 5
-    ];
+    // Sabhi rewards ek hi range me honge
+    const double minReward = 0.000000000000001000;
+    const double maxReward = 0.000000000000010000;
 
-    // Generate 10 random rewards
     for (int i = 0; i < 10; i++) {
-      // Select a random range with weighted probability
-      final int rangeIndex = _getWeightedRandomIndex();
-      final range = rewardRanges[rangeIndex];
-
-      // Generate random value within selected range
-      final double randomValue = range['min']! +
-          (random.nextDouble() * (range['max']! - range['min']!));
-
+      final double randomValue =
+          minReward + (random.nextDouble() * (maxReward - minReward));
       _rewards.add(randomValue);
     }
 
     // Shuffle the rewards
     _rewards.shuffle();
-  }
-
-  // Helper method for weighted random selection
-  int _getWeightedRandomIndex() {
-    final Random random = Random();
-    final List<int> weights = [50, 30, 15, 4, 1]; // Higher weight = more common
-    final int totalWeight = weights.reduce((a, b) => a + b);
-    final int randomWeight = random.nextInt(totalWeight);
-
-    int currentWeight = 0;
-    for (int i = 0; i < weights.length; i++) {
-      currentWeight += weights[i];
-      if (randomWeight < currentWeight) {
-        return i;
-      }
-    }
-    return 0;
   }
 
   // Remove the unused _addBtcToWallet method and update _setupAnimationListeners

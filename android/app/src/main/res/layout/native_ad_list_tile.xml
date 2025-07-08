@@ -65,18 +65,18 @@
         <Button
             android:id="@+id/ad_call_to_action"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
             android:background="@drawable/cta_button_background"
             android:textColor="@android:color/white"
-            android:textSize="18sp"
+            android:textSize="16sp"
             android:textStyle="bold"
-            android:paddingLeft="24dp"
-            android:paddingRight="24dp"
-            android:paddingTop="16dp"
-            android:paddingBottom="16dp"
-            android:minHeight="56dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="12dp" />
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="0dp" />
 
     </LinearLayout>
 

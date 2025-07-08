@@ -62,8 +62,11 @@ class GoogleAuthService {
 
       if (backendResponse['success']) {
         // Save token
-        await StorageUtils.saveToken(backendResponse['data']['token']);
-
+        final token = backendResponse['data']['token'];
+        print('Google sign-in ke baad backend se mila token: $token');
+        await StorageUtils.saveToken(token);
+        final verifiedToken = await StorageUtils.getToken();
+        print('Verified token after save: $verifiedToken');
         // Save user data
         if (backendResponse['data']['user'] != null) {
           await StorageUtils.saveUserData(backendResponse['data']['user']);

@@ -543,10 +543,15 @@ class ApiService {
       // Convert scientific notation to regular decimal format
       final formattedBalance =
           NumberFormatter.formatBTCAmount(double.parse(balance));
-
+      final token = await StorageUtils.getToken();
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      };
       final response = await _makeRequest(
         endpoint: '/api/wallet/sync-balance',
         method: 'POST',
+        headers: headers,
         body: {
           'balance': formattedBalance,
           'timestamp': DateTime.now().toIso8601String(),
@@ -578,10 +583,15 @@ class ApiService {
       final formattedBalanceStr = NumberFormatter.formatBTCAmount(balance);
       // Parse string to double for backend
       final formattedBalance = double.tryParse(formattedBalanceStr) ?? 0.0;
-
+      final token = await StorageUtils.getToken();
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      };
       final response = await _makeRequest(
         endpoint: ApiConfig.syncBalance,
         method: 'POST',
+        headers: headers,
         body: {
           'balance': formattedBalance,
           'timestamp': DateTime.now().toIso8601String(),
@@ -1361,7 +1371,7 @@ class ApiService {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $authToken',
       };
-
+      print('postWithAuth: url=$url, headers=$headers, data=$data');
       final response = await http
           .post(
             Uri.parse(url),
