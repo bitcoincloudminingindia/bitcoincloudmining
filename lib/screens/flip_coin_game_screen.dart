@@ -101,21 +101,11 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
     await prefs.setBool('flipcoin_ad_required', required);
   }
 
-  Future<void> _collectReward() async {
+  void _collectReward() {
     setState(() {
-      _isAdLoading = true;
+      _addRewardToWallet();
+      _showCongratulations = false;
     });
-    await _adService.showRewardedAd(
-      onRewarded: (amount) {
-        _addRewardToWallet();
-      },
-      onAdDismissed: () {
-        setState(() {
-          _isAdLoading = false;
-          _showCongratulations = false;
-        });
-      },
-    );
   }
 
   void _addRewardToWallet() {

@@ -42,6 +42,9 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
   double fallingSpeed = 3.5;
   final AudioPlayer _audioPlayer = AudioPlayer();
   final AdService _adService = AdService();
+  // Bubble state
+  bool showAdBubble = false;
+  Timer? adBubbleTimer;
 
   @override
   void initState() {
@@ -60,13 +63,14 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
     try {
       _audioPlayer.stop();
       _audioPlayer.dispose();
-    } catch (e) {
-    }
+    } catch (e) {}
     gameTimer?.cancel();
     itemTimer?.cancel();
     animationTimer?.cancel();
     _disposeBannerAd();
     _adService.dispose();
+    exitGame();
+    adBubbleTimer?.cancel();
     super.dispose();
   }
 
@@ -255,6 +259,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
     gameTimer?.cancel();
     itemTimer?.cancel();
     animationTimer?.cancel();
+    adBubbleTimer?.cancel();
   }
 
   void resumeGame() {
@@ -277,6 +282,14 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
       animationTimer =
           Timer.periodic(const Duration(milliseconds: 16), (timer) {
         updateItemPositions();
+      });
+
+      // हर 20 सेकंड में ad bubble दिखाने के लिए
+      adBubbleTimer?.cancel();
+      adBubbleTimer = Timer.periodic(const Duration(seconds: 20), (timer) {
+        if (!showAdBubble && !gameOver && gameStarted && mounted) {
+          showRewardedAdBubble();
+        }
       });
     }
   }
@@ -450,6 +463,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
     setState(() {
       gameOver = true;
       gameStarted = false;
+      adBubbleTimer?.cancel();
     });
   }
 
@@ -475,7 +489,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
   void spawnItem() {
     if (!mounted) return;
     final Random random = Random();
-    final int itemType = random.nextInt(6) + 1; // 1 से 6 तक (type 0 हटा दिया)
+    final int itemType = random.nextInt(5) + 1; // 1 से 5 तक (type 6 हटा दिया)
     final double position =
         random.nextDouble() * (MediaQuery.of(context).size.width - 50);
     setState(() {
@@ -493,7 +507,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
           doubleBTCActive ? 0.000000000000000040 : 0.000000000000000020;
     } else if (item.type == 2) {
       collectedBTC =
-          doubleBTCActive ? 0.000000000000001000 : 0.000000000000000500;
+          doubleBTCActive ? 0.000000000000000100 : 0.000000000000000050;
     } else if (item.type == 3) {
       collectedBTC = -0.000000000000000010;
     } else if (item.type == 4) {
@@ -502,19 +516,13 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
       }
     } else if (item.type == 5) {
       shieldActive = true;
+      setState(() {
+        fallingItems.remove(item);
+      });
       Timer(const Duration(seconds: 5), () {
         if (mounted) {
           setState(() {
             shieldActive = false;
-          });
-        }
-      });
-    } else if (item.type == 6) {
-      doubleBTCActive = true;
-      Timer(const Duration(seconds: 10), () {
-        if (mounted) {
-          setState(() {
-            doubleBTCActive = false;
           });
         }
       });
@@ -591,105 +599,197 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: AppBar(
-            title: Text(widget.gameTitle,
-                style: GoogleFonts.roboto(
-                    fontSize: 22, fontWeight: FontWeight.bold)),
-            backgroundColor: Colors.orange,
-          ),
-          body: Stack(
-            children: [
-              Positioned.fill(
-                child: Container(color: Colors.orangeAccent),
+  // Bubble state
+  void showRewardedAdBubble() {
+    setState(() {
+      showAdBubble = true;
+    });
+  }
+
+  void hideRewardedAdBubble() {
+    setState(() {
+      showAdBubble = false;
+    });
+  }
+
+  Future<void> _showRewardedAdFor2x() async {
+    pauseGame();
+    await _adService.showRewardedAd(
+      onRewarded: (amount) {
+        setState(() {
+          doubleBTCActive = true;
+        });
+        resumeGame();
+        hideRewardedAdBubble();
+        // Double earning 10 seconds के लिए active (या जितना चाहें)
+        Timer(const Duration(seconds: 10), () {
+          if (mounted) {
+            setState(() {
+              doubleBTCActive = false;
+            });
+          }
+        });
+      },
+      onAdDismissed: () {
+        resumeGame();
+        hideRewardedAdBubble();
+      },
+    );
+  }
+
+  Widget buildAdBubble() {
+    if (!showAdBubble) return const SizedBox.shrink();
+    return Positioned(
+      left: MediaQuery.of(context).size.width / 2 - 70,
+      top: MediaQuery.of(context).size.height / 2 - 70,
+      child: GestureDetector(
+        onTap: _showRewardedAdFor2x,
+        child: Container(
+          width: 140,
+          height: 140,
+          decoration: BoxDecoration(
+            color: Colors.amber.withAlpha((0.95 * 255).toInt()),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(60),
+                blurRadius: 12,
+                spreadRadius: 2,
               ),
-              buildFallingItems(),
-              Align(
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text('Time Left: $timeLeft sec',
-                      style: GoogleFonts.roboto(
-                          fontSize: 22, fontWeight: FontWeight.bold)),
-                ),
-              ),
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                      'Game Earnings: ${gameEarnings.toStringAsFixed(18)} BTC',
-                      style: GoogleFonts.roboto(
-                          fontSize: 22, fontWeight: FontWeight.bold)),
-                ),
-              ),
-              if (isAdLoading)
-                Container(
-                  color: Colors.black.withAlpha(179),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const CircularProgressIndicator(
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.orange),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Loading ad...',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              if (adError != null)
-                Positioned(
-                  top: 100,
-                  left: 20,
-                  right: 20,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withAlpha(200),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.error_outline, color: Colors.white),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            adError!,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white),
-                          onPressed: () {
-                            setState(() {
-                              adError = null;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
             ],
           ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.play_circle_fill,
+                    size: 48, color: Colors.white),
+                const SizedBox(height: 8),
+                const Text(
+                  'Watch Ad for\n2x reward',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) {
+          exitGame();
+        }
+      },
+      child: Stack(
+        children: [
+          Scaffold(
+            appBar: AppBar(
+              title: Text(widget.gameTitle,
+                  style: GoogleFonts.roboto(
+                      fontSize: 22, fontWeight: FontWeight.bold)),
+              backgroundColor: Colors.orange,
+            ),
+            body: Stack(
+              children: [
+                Positioned.fill(
+                  child: Container(color: Colors.orangeAccent),
+                ),
+                buildFallingItems(),
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text('Time Left: $timeLeft sec',
+                        style: GoogleFonts.roboto(
+                            fontSize: 22, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                        'Game Earnings: ${gameEarnings.toStringAsFixed(18)} BTC',
+                        style: GoogleFonts.roboto(
+                            fontSize: 22, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                if (isAdLoading)
+                  Container(
+                    color: Colors.black.withAlpha(179),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const CircularProgressIndicator(
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.orange),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Loading ad...',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (adError != null)
+                  Positioned(
+                    top: 100,
+                    left: 20,
+                    right: 20,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withAlpha(200),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.white),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              adError!,
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            onPressed: () {
+                              setState(() {
+                                adError = null;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                buildAdBubble(),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

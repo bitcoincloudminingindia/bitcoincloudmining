@@ -1008,21 +1008,11 @@ class _WalletScreenState extends State<WalletScreen>
               ),
               const SizedBox(height: 10),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Expanded(
-                    child: Text(
-                      '${NumberFormatter.formatBTCAmount(walletProvider.btcBalance)} BTC',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(6),
+                    margin: const EdgeInsets.only(right: 8),
                     decoration: BoxDecoration(
                       color: Colors.white.withAlpha(51),
                       borderRadius: BorderRadius.circular(12),
@@ -1030,7 +1020,18 @@ class _WalletScreenState extends State<WalletScreen>
                     child: const Icon(
                       Icons.currency_bitcoin,
                       color: Colors.amber,
-                      size: 30,
+                      size: 22,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      '${NumberFormatter.formatBTCAmount(walletProvider.btcBalance)} BTC',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],

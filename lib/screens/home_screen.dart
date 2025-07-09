@@ -294,22 +294,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _adService = AdService();
     Future.microtask(() async {
       await _adService.initialize();
-      // Har baar naya future set karo
-      setState(() {
-        _bottomNativeAdFuture = _getBottomNativeAdWidget();
-        _middleBannerAdFuture = _getMiddleBannerAdWidget();
-      });
+      // हर बार ads reload करें
+      _reloadAds();
     });
-    // _adUiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-    //   if (mounted) setState(() {});
-    // });
     _initializeData();
     _loadUserProfile();
     _loadPercentage();
     _loadSavedSettings();
     _startAdReloadTimer();
     _startAdTimer();
-    // Add scroll listener
     _scrollController.addListener(() {
       if (_scrollController.offset > 50 && !_isScrolled) {
         setState(() => _isScrolled = true);
@@ -317,7 +310,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         setState(() => _isScrolled = false);
       }
     });
-    // Start mining UI update timer if mining is active
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_isMining && _miningStartTime != null) {
         _startMiningUiTimer();
@@ -327,27 +319,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _startServerConnectionSimulation();
   }
 
-  void _startMiningUiTimer() {
-    _uiUpdateTimer?.cancel();
-    _uiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted || !_isMining || _miningStartTime == null) {
-        timer.cancel();
-        return;
-      }
-      _updateMiningProgressFromElapsed();
-      // If mining completed, stop timer
-      final now = DateTime.now();
-      final elapsedMinutes = now.difference(_miningStartTime!).inMinutes;
-      if (elapsedMinutes >= MINING_DURATION_MINUTES) {
-        timer.cancel();
-        _resetMiningState();
-      }
+  void _reloadAds() {
+    setState(() {
+      _bottomNativeAdFuture = _getBottomNativeAdWidget();
+      _middleBannerAdFuture = _getMiddleBannerAdWidget();
     });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _reloadAds();
     _initializeApp();
   }
 
@@ -355,12 +337,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
+        if (mounted) {
+          _reloadAds();
+        }
         // App came to foreground
         if (mounted) {
-          setState(() {
-            _bottomNativeAdFuture = _getBottomNativeAdWidget();
-            _middleBannerAdFuture = _getMiddleBannerAdWidget();
-          });
+          // setState(() {
+          //   _bottomNativeAdFuture = _getBottomNativeAdWidget();
+          //   _middleBannerAdFuture = _getMiddleBannerAdWidget();
+          // });
         }
         if (_isMining && _miningStartTime != null) {
           _updateMiningProgressFromElapsed();
@@ -2236,6 +2221,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _isConnectingToServer = false;
           _isServerConnected = true;
         });
+      }
+    });
+  }
+
+  void _startMiningUiTimer() {
+    _uiUpdateTimer?.cancel();
+    _uiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted || !_isMining || _miningStartTime == null) {
+        timer.cancel();
+        return;
+      }
+      _updateMiningProgressFromElapsed();
+      // If mining completed, stop timer
+      final now = DateTime.now();
+      final elapsedMinutes = now.difference(_miningStartTime!).inMinutes;
+      if (elapsedMinutes >= MINING_DURATION_MINUTES) {
+        timer.cancel();
+        _resetMiningState();
       }
     });
   }
