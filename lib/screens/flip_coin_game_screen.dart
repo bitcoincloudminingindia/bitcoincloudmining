@@ -514,7 +514,7 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
                         ],
                       ),
                     ),
-                    _buildAdRequiredLabel(),
+                    _buildAdRequiredSection(),
                     if (_showResult && _userChoice != null && _result != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 16),
@@ -832,21 +832,48 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
     );
   }
 
-  // UI में Ad Required label दिखाएं
-  Widget _buildAdRequiredLabel() {
-    if (_isRewardedAdRequired || _isAdLoading) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 12.0),
-        child: Text(
-          'Ad Required! Please watch ad to continue.',
-          style: TextStyle(
-            color: Colors.red.shade300,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
+  // Ad Required Section (Watch Ad to Continue)
+  Widget _buildAdRequiredSection() {
+    if (!_isRewardedAdRequired) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 24.0, left: 16, right: 16),
+      child: Column(
+        children: [
+          Text(
+            'Ad Required! Please watch ad to continue.',
+            style: TextStyle(
+              color: Colors.red.shade300,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+            textAlign: TextAlign.center,
           ),
-        ),
-      );
-    }
-    return const SizedBox.shrink();
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _isAdLoading ? null : _showAdForTap,
+            icon: _isAdLoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Icon(Icons.play_circle_fill, color: Colors.white),
+            label: const Text(
+              'Watch Ad to Continue',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

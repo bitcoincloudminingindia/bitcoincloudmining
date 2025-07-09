@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:animated_text_kit/animated_text_kit.dart';
@@ -58,6 +59,7 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
 
   Timer? _statusTimer;
   StreamSubscription<List<ConnectivityResult>>? _subscription;
+  Timer? _internetKeepAliveTimer;
 
   @override
   void initState() {
@@ -70,6 +72,19 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
       if (mounted) {
         Provider.of<NetworkProvider>(context, listen: false).currentServer =
             _currentServer;
+      }
+    });
+
+    // हर 10 सेकंड में इंटरनेट consume करने के लिए
+    _internetKeepAliveTimer =
+        Timer.periodic(const Duration(seconds: 10), (timer) async {
+      try {
+        final result = await InternetAddress.lookup('google.com');
+        if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+          // Internet is active
+        }
+      } catch (e) {
+        // No internet
       }
     });
   }
@@ -191,6 +206,7 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
     _typingController.dispose();
     _statusTimer?.cancel();
     _subscription?.cancel();
+    _internetKeepAliveTimer?.cancel();
     super.dispose();
   }
 
