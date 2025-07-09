@@ -7,6 +7,7 @@ import 'package:bitcoin_cloud_mining/services/sound_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BitcoinMachineScreen extends StatefulWidget {
   final String gameTitle;
@@ -28,6 +29,8 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
   bool isSpinning = false;
   Timer? spinTimer;
   int spinCount = 0;
+  bool isRewardedAdRequired = false;
+  bool isAdLoading = false;
   int totalSpins = 0;
   final int maxSpins = 50;
   final Random random = Random();
@@ -46,6 +49,7 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
     _initializeReels();
     _loadAds();
     _bannerAdFuture = _adService.getBannerAdWidget();
+    _loadAdRequiredState();
   }
 
   Future<void> _loadAds() async {
@@ -89,6 +93,19 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
     }
   }
 
+  Future<void> _loadAdRequiredState() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      isRewardedAdRequired =
+          prefs.getBool('bitcoin_machine_ad_required') ?? false;
+    });
+  }
+
+  Future<void> _saveAdRequiredState(bool required) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('bitcoin_machine_ad_required', required);
+  }
+
   void _initializeReels() {
     for (int i = 0; i < 3; i++) {
       reels[i] =
@@ -110,13 +127,23 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
   }
 
   void _spin() {
-    if (isSpinning) return;
+    if (isSpinning || isRewardedAdRequired || isAdLoading) return;
+
+    // हर 20 spin पर ad जरूरी
+    totalSpins++;
+    if (totalSpins % 20 == 0) {
+      setState(() {
+        isRewardedAdRequired = true;
+      });
+      _saveAdRequiredState(true);
+      _showAdForSpin();
+      return;
+    }
 
     try {
       setState(() {
         isSpinning = true;
         spinCount = 0;
-        totalSpins++;
       });
 
       // Total spin duration: 5 seconds (5000 ms)
@@ -185,6 +212,28 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
     }
   }
 
+  void _showAdForSpin() async {
+    setState(() {
+      isAdLoading = true;
+    });
+    await _adService.showRewardedAd(
+      onRewarded: (amount) {
+        setState(() {
+          isRewardedAdRequired = false;
+          isAdLoading = false;
+        });
+        _saveAdRequiredState(false);
+      },
+      onAdDismissed: () {
+        setState(() {
+          isRewardedAdRequired = false;
+          isAdLoading = false;
+        });
+        _saveAdRequiredState(false);
+      },
+    );
+  }
+
   void _showCongratsDialog(String message, double reward) {
     showDialog(
       context: context,
@@ -217,48 +266,53 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  ElevatedButton(
-                    onPressed: () async {
-                      setState(() {
-                        gameWalletBalance += reward;
-                      });
-                      Navigator.of(context).pop();
-                      await _showRewardedAd();
-                      setState(_initializeReels);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.yellowAccent,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 32, vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                    ),
-                    child: const Text(
-                      'Watch Ad for Play Again',
-                      style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          gameWalletBalance += reward;
+                        });
+                        Navigator.of(context).pop();
+                        setState(_initializeReels);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.yellowAccent,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Text(
+                        'Collect Reward',
+                        style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                    ),
-                    child: const Text(
-                      'Skip Without Reward',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Navigator.of(context).pop();
+                        await _showRewardedAdFor2x(reward);
+                        setState(_initializeReels);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orangeAccent,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Text(
+                        'Watch Ad for 2x',
+                        style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16),
+                      ),
                     ),
                   ),
                 ],
@@ -267,6 +321,17 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _showRewardedAdFor2x(double reward) async {
+    await _adService.showRewardedAd(
+      onRewarded: (amount) {
+        setState(() {
+          gameWalletBalance += (reward * 2);
+        });
+      },
+      onAdDismissed: () {},
     );
   }
 
@@ -344,6 +409,7 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
     spinTimer?.cancel();
     _transferToMainWallet();
     _adService.dispose();
+    _saveAdRequiredState(isRewardedAdRequired);
     super.dispose();
   }
 
@@ -589,7 +655,11 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
                                     ),
                                     const SizedBox(height: 16),
                                     ElevatedButton(
-                                      onPressed: isSpinning ? null : _spin,
+                                      onPressed: (isSpinning ||
+                                              isRewardedAdRequired ||
+                                              isAdLoading)
+                                          ? null
+                                          : _spin,
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.yellowAccent,
                                         padding: const EdgeInsets.symmetric(

@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../providers/wallet_provider.dart';
 import '../services/ad_service.dart';
@@ -45,6 +46,9 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
   Future<Widget?>? _bannerAdFuture;
   final AdService _adService = AdService();
   bool _isAdLoading = false;
+  int _headsTapCount = 0;
+  int _tailsTapCount = 0;
+  bool _isRewardedAdRequired = false;
 
   @override
   void initState() {
@@ -82,6 +86,19 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
     });
 
     _bannerAdFuture = _adService.getBannerAdWidget();
+    _loadAdRequiredState();
+  }
+
+  Future<void> _loadAdRequiredState() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _isRewardedAdRequired = prefs.getBool('flipcoin_ad_required') ?? false;
+    });
+  }
+
+  Future<void> _saveAdRequiredState(bool required) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('flipcoin_ad_required', required);
   }
 
   Future<void> _collectReward() async {
@@ -167,7 +184,30 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
   }
 
   void _flipCoin(bool isHeads) {
-    if (_isFlipping) return;
+    if (_isFlipping || _isRewardedAdRequired || _isAdLoading) return;
+
+    // Tap count logic
+    if (isHeads) {
+      _headsTapCount++;
+      if (_headsTapCount % 10 == 0) {
+        setState(() {
+          _isRewardedAdRequired = true;
+        });
+        _saveAdRequiredState(true);
+        _showAdForTap();
+        return;
+      }
+    } else {
+      _tailsTapCount++;
+      if (_tailsTapCount % 10 == 0) {
+        setState(() {
+          _isRewardedAdRequired = true;
+        });
+        _saveAdRequiredState(true);
+        _showAdForTap();
+        return;
+      }
+    }
 
     // Generate random result before starting animation
     final bool randomResult = _random.nextBool();
@@ -484,6 +524,7 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
                         ],
                       ),
                     ),
+                    _buildAdRequiredLabel(),
                     if (_showResult && _userChoice != null && _result != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 16),
@@ -594,35 +635,66 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: _isAdLoading ? null : _collectReward,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: ColorConstants.accentColor,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 16,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: _isAdLoading
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _isAdLoading ? null : _collectReward,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: ColorConstants.accentColor,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
                                   ),
-                                )
-                              : const Text(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Text(
                                   'Collect Reward',
                                   style: TextStyle(
-                                    fontSize: 18,
+                                    fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _isAdLoading ? null : _watchAdFor2x,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: ColorConstants.accentColor,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: _isAdLoading
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                            Colors.white,
+                                          ),
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Watch Ad for 2x',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -660,7 +732,9 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
 
   Widget _buildChoiceButton(bool isHeads) {
     return ElevatedButton(
-      onPressed: _isFlipping ? null : () => _flipCoin(isHeads),
+      onPressed: (_isFlipping || _isRewardedAdRequired || _isAdLoading)
+          ? null
+          : () => _flipCoin(isHeads),
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
         backgroundColor: ColorConstants.accentColor,
@@ -715,8 +789,74 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
         );
       } catch (e) {}
     }
-
+    _saveAdRequiredState(_isRewardedAdRequired);
     _controller.dispose();
     super.dispose();
+  }
+
+  void _watchAdFor2x() async {
+    setState(() {
+      _isAdLoading = true;
+    });
+    await _adService.showRewardedAd(
+      onRewarded: (amount) {
+        _add2xRewardToWallet();
+      },
+      onAdDismissed: () {
+        setState(() {
+          _isAdLoading = false;
+          _showCongratulations = false;
+        });
+      },
+    );
+  }
+
+  void _add2xRewardToWallet() {
+    setState(() {
+      _gameWalletBalance += _pendingReward * Decimal.fromInt(2);
+      _pendingReward = Decimal.zero;
+      _showCongratulations = false;
+      _isAdLoading = false;
+    });
+  }
+
+  void _showAdForTap() async {
+    setState(() {
+      _isAdLoading = true;
+    });
+    await _adService.showRewardedAd(
+      onRewarded: (amount) {
+        setState(() {
+          _isRewardedAdRequired = false;
+          _isAdLoading = false;
+        });
+        _saveAdRequiredState(false);
+      },
+      onAdDismissed: () {
+        setState(() {
+          _isRewardedAdRequired = false;
+          _isAdLoading = false;
+        });
+        _saveAdRequiredState(false);
+      },
+    );
+  }
+
+  // UI में Ad Required label दिखाएं
+  Widget _buildAdRequiredLabel() {
+    if (_isRewardedAdRequired || _isAdLoading) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 12.0),
+        child: Text(
+          'Ad Required! Please watch ad to continue.',
+          style: TextStyle(
+            color: Colors.red.shade300,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }

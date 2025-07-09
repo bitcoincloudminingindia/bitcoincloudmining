@@ -17,7 +17,8 @@ class ContractScreen extends StatefulWidget {
 class _ContractScreenState extends State<ContractScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
-  AdService _adService = AdService();
+  // AdService को singleton instance से initialize करें
+  final AdService _adService = AdService();
   double totalEarnedBTC = 0.0;
   TextEditingController btcAddressController = TextEditingController();
   TextEditingController withdrawAmountController = TextEditingController();
@@ -339,16 +340,26 @@ class _ContractScreenState extends State<ContractScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(length: 2, vsync: this);
-    _adService = AdService();
     _initializeAdService();
     _loadWatchAdsCounts();
     _loadEarnings();
     _restoreContractStates();
     _restoreAdCooldown();
     _startUiUpdateTimer();
+    // ContractScreen खुलते ही दोनों ads reload करें
+    _reloadBannerAd();
+    _reloadNativeAd();
+  }
+
+  void _reloadBannerAd() {
+    setState(() {
+      _bannerAdFuture1 = _adService.getBannerAdWidget();
+    });
+  }
+
+  void _reloadNativeAd() {
     setState(() {
       _nativeAdFuture = _getNativeAdWidget();
-      _bannerAdFuture1 = _getContractBannerAdWidget();
     });
   }
 

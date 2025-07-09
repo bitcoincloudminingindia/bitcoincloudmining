@@ -3,7 +3,6 @@ import 'dart:math';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -52,6 +51,8 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
   // Add these variables to the state class
   int _spinCount = 0;
   static const int SPINS_FOR_BONUS = 1000;
+  int _cooldownSeconds = 0;
+  Timer? _cooldownTimer;
 
   // Ad service
   final AdService _adService = AdService();
@@ -99,6 +100,7 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
     _winAnimationController.dispose();
     _confettiController.dispose();
     _adService.dispose();
+    _cooldownTimer?.cancel();
     super.dispose();
   }
 
@@ -240,13 +242,18 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
   }
 
   void _spinWheel() {
-    if (_isSpinning) return;
+    if (_isSpinning || _cooldownSeconds > 0) return;
 
     setState(() {
       _isSpinning = true;
       _showReward = false;
       _spinCount++;
     });
+
+    // हर 5 spin के बाद cooldown शुरू करें
+    if (_spinCount % 5 == 0) {
+      _startCooldown();
+    }
 
     final Random random = Random();
     final int numRotations = 7 + random.nextInt(5); // Increased base rotations
@@ -284,6 +291,22 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
         _awardBaseBonus();
         setState(() => _spinCount = 0);
         preferences.setInt('wheelSpinCount', 0);
+      }
+    });
+  }
+
+  void _startCooldown() {
+    setState(() {
+      _cooldownSeconds = 60 * 60; // 60 मिनट
+    });
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_cooldownSeconds > 0) {
+        setState(() {
+          _cooldownSeconds--;
+        });
+      } else {
+        timer.cancel();
       }
     });
   }
@@ -576,54 +599,45 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
 
   Widget _buildSpinButton() {
     return GestureDetector(
-      onTap: _isSpinning || _showReward ? null : _spinWheel,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+      onTap: _isSpinning || _showReward || _cooldownSeconds > 0
+          ? null
+          : _spinWheel,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+        width: 180,
+        height: 60,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: _isSpinning || _showReward
-                ? [Colors.grey.shade700, Colors.grey.shade900]
-                : [Colors.blue.shade700, Colors.blue.shade900],
-          ),
           borderRadius: BorderRadius.circular(30),
-          boxShadow: const [
-            BoxShadow(
-              color: Color.fromRGBO(0, 0, 0, 0.2),
-              blurRadius: 15,
-              spreadRadius: 1,
-            ),
-          ],
-          border: Border.all(
-            color: _isSpinning || _showReward
-                ? Colors.grey.shade400
-                : Colors.blue.shade400,
-            width: 2,
+          gradient: LinearGradient(
+            colors: _isSpinning || _showReward || _cooldownSeconds > 0
+                ? [Colors.grey, Colors.grey.shade400]
+                : [Colors.orange, Colors.deepOrange],
           ),
         ),
-        child: Text(
-          _isSpinning
-              ? 'Spinning...'
-              : (_showReward ? 'Collect Reward First!' : 'Spin Now!'),
-          style: TextStyle(
-            color:
-                Colors.white.withAlpha(_isSpinning || _showReward ? 179 : 255),
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
+        child: Center(
+          child: _cooldownSeconds > 0
+              ? Text(
+                  'Cooldown: ${(_cooldownSeconds ~/ 60).toString().padLeft(2, '0')}:${(_cooldownSeconds % 60).toString().padLeft(2, '0')}',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : Text(
+                  _isSpinning
+                      ? 'Spinning...'
+                      : (_showReward ? 'Collect Reward First!' : 'Spin Now!'),
+                  style: GoogleFonts.poppins(
+                    color: Colors.white
+                        .withAlpha(_isSpinning || _showReward ? 179 : 255),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
         ),
-      )
-          .animate(target: _isSpinning ? 0 : 1)
-          .scale(
-            begin: const Offset(1, 1),
-            end: const Offset(1.1, 1.1),
-            duration: const Duration(milliseconds: 500),
-          )
-          .then()
-          .scale(
-            begin: const Offset(1.1, 1.1),
-            end: const Offset(1, 1),
-            duration: const Duration(milliseconds: 500),
-          ),
+      ),
     );
   }
 

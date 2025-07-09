@@ -31,7 +31,7 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
   bool isAutoMinerActive = false;
   bool isBoostActive = false;
   bool isLoading = false;
-  double tapBTCValue = 0.0000000000000001;
+  double tapBTCValue = 0.00000000000000001;
   Timer? autoMinerTimer;
   Timer? boostTimer;
   Timer? periodicSaveTimer;
@@ -303,7 +303,7 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
       return;
     }
     tapCount++;
-    if (tapCount % 25 == 0) {
+    if (tapCount % 250 == 0) {
       setState(() {
         isRewardedAdRequired = true;
       });

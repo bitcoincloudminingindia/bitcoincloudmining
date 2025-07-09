@@ -57,8 +57,11 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
-    implementation("com.google.android.gms:play-services-ads:22.6.0")
+    implementation("com.google.android.gms:play-services-ads:24.4.0") // AdMob SDK (latest)
+    implementation("com.unity3d.ads:unity-ads:4.15.1") // Unity Ads SDK (latest)
+    implementation("com.google.ads.mediation:unity:4.15.0.0") // Unity adapter for AdMob (latest)
     implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-messaging")
 }
+
