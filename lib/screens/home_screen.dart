@@ -1,5 +1,5 @@
 import 'dart:async'; // For Timer
-import 'dart:io'; // For InternetAddress
+import 'dart:io' show exit, Platform;
 
 import 'package:audioplayers/audioplayers.dart'; // For AudioPlayer
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
@@ -32,6 +32,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  StreamSubscription<bool>? _networkSubscription;
   // Constants
   static const int MINING_DURATION_MINUTES = 30;
   static const double BASE_MINING_RATE =
@@ -44,7 +45,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       0.000000000000001000; // 5x increased reward
 
   // Variables
-  Timer? _internetKeepAliveTimer;
   late final AdService _adService;
   double _hashRate = 2.5;
   bool _isMining = false;
@@ -298,6 +298,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       // हर बार ads reload करें
       _reloadAds();
     });
+    // NetworkProvider connectivity change पर ad reload
+    final networkProvider =
+        Provider.of<NetworkProvider>(context, listen: false);
+    networkProvider.initialize();
+    _networkSubscription =
+        networkProvider.connectionStatus.listen((isConnected) {
+      if (isConnected) {
+        _reloadAds();
+      }
+    });
     _initializeData();
     _loadUserProfile();
     _loadPercentage();
@@ -318,19 +328,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
     _startPeriodicSaveTimer();
     _startServerConnectionSimulation();
-
-    // हर 10 सेकंड में इंटरनेट consume करने के लिए
-    _internetKeepAliveTimer =
-        Timer.periodic(const Duration(seconds: 10), (timer) async {
-      try {
-        final result = await InternetAddress.lookup('google.com');
-        if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-          // Internet is active
-        }
-      } catch (e) {
-        // No internet
-      }
-    });
   }
 
   void _reloadAds() {
@@ -417,7 +414,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       _adService.dispose();
     } catch (e) {}
-    _internetKeepAliveTimer?.cancel();
+    _networkSubscription?.cancel();
     super.dispose();
   }
 
