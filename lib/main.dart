@@ -1,5 +1,4 @@
-import 'dart:async';
-import 'dart:io';
+import 'dart:io' show Platform;
 
 import 'package:bitcoin_cloud_mining/config/api_config.dart';
 import 'package:bitcoin_cloud_mining/firebase_options.dart';
@@ -47,22 +46,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
 }
 
-void startInternetKeepAlive() {
-  Timer.periodic(const Duration(seconds: 30), (timer) async {
-    try {
-      // Dummy request (Google DNS ping)
-      final result = await InternetAddress.lookup('google.com');
-      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-        // Internet is active
-      }
-    } catch (e) {
-      // No internet
-    }
-  });
-}
-
 void main() async {
-  startInternetKeepAlive();
   // Set zone error handling to non-fatal
   // BindingBase.debugZoneErrorsAreFatal = false; // Optional: Debug zone errors ko ignore na karein
 

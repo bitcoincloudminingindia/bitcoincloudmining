@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:bitcoin_cloud_mining/providers/network_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:flutter/material.dart';
@@ -25,7 +24,6 @@ class _ContractScreenState extends State<ContractScreen>
   TextEditingController withdrawAmountController = TextEditingController();
   List<String> withdrawalHistory = [];
   Timer? _uiUpdateTimer;
-  StreamSubscription<bool>? _networkSubscription;
 
   List<Map<String, dynamic>> contracts = [
     {
@@ -342,20 +340,6 @@ class _ContractScreenState extends State<ContractScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(length: 2, vsync: this);
-    // NetworkProvider connectivity change पर ad reload
-    final networkProvider =
-        Provider.of<NetworkProvider>(context, listen: false);
-    networkProvider.initialize();
-    _networkSubscription =
-        networkProvider.connectionStatus.listen((isConnected) {
-      if (isConnected) {
-        setState(() {
-          _bannerAdFuture1 = _getContractBannerAdWidget();
-          _nativeAdFuture = _getNativeAdWidget();
-        });
-      }
-    });
-    _tabController = TabController(length: 2, vsync: this);
     _initializeAdService();
     _loadWatchAdsCounts();
     _loadEarnings();
@@ -447,7 +431,6 @@ class _ContractScreenState extends State<ContractScreen>
     try {
       _adService.dispose();
     } catch (e) {}
-    _networkSubscription?.cancel();
     super.dispose();
   }
 

@@ -32,7 +32,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  StreamSubscription<bool>? _networkSubscription;
   // Constants
   static const int MINING_DURATION_MINUTES = 30;
   static const double BASE_MINING_RATE =
@@ -193,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return _adService.getNativeAd();
       } else {
         return Container(
-          height: 250,
+          height: 360,
           decoration: BoxDecoration(
             color: Colors.grey[100],
             borderRadius: BorderRadius.circular(8),
@@ -227,7 +226,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     } catch (e) {
       return Container(
-        height: 250,
+        height: 360,
         decoration: BoxDecoration(
           color: Colors.grey[100],
           borderRadius: BorderRadius.circular(8),
@@ -297,16 +296,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await _adService.initialize();
       // हर बार ads reload करें
       _reloadAds();
-    });
-    // NetworkProvider connectivity change पर ad reload
-    final networkProvider =
-        Provider.of<NetworkProvider>(context, listen: false);
-    networkProvider.initialize();
-    _networkSubscription =
-        networkProvider.connectionStatus.listen((isConnected) {
-      if (isConnected) {
-        _reloadAds();
-      }
     });
     _initializeData();
     _loadUserProfile();
@@ -414,7 +403,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       _adService.dispose();
     } catch (e) {}
-    _networkSubscription?.cancel();
     super.dispose();
   }
 
