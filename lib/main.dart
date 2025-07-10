@@ -21,6 +21,7 @@ import 'package:bitcoin_cloud_mining/services/notification_service.dart';
 import 'package:bitcoin_cloud_mining/utils/enums.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -71,6 +72,9 @@ void main() async {
 
     // Initialize FCM after Firebase is ready
     await FcmService.initializeFCM();
+
+    // Crashlytics initialization
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
   } catch (e) {
     // App initialization failed, ignore for now
   }
