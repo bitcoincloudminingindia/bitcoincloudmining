@@ -21,13 +21,13 @@
     import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
 
     const firebaseConfig = {
-      apiKey: "AIzaSyBTBr5z9vixdO9TzzKVGCUVP-G4BaaMAyo",
-      authDomain: "bitcoin-cloud-mining-19fb5.firebaseapp.com",
-      projectId: "bitcoin-cloud-mining-19fb5",
-      storageBucket: "bitcoin-cloud-mining-19fb5.firebasestorage.app",
-      messagingSenderId: "486206486627",
-      appId: "1:486206486627:web:993fedd92937142473e056",
-      measurementId: "G-LPLPZBE2YV"
+      apiKey: process.env.FIREBASE_API_KEY || "YOUR_API_KEY_HERE",
+      authDomain: process.env.FIREBASE_AUTH_DOMAIN || "bitcoin-cloud-mining-19fb5.firebaseapp.com",
+      projectId: process.env.FIREBASE_PROJECT_ID || "bitcoin-cloud-mining-19fb5",
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "bitcoin-cloud-mining-19fb5.firebasestorage.app",
+      messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "486206486627",
+      appId: process.env.FIREBASE_APP_ID || "1:486206486627:web:993fedd92937142473e056",
+      measurementId: process.env.FIREBASE_MEASUREMENT_ID || "G-LPLPZBE2YV"
     };
 
     // Initialize Firebase
