@@ -1,4 +1,4 @@
-package com.example.bitcoin_cloud_mining
+package com.bitcoincloudmining.newapp
 
 import android.content.Context
 import android.view.LayoutInflater
@@ -79,4 +79,4 @@ class ListTileNativeAdFactory(private val context: Context) : GoogleMobileAdsPlu
         return adView
     }
 }
-// Note: Ensure that the layout file `native_ad_list_tile.xml` exists in the `res/layout` directory
+// Note: Ensure that the layout file `native_ad_list_tile.xml` exists in the `res/layout` directory 

@@ -51,31 +51,33 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBTBr5z9vixdO9TzzKVGCUVP-G4BaaMAyo',
-    appId: '1:486206486627:android:993fedd92937142473e056',
+    apiKey: 'AIzaSyAwS7-6JQyZVEsnEg72ZZf-LQ0872lHLiM',
+    appId: '1:486206486627:android:b06af3d7eed564ce73e056',
     messagingSenderId: '486206486627',
     projectId: 'bitcoin-cloud-mining-19fb5',
     storageBucket: 'bitcoin-cloud-mining-19fb5.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBTBr5z9vixdO9TzzKVGCUVP-G4BaaMAyo',
-    appId: '1:486206486627:ios:993fedd92937142473e056',
+    apiKey: 'AIzaSyAwS7-6JQyZVEsnEg72ZZf-LQ0872lHLiM',
+    appId: '1:486206486627:ios:17e6a68ae47f160e73e056',
     messagingSenderId: '486206486627',
     projectId: 'bitcoin-cloud-mining-19fb5',
     storageBucket: 'bitcoin-cloud-mining-19fb5.firebasestorage.app',
-    iosClientId: '486206486627-abcdefghijklmnop.apps.googleusercontent.com',
-    iosBundleId: 'com.example.bitcoinCloudMining',
+    iosClientId:
+        '486206486627-dsju4n237taq45ibpkgbklh7elo73j5a.apps.googleusercontent.com',
+    iosBundleId: 'com.bitcoincloudmining.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBTBr5z9vixdO9TzzKVGCUVP-G4BaaMAyo',
-    appId: '1:486206486627:ios:993fedd92937142473e056',
+    apiKey: 'AIzaSyAwS7-6JQyZVEsnEg72ZZf-LQ0872lHLiM',
+    appId: '1:486206486627:ios:17e6a68ae47f160e73e056',
     messagingSenderId: '486206486627',
     projectId: 'bitcoin-cloud-mining-19fb5',
     storageBucket: 'bitcoin-cloud-mining-19fb5.firebasestorage.app',
-    iosClientId: '486206486627-abcdefghijklmnop.apps.googleusercontent.com',
-    iosBundleId: 'com.example.bitcoinCloudMining',
+    iosClientId:
+        '486206486627-dsju4n237taq45ibpkgbklh7elo73j5a.apps.googleusercontent.com',
+    iosBundleId: 'com.bitcoincloudmining.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

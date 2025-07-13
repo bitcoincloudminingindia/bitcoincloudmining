@@ -46,6 +46,11 @@ const generateUniqueUsername = async (email, displayName) => {
             }
         }
 
+        // Ensure username doesn't exceed 20 characters
+        if (username.length > 20) {
+            username = username.substring(0, 20);
+        }
+
         return username;
     } catch (error) {
         // Fallback to timestamp-based username
