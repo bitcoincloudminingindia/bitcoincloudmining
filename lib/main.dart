@@ -231,6 +231,13 @@ class _MyAppState extends State<MyApp>
   Future<void> sendTokenToBackend(String token) async {
     try {
       final jwtToken = await StorageUtils.getToken();
+
+      // Only send FCM token if user is logged in
+      if (jwtToken == null || jwtToken.isEmpty) {
+        print('User not logged in, skipping FCM token update');
+        return;
+      }
+
       final url = Uri.parse(ApiConfig.fcmTokenUrl);
       final headers = ApiConfig.getHeaders(token: jwtToken);
 
@@ -241,8 +248,13 @@ class _MyAppState extends State<MyApp>
       );
 
       if (response.statusCode == 200) {
-      } else {}
-    } catch (e) {}
+        print('FCM token updated successfully');
+      } else {
+        print('Failed to update FCM token: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error updating FCM token: $e');
+    }
   }
 
   @override
