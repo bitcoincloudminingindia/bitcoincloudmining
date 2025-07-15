@@ -146,7 +146,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Update signup to handle both tokens
   Future<Map<String, dynamic>> signup({
     required String fullName,
     required String userName,
@@ -155,6 +154,7 @@ class AuthProvider extends ChangeNotifier {
     String? referredByCode,
   }) async {
     try {
+      // Check connectivity first
       if (!await checkConnectivity()) {
         return {
           'success': false,
@@ -183,11 +183,10 @@ class AuthProvider extends ChangeNotifier {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        final accessToken = data['data']?['accessToken'];
-        final refreshToken = data['data']?['refreshToken'];
+        final token = data['data']?['token'];
         final user = data['data']?['user'];
-        if (accessToken != null && refreshToken != null) {
-          await _saveTokens(accessToken, refreshToken);
+        if (token != null) {
+          await _saveToken(token);
           await _updateUserState(user);
         }
         return {'success': true, 'data': data};
@@ -208,22 +207,20 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _saveTokens(String accessToken, String refreshToken) async {
-    await StorageUtils.saveToken(accessToken);
-    await StorageUtils.saveRefreshToken(refreshToken);
-    _token = accessToken;
-    _refreshToken = refreshToken;
-    ApiConfig.setToken(accessToken);
-    ApiConfig.setRefreshToken(refreshToken);
-    notifyListeners();
+  Future<void> _saveToken(String token) async {
+    try {
+      await StorageUtils.saveToken(token);
+      _token = token;
+      notifyListeners();
+    } catch (e) {}
   }
 
-  // Update login to handle both tokens
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
   }) async {
     try {
+      // Check connectivity first
       if (!await checkConnectivity()) {
         return {
           'success': false,
@@ -232,8 +229,8 @@ class AuthProvider extends ChangeNotifier {
         };
       }
 
+      // Clear any existing tokens first
       await StorageUtils.removeToken();
-      await StorageUtils.removeRefreshToken();
       ApiConfig.clear();
 
       final response = await http
@@ -250,27 +247,39 @@ class AuthProvider extends ChangeNotifier {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        final accessToken = data['data']['accessToken'];
-        final refreshToken = data['data']['refreshToken'];
+        // Extract token and user data
+        final token = data['data']['token'];
         final userData = data['data']['user'];
-        if (accessToken == null || refreshToken == null || userData == null) {
+
+        if (token == null || userData == null) {
           throw ApiError('Invalid response format');
         }
-        await _saveTokens(accessToken, refreshToken);
+
+        // Save token to storage and update API config
+        await StorageUtils.saveToken(token);
+        _token = token;
+        ApiConfig.setToken(token);
+
+        // Save user ID
         final userId = userData['userId'] ?? userData['_id'];
         if (userId != null) {
           await StorageUtils.saveUserId(userId);
           ApiConfig.setUserId(userId);
         }
+
+        // Update user state
         await _updateUserState(userData);
         _isLoggedIn = true;
         notifyListeners();
+
+        // Track login analytics
         await AnalyticsService.trackLogin(method: 'email');
         await AnalyticsService.setUserProperties(
           userId: userId,
           userType: 'user',
           registrationDate: DateTime.now().toIso8601String(),
         );
+
         return {
           'success': true,
           'message': 'Login successful',
@@ -289,7 +298,7 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       return {
         'success': false,
-        'message': 'Login failed:  e.toString()',
+        'message': 'Login failed: ${e.toString()}',
       };
     }
   }
@@ -827,26 +836,26 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Update refreshToken function to use correct endpoint and response
   Future<bool> refreshToken() async {
     try {
       final refreshToken = await StorageUtils.getRefreshToken();
       if (refreshToken == null) {
         return false;
       }
+
       final response = await ApiService.post(
         ApiConfig.refreshTokenEndpoint,
-        {'refreshToken': refreshToken},
+        {'token': refreshToken},
       );
-      if (response['success'] == true &&
-          response['accessToken'] != null &&
-          response['refreshToken'] != null) {
-        _token = response['accessToken'];
-        _refreshToken = response['refreshToken'];
+
+      if (response['success'] == true) {
+        _token = response['data']['token'];
+        _refreshToken = response['data']['refreshToken'];
+
+        // Save new tokens
         await StorageUtils.saveToken(_token!);
         await StorageUtils.saveRefreshToken(_refreshToken!);
-        ApiConfig.setToken(_token!);
-        ApiConfig.setRefreshToken(_refreshToken!);
+
         notifyListeners();
         return true;
       }

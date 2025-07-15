@@ -195,7 +195,7 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
       // Show countdown overlay
       showCountdownOverlay('Auto Miner', 180);
 
-      // Stop auto mining after 15 seconds
+      // Stop auto mining after 180 seconds
       Future.delayed(const Duration(seconds: 180), () {
         if (mounted && autoMinerTimer != null && autoMinerTimer!.isActive) {
           autoMinerTimer!.cancel();

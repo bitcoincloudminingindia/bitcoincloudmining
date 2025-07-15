@@ -11,7 +11,7 @@ const ApiError = require('../utils/ApiError');
 const crypto = require('crypto');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-const { generateToken, generateTokens } = require('../utils/auth');
+const { generateToken } = require('../utils/auth');
 const BigNumber = require('bignumber.js');
 const { generateReferralCode } = require('../utils/generators');
 
@@ -269,59 +269,71 @@ const handleError = (res, error, message = 'An error occurred') => {
 // Login user
 exports.login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
-  console.log('🔑 Login attempt for email:', { timestamp: new Date().toISOString() });
+  console.log('🔑 Login attempt for email:', email);
 
-  // Find user with password
-  const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-  if (!user) {
-    console.log('❌ User not found for email:', { timestamp: new Date().toISOString() });
-    return next(new AppError('User not found', 404));
-  }
-
-  // Check if user has password
-  if (!user.password) {
-    console.log('❌ No password set for user:', { email, timestamp: new Date().toISOString() });
-    return next(new AppError('Please set your password first', 401));
-  }
-
-  // Compare password using model method
-  console.log('🔐 Comparing passwords', { timestamp: new Date().toISOString() });
-  const isPasswordValid = await user.comparePassword(password);
-  console.log('✅ Password match result:', { timestamp: new Date().toISOString() });
-
-  if (!isPasswordValid) {
-    return next(new AppError('Invalid password', 401));
-  }
-
-  // Generate tokens
-  const { accessToken, refreshToken } = generateTokens(user);
-
-  // Update last login
-  user.lastLogin = new Date();
-  await user.save();
-
-  console.log('✅ Login successful for email:', { timestamp: new Date().toISOString() });
-
-  res.status(200).json({
-    success: true,
-    message: 'Login successful',
-    data: {
-      accessToken,
-      refreshToken,
-      user: {
-        id: user._id,
-        email: user.userEmail,
-        fullName: user.fullName,
-        username: user.userName,
-        role: user.role,
-        isVerified: user.isEmailVerified,
-        referralCode: user.userReferralCode,
-        referralStats: user.referralStats,
-        miningStatus: user.miningStatus,
-        wallet: user.wallet
-      }
+  try {
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email and password'
+      });
     }
-  });
+
+    const user = await User.findOne({ userEmail: email.toLowerCase() })
+      .select('+password')
+      .exec();
+
+    if (!user) {
+      console.log('❌ User not found:', email);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      console.log('❌ Password mismatch for user:', email);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Generate token using the auth utility for consistency
+    const token = generateToken(user);
+
+    console.log('✅ Login successful:', {
+      userId: user.userId,
+      timestamp: new Date().toISOString()
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        user: {
+          id: user._id.toString(),
+          userId: user.userId,
+          fullName: user.fullName,
+          userName: user.userName,
+          userEmail: user.userEmail,
+          isEmailVerified: user.isEmailVerified,
+          role: user.role
+        },
+        token
+      }
+    });
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred during login'
+    });
+  }
 });
 
 // Get user profile
@@ -986,21 +998,20 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
     return next(new AppError('Refresh token is required', 400));
   }
 
-  try {
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return next(new AppError('User not found', 404));
-    }
-    const { accessToken, refreshToken: newRefreshToken } = generateTokens(user);
-    res.status(200).json({
-      success: true,
-      accessToken,
-      refreshToken: newRefreshToken
-    });
-  } catch (err) {
-    return res.status(401).json({ error: 'Invalid or expired refresh token' });
+  // Verify refresh token and generate new access token
+  const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+  const user = await User.findById(decoded.id);
+
+  if (!user) {
+    return next(new AppError('User not found', 404));
   }
+
+  const token = generateToken(user);
+
+  res.status(200).json({
+    status: 'success',
+    data: { token }
+  });
 });
 
 exports.verifyResetOtp = catchAsync(async (req, res, next) => {

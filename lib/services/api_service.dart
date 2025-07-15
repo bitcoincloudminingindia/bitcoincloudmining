@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 import '../config/api_config.dart';
-import '../providers/auth_provider.dart'; // Added import for AuthProvider
 import '../utils/error_handler.dart';
 import '../utils/number_formatter.dart';
 import '../utils/storage_utils.dart';
@@ -1536,56 +1535,5 @@ class ApiService {
     } catch (e) {
       rethrow;
     }
-  }
-
-  /// Centralized safe request with auto-refresh logic
-  Future<Map<String, dynamic>> safeRequest({
-    required String endpoint,
-    required String method,
-    Map<String, dynamic>? body,
-    Map<String, String>? headers,
-    bool requiresAuth = true,
-  }) async {
-    Map<String, dynamic> response = await _makeRequest(
-      endpoint: endpoint,
-      method: method,
-      body: body,
-      headers: headers,
-    );
-
-    // Check for token expired or 401 error
-    final isTokenExpired = (response['error']
-                ?.toString()
-                .toLowerCase()
-                .contains('expired') ??
-            false) ||
-        (response['message']?.toString().toLowerCase().contains('expired') ??
-            false) ||
-        (response['error'] == 'TOKEN_EXPIRED') ||
-        (response['error'] == 'INVALID_TOKEN') ||
-        (response['status'] == 401);
-
-    if (requiresAuth && isTokenExpired) {
-      // Try to refresh token
-      final refreshed = await AuthProvider().refreshToken();
-      if (refreshed) {
-        // Retry original request with new token
-        response = await _makeRequest(
-          endpoint: endpoint,
-          method: method,
-          body: body,
-          headers: headers,
-        );
-      } else {
-        // Logout user if refresh fails
-        await AuthProvider().logout();
-        response = {
-          'success': false,
-          'message': 'Session expired. Please login again.',
-          'error': 'SESSION_EXPIRED',
-        };
-      }
-    }
-    return response;
   }
 }

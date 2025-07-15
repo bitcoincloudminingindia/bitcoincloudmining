@@ -61,13 +61,10 @@ class GoogleAuthService {
       final backendResponse = await _sendToBackend(user, firebaseIdToken!);
 
       if (backendResponse['success']) {
-        // Save tokens
-        final accessToken = backendResponse['data']['accessToken'];
-        final refreshToken = backendResponse['data']['refreshToken'];
-        if (accessToken != null && refreshToken != null) {
-          await StorageUtils.saveToken(accessToken);
-          await StorageUtils.saveRefreshToken(refreshToken);
-        }
+        // Save token
+        final token = backendResponse['data']['token'];
+        print('Google sign-in ke baad backend se mila token: $token');
+        await StorageUtils.saveToken(token);
         final verifiedToken = await StorageUtils.getToken();
         print('Verified token after save: $verifiedToken');
         // Save user data
