@@ -36,7 +36,7 @@ const generateToken = (user) => {
     userId: user.userId,
     role: user.role || 'user', // Default role
     email: user.userEmail, // Include email for additional verification
-    version: '1.0.1' // Add version for future compatibility
+    version: '1.0.2' // Add version for future compatibility
   };
 
   // Log token generation
@@ -63,7 +63,7 @@ const generateTokens = (user) => {
     userId: user.userId,
     role: user.role || 'user',
     email: user.userEmail,
-    version: '1.0.1'
+    version: '1.0.2' // यहाँ update किया गया
   };
 
   const accessToken = jwt.sign(

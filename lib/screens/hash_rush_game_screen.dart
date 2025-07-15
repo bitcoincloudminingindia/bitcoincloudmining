@@ -187,16 +187,16 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
           return;
         }
         setState(() {
-          earnedBTC += 0.00000000000000005;
+          earnedBTC += 0.00000000000000002;
           updateTaskProgress('Auto Mining 20000 Second Count', 1);
         });
       });
 
       // Show countdown overlay
-      showCountdownOverlay('Auto Miner', 15);
+      showCountdownOverlay('Auto Miner', 180);
 
       // Stop auto mining after 15 seconds
-      Future.delayed(const Duration(seconds: 15), () {
+      Future.delayed(const Duration(seconds: 180), () {
         if (mounted && autoMinerTimer != null && autoMinerTimer!.isActive) {
           autoMinerTimer!.cancel();
           setState(() {
@@ -243,13 +243,13 @@ class _HashRushGameScreenState extends State<HashRushGameScreen> {
       });
 
       // Show countdown overlay
-      showCountdownOverlay('Boost Active', 15);
+      showCountdownOverlay('Boost Active', 180);
 
       // Cancel any existing timer
       boostTimer?.cancel();
 
       // Start boost timer
-      boostTimer = Timer(const Duration(seconds: 15), () {
+      boostTimer = Timer(const Duration(seconds: 180), () {
         if (mounted) {
           setState(() {
             isBoostActive = false;
