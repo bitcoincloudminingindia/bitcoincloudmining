@@ -263,7 +263,16 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
                   style: GoogleFonts.orbitron(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Colors.cyanAccent
+                        .withAlpha(200), // withAlpha for transparency
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withAlpha(
+                            (0.5 * 255).toInt()), // पहले withOpacity(0.5) था
+                        blurRadius: 3,
+                        offset: Offset(1, 1),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -289,7 +298,9 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
                   children: [
                     Icon(
                       Icons.dns,
-                      color: _isConnected ? Colors.green : Colors.orange,
+                      color: _isConnected
+                          ? Colors.greenAccent.withAlpha(220)
+                          : Colors.deepOrangeAccent.withAlpha(220), // withAlpha
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -297,8 +308,16 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
                       'Server: $_currentServer',
                       style: GoogleFonts.orbitron(
                         fontSize: 14,
-                        color: Colors.white,
+                        color: Colors.amberAccent.withAlpha(210), // withAlpha
                         fontWeight: FontWeight.w600,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withAlpha((0.4 * 255)
+                                .toInt()), // पहले withOpacity(0.4) था
+                            blurRadius: 2,
+                            offset: Offset(1, 1),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -314,7 +333,9 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
                           height: 8,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: _isConnected ? Colors.green : Colors.orange,
+                            color: _isConnected
+                                ? Colors.greenAccent.withAlpha(220)
+                                : Colors.deepOrangeAccent.withAlpha(220),
                           ),
                         );
                       },
@@ -328,9 +349,17 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
                                   _connectionStatus,
                                   textStyle: GoogleFonts.orbitron(
                                     fontSize: 12,
-                                    color: _isConnected
-                                        ? Colors.green
-                                        : Colors.orange,
+                                    color: Colors.white.withAlpha(
+                                        220), // पहले withOpacity(0.86) था
+                                    fontWeight: FontWeight.w600,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black
+                                            .withAlpha((0.5 * 255).toInt()),
+                                        blurRadius: 2,
+                                        offset: Offset(1, 1),
+                                      ),
+                                    ],
                                   ),
                                   speed: const Duration(milliseconds: 100),
                                 ),
@@ -341,8 +370,16 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
                               _connectionStatus,
                               style: GoogleFonts.orbitron(
                                 fontSize: 12,
-                                color:
-                                    _isConnected ? Colors.green : Colors.orange,
+                                color: Colors.white.withAlpha(220), // withAlpha
+                                fontWeight: FontWeight.w600,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black
+                                        .withAlpha((0.5 * 255).toInt()),
+                                    blurRadius: 2,
+                                    offset: Offset(1, 1),
+                                  ),
+                                ],
                               ),
                             ),
                     ),
@@ -396,7 +433,15 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
             label,
             style: GoogleFonts.orbitron(
               fontSize: 10,
-              color: Colors.grey,
+              color: Colors.cyanAccent.withAlpha(180), // withAlpha
+              fontWeight: FontWeight.bold,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withAlpha((0.5 * 255).toInt()),
+                  blurRadius: 1.5,
+                  offset: Offset(1, 1),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 4),
@@ -404,8 +449,15 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
             value,
             style: GoogleFonts.orbitron(
               fontSize: 12,
-              color: color,
+              color: color.withAlpha(220), // withAlpha
               fontWeight: FontWeight.w600,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withAlpha((0.5 * 255).toInt()),
+                  blurRadius: 1.5,
+                  offset: Offset(1, 1),
+                ),
+              ],
             ),
           ),
         ],

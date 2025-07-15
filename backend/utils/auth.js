@@ -56,6 +56,37 @@ const generateToken = (user) => {
   );
 };
 
+// Generate both access and refresh tokens
+const generateTokens = (user) => {
+  const payload = {
+    id: user._id.toString(),
+    userId: user.userId,
+    role: user.role || 'user',
+    email: user.userEmail,
+    version: '1.0.1'
+  };
+
+  const accessToken = jwt.sign(
+    payload,
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+      algorithm: 'HS256'
+    }
+  );
+
+  const refreshToken = jwt.sign(
+    { id: user._id.toString(), userId: user.userId },
+    process.env.JWT_REFRESH_SECRET,
+    {
+      expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+      algorithm: 'HS256'
+    }
+  );
+
+  return { accessToken, refreshToken };
+};
+
 // Generate verification token
 const generateVerificationToken = () => {
   const token = crypto.randomBytes(32).toString('hex');
@@ -89,6 +120,7 @@ module.exports = {
   hashPassword,
   comparePassword,
   generateToken,
+  generateTokens,
   generateVerificationToken,
   generateResetPasswordToken,
   generateOTP,

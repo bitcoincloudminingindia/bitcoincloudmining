@@ -1,6 +1,6 @@
 const { User, Wallet } = require('../models');
 const { verifyIdToken } = require('../config/firebase.config');
-const { generateToken } = require('../utils/auth');
+const { generateToken, generateTokens } = require('../utils/auth');
 const { generateReferralCode } = require('../utils/generators');
 const logger = require('../utils/logger');
 const crypto = require('crypto');
@@ -99,10 +99,7 @@ exports.googleSignIn = async (req, res) => {
         });
 
         if (user) {
-            // User ko dobara find karo taki mongoose document mile aur _id confirm ho
             user = await User.findById(user._id);
-
-            // Update existing user with latest Firebase info
             user.firebaseUid = firebaseUid;
             user.fullName = displayName || user.fullName;
             user.profilePicture = photoURL || user.profilePicture;
@@ -112,17 +109,15 @@ exports.googleSignIn = async (req, res) => {
                 ip: req.ip,
                 userAgent: req.get('User-Agent')
             });
-
             await user.save();
-
-            // Generate new token
-            const token = generateToken(user);
-
+            // Generate new tokens
+            const { accessToken, refreshToken } = generateTokens(user);
             return res.status(200).json({
                 success: true,
                 message: 'Google Sign-In successful',
                 data: {
-                    token,
+                    accessToken,
+                    refreshToken,
                     user: {
                         userId: user.userId,
                         id: user._id,
@@ -131,7 +126,7 @@ exports.googleSignIn = async (req, res) => {
                         userEmail: user.userEmail,
                         profilePicture: user.profilePicture,
                         referralCode: user.referralCode,
-                        isEmailVerified: true, // Google users are pre-verified
+                        isEmailVerified: true,
                         wallet: user.wallet
                     }
                 }
@@ -150,8 +145,8 @@ exports.googleSignIn = async (req, res) => {
             userEmail: email?.toLowerCase(),
             userName: uniqueUsername,
             profilePicture: photoURL,
-            isEmailVerified: true, // Google users are pre-verified
-            referralCode: userReferralCode, // yahan sahi field set ki
+            isEmailVerified: true,
+            referralCode: userReferralCode,
             status: 'active',
             lastLoginAt: new Date(),
             loginHistory: [{
@@ -161,7 +156,6 @@ exports.googleSignIn = async (req, res) => {
             }]
         });
 
-        // User ko dobara findById se fetch karo taki _id confirm ho
         user = await User.findById(user._id);
 
         // Step 5: Create wallet for new user
@@ -173,19 +167,17 @@ exports.googleSignIn = async (req, res) => {
             currency: 'BTC',
             address: 'bc1' + crypto.randomBytes(20).toString('hex').slice(0, 40)
         });
-
         await wallet.save();
 
-        // Step 6: Generate token
-        const token = generateToken(user);
-
+        // Step 6: Generate tokens
+        const { accessToken, refreshToken } = generateTokens(user);
         logger.info(`Google Sign-In successful for user: ${user.userId}`);
-
         res.status(201).json({
             success: true,
             message: 'Google Sign-In successful',
             data: {
-                token,
+                accessToken,
+                refreshToken,
                 user: {
                     userId: user.userId,
                     id: user._id,
@@ -199,7 +191,6 @@ exports.googleSignIn = async (req, res) => {
                 }
             }
         });
-
     } catch (error) {
         logger.error('Google Sign-In error:', error);
         res.status(500).json({

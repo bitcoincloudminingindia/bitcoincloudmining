@@ -31,6 +31,7 @@ import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:workmanager/workmanager.dart';
 
+import 'config/mediation_config.dart';
 import 'fcm_service.dart';
 import 'services/audio_service.dart';
 import 'services/sound_notification_service.dart';
@@ -103,12 +104,34 @@ void main() async {
   if (!kIsWeb) {
     try {
       MobileAds.instance.initialize();
+
+      // Configure mediation settings
+      await MobileAds.instance.updateRequestConfiguration(
+        RequestConfiguration(
+          maxAdContentRating: MaxAdContentRating.pg,
+          tagForChildDirectedTreatment:
+              TagForChildDirectedTreatment.unspecified,
+          tagForUnderAgeOfConsent: TagForUnderAgeOfConsent.unspecified,
+          testDeviceIds: MediationConfig.enableTestDevices
+              ? MediationConfig.testDeviceIds
+              : null,
+        ),
+      );
+
+      if (kDebugMode) {
+        print('✅ AdMob and mediation initialized successfully');
+      }
+
       // Register native ad factory only on Android/iOS, and only if implemented natively
       if (Platform.isAndroid || Platform.isIOS) {
         // MobileAds.instance.registerNativeAdFactory('listTile', ...);
         // Register your native ad factory in native code, not Dart.
       }
-    } catch (e) {}
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ AdMob initialization failed: $e');
+      }
+    }
   }
 
   // Initialize background tasks if not on web

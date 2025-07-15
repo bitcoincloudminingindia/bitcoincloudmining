@@ -443,22 +443,57 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     }
   }
 
-  void _showWatchAdToContinueDialog(int level) {
+  void _showWatchAdToContinueDialog(int level) async {
     showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: false, // User cannot dismiss dialog
       builder: (context) => AlertDialog(
-        title: Text('Watch Ad to Continue'),
-        content: Text(
-            'To continue playing after reaching level $level, please watch a rewarded ad.'),
+        title: Text('Level $level Unlocked!'),
+        content:
+            Text('You must watch a rewarded ad to continue playing the game.'),
         actions: [
-          ElevatedButton.icon(
+          TextButton(
             onPressed: () async {
-              Navigator.pop(context);
-              await _showRewardedAdForLevel(level);
+              Navigator.pop(context); // Close dialog
+              setState(() {
+                _isAdLoading = true;
+              });
+              await _adService.showRewardedAd(
+                onRewarded: (amount) async {
+                  // Ad dekhne par reward do
+                  const double adReward = 0.00000000000000001;
+                  setState(() {
+                    _btcScore += adReward;
+                    _sessionEarnings += adReward;
+                    _pendingAdLevel = null;
+                  });
+                  _saveGameData();
+                  final prefs = await SharedPreferences.getInstance();
+                  prefs.remove('pendingAdLevel');
+                  // User ko reward message bhi dikha sakte hain
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            'You earned 0.000000000000000010 BTC for watching the ad!'),
+                        backgroundColor: Colors.green,
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
+                onAdDismissed: () {
+                  // If ad not watched, show dialog again
+                  Future.delayed(const Duration(milliseconds: 500), () {
+                    _showWatchAdToContinueDialog(level);
+                  });
+                },
+              );
+              setState(() {
+                _isAdLoading = false;
+              });
             },
-            icon: const Icon(Icons.play_circle_fill),
-            label: const Text('Watch Ad'),
+            child: Text('Watch Ad to Continue'),
           ),
         ],
       ),

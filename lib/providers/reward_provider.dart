@@ -100,6 +100,41 @@ class RewardProvider with ChangeNotifier {
   double get referralReward => 0.000000000000005000;
   double get socialMediaReward => 0.000000000000010000;
 
+  // Social media reward claim status cache
+  final Map<String, bool> _socialMediaRewardClaimed = {};
+
+  // Load claimed status from shared preferences
+  Future<void> loadSocialMediaRewardStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys =
+        _socialMediaPlatforms.map((p) => p['platform'] as String).toList();
+    for (final platform in keys) {
+      _socialMediaRewardClaimed[platform] =
+          prefs.getBool('claimed_${platform}_reward') ?? false;
+    }
+    notifyListeners();
+  }
+
+  // Save claimed status to shared preferences
+  Future<void> saveSocialMediaRewardStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final entry in _socialMediaRewardClaimed.entries) {
+      await prefs.setBool('claimed_${entry.key}_reward', entry.value);
+    }
+  }
+
+  // Check if user has already claimed reward for a platform
+  bool isSocialMediaRewardClaimed(String platform) {
+    return _socialMediaRewardClaimed[platform] ?? false;
+  }
+
+  // Mark reward as claimed for a platform
+  Future<void> markSocialMediaRewardClaimed(String platform) async {
+    _socialMediaRewardClaimed[platform] = true;
+    await saveSocialMediaRewardStatus();
+    notifyListeners();
+  }
+
   Future<void> setSubscribeYouTube(bool value, WalletProvider wallet) async {
     if (!_subscribeYouTube) {
       const double reward = 0.000000000000010000;
@@ -270,49 +305,45 @@ class RewardProvider with ChangeNotifier {
 
   // Modified loadSocialMediaPlatforms to handle API errors better
   Future<void> loadSocialMediaPlatforms() async {
-    try {
-      // Using default values for now
-      _socialMediaPlatforms = [
-        {
-          'platform': 'instagram',
-          'handle': '@bitcoincloudmining',
-          'url': 'https://www.instagram.com/bitcoincloudmining/',
-          'rewardAmount': '0.000000000000010000'
-        },
-        {
-          'platform': 'twitter',
-          'handle': '@bitcoinclmining',
-          'url': 'https://x.com/bitcoinclmining',
-          'rewardAmount': '0.000000000000010000'
-        },
-        {
-          'platform': 'telegram',
-          'handle': '@bitcoin_cloud_mining',
-          'url': 'https://t.me/+v6K5Agkb5r8wMjhl',
-          'rewardAmount': '0.000000000000010000'
-        },
-        {
-          'platform': 'facebook',
-          'handle': 'Bitcoin Cloud Mining',
-          'url': 'https://www.facebook.com/groups/1743859249846928',
-          'rewardAmount': '0.000000000000010000'
-        },
-        {
-          'platform': 'youtube',
-          'handle': 'Bitcoin Cloud Mining',
-          'url': 'https://www.youtube.com/channel/UC1V43aMm3KYUJu_J9Lx2DAw',
-          'rewardAmount': '0.000000000000010000'
-        },
-        {
-          'platform': 'whatsapp',
-          'handle': 'Bitcoin Cloud Mining',
-          'url': 'https://chat.whatsapp.com/InL9NrT9gtuKpXRJ3Gu5A5',
-          'rewardAmount': '0.000000000000010000'
-        }
-      ];
-    } catch (e) {
-      // Keep using default values if API fails
-    }
+    // Remove any API/network call, use only default values
+    _socialMediaPlatforms = [
+      {
+        'platform': 'instagram',
+        'handle': '@bitcoincloudmining',
+        'url': 'https://www.instagram.com/bitcoincloudmining/',
+        'rewardAmount': '0.000000000000010000'
+      },
+      {
+        'platform': 'twitter',
+        'handle': '@bitcoinclmining',
+        'url': 'https://x.com/bitcoinclmining',
+        'rewardAmount': '0.000000000000010000'
+      },
+      {
+        'platform': 'telegram',
+        'handle': '@bitcoin_cloud_mining',
+        'url': 'https://t.me/+v6K5Agkb5r8wMjhl',
+        'rewardAmount': '0.000000000000010000'
+      },
+      {
+        'platform': 'facebook',
+        'handle': 'Bitcoin Cloud Mining',
+        'url': 'https://www.facebook.com/groups/1743859249846928',
+        'rewardAmount': '0.000000000000010000'
+      },
+      {
+        'platform': 'youtube',
+        'handle': 'Bitcoin Cloud Mining',
+        'url': 'https://www.youtube.com/channel/UC1V43aMm3KYUJu_J9Lx2DAw',
+        'rewardAmount': '0.000000000000010000'
+      },
+      {
+        'platform': 'whatsapp',
+        'handle': 'Bitcoin Cloud Mining',
+        'url': 'https://chat.whatsapp.com/InL9NrT9gtuKpXRJ3Gu5A5',
+        'rewardAmount': '0.000000000000010000'
+      }
+    ];
     notifyListeners();
   }
 

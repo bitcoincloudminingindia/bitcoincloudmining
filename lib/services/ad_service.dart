@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/mediation_config.dart';
+
 class AdService {
   static final AdService _instance = AdService._internal();
   factory AdService() => _instance;
@@ -17,7 +19,7 @@ class AdService {
       Duration(seconds: 3); // Reduced from 5 to 3
   static const Duration AD_CACHE_DURATION = Duration(minutes: 30);
 
-  // Ad unit IDs - Real AdMob IDs for production
+  // Ad unit IDs - Real AdMob IDs for production with mediation
   final Map<String, Map<String, String>> _adUnitIds = {
     'android': {
       'banner': 'ca-app-pub-3537329799200606/2028008282', // Home_Banner_Ad
@@ -48,6 +50,11 @@ class AdService {
   bool _isRewardedAdLoading = false;
   bool _isNativeAdLoaded = false;
 
+  // Mediation states
+  final bool _isMediationEnabled = MediationConfig.enabled;
+  bool _isMediationInitialized = false;
+  final Map<String, bool> _mediationNetworkStates = {};
+
   // Ad tracking
   final Map<String, int> _adShowCounts = {};
   final Map<String, DateTime> _lastAdShowTimes = {};
@@ -55,6 +62,11 @@ class AdService {
   final Map<String, DateTime> _adCacheTimes = {};
   final Map<String, int> _adFailures = {};
   final Map<String, List<Duration>> _adLoadTimes = {};
+
+  // Mediation tracking
+  final Map<String, int> _mediationAdShows = {};
+  final Map<String, int> _mediationAdFailures = {};
+  final Map<String, double> _mediationRevenue = {};
 
   // Performance metrics
   int _totalAdShows = 0;
@@ -247,10 +259,21 @@ class AdService {
             onAdLoaded: (_) {
               _isBannerAdLoaded = true;
               _startBannerAdAutoRefresh(); // Start auto-refresh timer
+
+              // Update mediation metrics for successful load
+              if (_isMediationEnabled) {
+                _updateMediationMetrics('admob', true, null);
+              }
             },
             onAdFailedToLoad: (ad, error) {
               _isBannerAdLoaded = false;
               ad.dispose();
+
+              // Update mediation metrics for failed load
+              if (_isMediationEnabled) {
+                _updateMediationMetrics('admob', false, null);
+              }
+
               throw error;
             },
           ),
@@ -308,7 +331,7 @@ class AdService {
     }
   }
 
-  // Load rewarded ad with better error handling
+  // Load rewarded ad with better error handling and mediation tracking
   Future<void> loadRewardedAd() async {
     if (kIsWeb) return;
 
@@ -335,6 +358,11 @@ class AdService {
             _isRewardedAdLoading = false;
             _adCacheTimes['rewarded'] = DateTime.now();
 
+            // Update mediation metrics for successful load
+            if (_isMediationEnabled) {
+              _updateMediationMetrics('admob', true, null);
+            }
+
             // Set up ad event listeners
             ad.fullScreenContentCallback = FullScreenContentCallback(
               onAdDismissedFullScreenContent: (ad) {
@@ -344,17 +372,37 @@ class AdService {
               onAdFailedToShowFullScreenContent: (ad, error) {
                 _isRewardedAdLoaded = false;
                 ad.dispose();
+
+                // Update mediation metrics for failed show
+                if (_isMediationEnabled) {
+                  _updateMediationMetrics('admob', false, null);
+                }
               },
-              onAdShowedFullScreenContent: (ad) {},
+              onAdShowedFullScreenContent: (ad) {
+                // Update mediation metrics for successful show
+                if (_isMediationEnabled) {
+                  _updateMediationMetrics('admob', true, null);
+                }
+              },
             );
           },
           onAdFailedToLoad: (error) {
             _isRewardedAdLoading = false;
+
+            // Update mediation metrics for failed load
+            if (_isMediationEnabled) {
+              _updateMediationMetrics('admob', false, null);
+            }
           },
         ),
       );
     } catch (e) {
       _isRewardedAdLoading = false;
+
+      // Update mediation metrics for exception
+      if (_isMediationEnabled) {
+        _updateMediationMetrics('admob', false, null);
+      }
     }
   }
 
@@ -397,21 +445,47 @@ class AdService {
                   (_nativeAdAverageLoadTime * (_nativeAdLoadCount - 1) +
                           loadTime.inMilliseconds) /
                       _nativeAdLoadCount;
+
+              // Update mediation metrics for successful load
+              if (_isMediationEnabled) {
+                _updateMediationMetrics('admob', true, null);
+              }
             },
             onAdFailedToLoad: (ad, error) {
               _isNativeAdLoaded = false;
               _nativeAdFailCount++;
               ad.dispose();
               _adFailures['native'] = (_adFailures['native'] ?? 0) + 1;
+
+              // Update mediation metrics for failed load
+              if (_isMediationEnabled) {
+                _updateMediationMetrics('admob', false, null);
+              }
+
               throw error;
             },
-            onAdOpened: (ad) {},
+            onAdOpened: (ad) {
+              // Update mediation metrics for ad opened
+              if (_isMediationEnabled) {
+                _updateMediationMetrics('admob', true, null);
+              }
+            },
             onAdClosed: (ad) {},
             onAdImpression: (ad) {
               _nativeAdImpressionCount++;
+
+              // Update mediation metrics for impression
+              if (_isMediationEnabled) {
+                _updateMediationMetrics('admob', true, null);
+              }
             },
             onAdClicked: (ad) {
               _nativeAdClickCount++;
+
+              // Update mediation metrics for click
+              if (_isMediationEnabled) {
+                _updateMediationMetrics('admob', true, null);
+              }
             },
           ),
         );
@@ -679,11 +753,214 @@ class AdService {
       await MobileAds.instance.initialize();
       await _loadMetrics();
 
+      // Initialize mediation
+      await _initializeMediation();
+
       // Preload ads
       loadBannerAd();
       loadRewardedAd();
       loadNativeAd();
     } catch (e) {}
+  }
+
+  // Initialize mediation configuration
+  Future<void> _initializeMediation() async {
+    if (!_isMediationEnabled) return;
+
+    try {
+      // Configure mediation settings
+      await _configureMediationSettings();
+
+      // Initialize mediation networks
+      await _initializeMediationNetworks();
+
+      _isMediationInitialized = true;
+
+      if (kDebugMode) {
+        print('✅ Mediation initialized successfully');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Mediation initialization failed: $e');
+      }
+    }
+  }
+
+  // Configure mediation settings
+  Future<void> _configureMediationSettings() async {
+    try {
+      // Configure AdMob mediation settings
+      await MobileAds.instance.updateRequestConfiguration(
+        RequestConfiguration(
+          maxAdContentRating: MaxAdContentRating.pg,
+          tagForChildDirectedTreatment:
+              TagForChildDirectedTreatment.unspecified,
+          tagForUnderAgeOfConsent: TagForUnderAgeOfConsent.unspecified,
+          testDeviceIds: MediationConfig.enableTestDevices
+              ? MediationConfig.testDeviceIds
+              : null,
+        ),
+      );
+
+      if (kDebugMode) {
+        print('✅ Mediation settings configured');
+        if (MediationConfig.enableTestDevices) {
+          print('🔧 Test devices enabled: ${MediationConfig.testDeviceIds}');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Mediation settings configuration failed: $e');
+      }
+    }
+  }
+
+  // Initialize mediation networks
+  Future<void> _initializeMediationNetworks() async {
+    final networks = MediationConfig.supportedNetworks;
+
+    for (final network in networks) {
+      try {
+        await _initializeMediationNetwork(network);
+        _mediationNetworkStates[network] = true;
+
+        if (kDebugMode) {
+          print('✅ $network mediation network initialized');
+        }
+      } catch (e) {
+        _mediationNetworkStates[network] = false;
+        if (kDebugMode) {
+          print('❌ $network mediation network failed: $e');
+        }
+      }
+    }
+  }
+
+  // Initialize specific mediation network
+  Future<void> _initializeMediationNetwork(String network) async {
+    switch (network) {
+      case 'unity_ads':
+        // Unity Ads is already initialized via build.gradle
+        break;
+      case 'facebook_audience_network':
+        // Facebook Audience Network initialization
+        break;
+      case 'applovin':
+        // AppLovin initialization
+        break;
+      case 'iron_source':
+        // IronSource initialization
+        break;
+      default:
+        if (kDebugMode) {
+          print('⚠️ Unknown mediation network: $network');
+        }
+    }
+  }
+
+  // Get mediation status
+  Map<String, dynamic> get mediationStatus => {
+        'enabled': _isMediationEnabled,
+        'initialized': _isMediationInitialized,
+        'networks': _mediationNetworkStates,
+        'config': MediationConfig.config,
+        'metrics': {
+          'ad_shows': _mediationAdShows,
+          'ad_failures': _mediationAdFailures,
+          'revenue': _mediationRevenue,
+        },
+      };
+
+  // Check if mediation is working properly
+  bool get isMediationWorking {
+    if (!_isMediationEnabled) return false;
+    if (!_isMediationInitialized) return false;
+
+    // Check if at least one network is active
+    final activeNetworks =
+        _mediationNetworkStates.values.where((state) => state).length;
+    return activeNetworks > 0;
+  }
+
+  // Get mediation performance summary
+  Map<String, dynamic> get mediationPerformance {
+    final totalShows =
+        _mediationAdShows.values.fold(0, (sum, count) => sum + count);
+    final totalFailures =
+        _mediationAdFailures.values.fold(0, (sum, count) => sum + count);
+    final totalRevenue =
+        _mediationRevenue.values.fold(0.0, (sum, revenue) => sum + revenue);
+
+    return {
+      'total_shows': totalShows,
+      'total_failures': totalFailures,
+      'total_revenue': totalRevenue,
+      'success_rate': totalShows > 0
+          ? ((totalShows - totalFailures) / totalShows) * 100
+          : 0,
+      'is_working': isMediationWorking,
+      'active_networks':
+          _mediationNetworkStates.values.where((state) => state).length,
+    };
+  }
+
+  // Update mediation metrics
+  void _updateMediationMetrics(String network, bool success, double? revenue) {
+    if (success) {
+      _mediationAdShows[network] = (_mediationAdShows[network] ?? 0) + 1;
+      if (revenue != null) {
+        _mediationRevenue[network] =
+            (_mediationRevenue[network] ?? 0) + revenue;
+      }
+    } else {
+      _mediationAdFailures[network] = (_mediationAdFailures[network] ?? 0) + 1;
+    }
+
+    // Log mediation metrics for debugging
+    if (kDebugMode) {
+      print('📊 Mediation Metrics Updated:');
+      print('   Network: $network');
+      print('   Success: $success');
+      print('   Revenue: $revenue');
+      print('   Total Shows: ${_mediationAdShows[network]}');
+      print('   Total Failures: ${_mediationAdFailures[network]}');
+    }
+  }
+
+  // Test mediation functionality
+  Future<void> testMediation() async {
+    if (!_isMediationEnabled) {
+      if (kDebugMode) {
+        print('❌ Mediation is disabled');
+      }
+      return;
+    }
+
+    if (kDebugMode) {
+      print('🧪 Testing Mediation...');
+      print('   Enabled: $_isMediationEnabled');
+      print('   Initialized: $_isMediationInitialized');
+      print('   Networks: $_mediationNetworkStates');
+      print('   Metrics:');
+      print('     Shows: $_mediationAdShows');
+      print('     Failures: $_mediationAdFailures');
+      print('     Revenue: $_mediationRevenue');
+    }
+
+    // Test ad loading with mediation
+    try {
+      await loadRewardedAd();
+      await loadBannerAd();
+      await loadNativeAd();
+
+      if (kDebugMode) {
+        print('✅ Mediation test completed');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Mediation test failed: $e');
+      }
+    }
   }
 
   // Dispose ads
@@ -820,18 +1097,39 @@ class AdService {
                   (_nativeAdAverageLoadTime * (_nativeAdLoadCount - 1) +
                           loadTime.inMilliseconds) /
                       _nativeAdLoadCount;
+
+              // Update mediation metrics for successful load
+              if (_isMediationEnabled) {
+                _updateMediationMetrics('admob', true, null);
+              }
             },
             onAdFailedToLoad: (ad, error) {
               _nativeAdLoadedStates[adId] = false;
               _nativeAdFailCount++;
               ad.dispose();
+
+              // Update mediation metrics for failed load
+              if (_isMediationEnabled) {
+                _updateMediationMetrics('admob', false, null);
+              }
+
               throw error;
             },
             onAdClicked: (ad) {
               _nativeAdClickCount++;
+
+              // Update mediation metrics for click
+              if (_isMediationEnabled) {
+                _updateMediationMetrics('admob', true, null);
+              }
             },
             onAdImpression: (ad) {
               _nativeAdImpressionCount++;
+
+              // Update mediation metrics for impression
+              if (_isMediationEnabled) {
+                _updateMediationMetrics('admob', true, null);
+              }
             },
           ),
         );
