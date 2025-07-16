@@ -52,11 +52,29 @@ async function getBTCUSDRate() {
     // Fetch rates from multiple sources with individual error handling
     const ratePromises = [
       getCoinGeckoRate().catch(error => {
-        logger.error('CoinGecko rate fetch failed:', error.message);
+        logger.error('CoinGecko rate fetch failed:', {
+          message: error.message,
+          stack: error.stack,
+          code: error.code,
+          config: error.config,
+          response: error.response ? {
+            status: error.response.status,
+            data: error.response.data
+          } : undefined
+        });
         return null;
       }),
       getBinanceRate().catch(error => {
-        logger.error('Binance rate fetch failed:', error.message);
+        logger.error('Binance rate fetch failed:', {
+          message: error.message,
+          stack: error.stack,
+          code: error.code,
+          config: error.config,
+          response: error.response ? {
+            status: error.response.status,
+            data: error.response.data
+          } : undefined
+        });
         return null;
       }),
       getKrakenRate().catch(error => {
