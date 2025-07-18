@@ -4,6 +4,7 @@ const { formatBTC } = require('../utils/format');
 const { generateReferralCode } = require('../utils/generators');
 const crypto = require('crypto');
 const { Schema } = mongoose;
+const AppConfig = require('./appConfig.model');
 
 // Define schema
 const referralSchema = new Schema({
@@ -409,18 +410,23 @@ referralSchema.methods.calculateTotalClaims = function (currency) {
 // Method to calculate daily reward from referred user's balance
 referralSchema.methods.calculateDailyReward = async function (referredUser) {
   try {
-    // 30 din ka check
+    // Get config from AppConfig
+    let config = await AppConfig.findOne();
+    const percent = config && config.referralDailyPercent !== undefined ? config.referralDailyPercent : 1.0;
+    const maxDays = config && config.referralEarningDays !== undefined ? config.referralEarningDays : 30;
+
+    // Earning duration check
     const now = new Date();
     const start = this.rewardStartDate || this.createdAt || now;
     const daysSinceStart = Math.floor((now - start) / (1000 * 60 * 60 * 24));
-    if (daysSinceStart >= 30) {
-      console.log('30 din ho gaye, ab daily reward nahi milega');
+    if (daysSinceStart >= maxDays) {
+      console.log(`${maxDays} din ho gaye, ab daily reward nahi milega`);
       return 0;
     }
     // Get referred user's current wallet balance
     const referredUserBalance = parseFloat(referredUser.walletBalance) || 0;
-    // Calculate 1% of the balance
-    const dailyReward = referredUserBalance * 0.01;
+    // Calculate percent of the balance
+    const dailyReward = referredUserBalance * (percent / 100);
     if (dailyReward <= 0) {
       console.log('No daily reward: Referred user has no balance');
       return 0;

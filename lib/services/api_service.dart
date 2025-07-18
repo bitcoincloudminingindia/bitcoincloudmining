@@ -170,6 +170,16 @@ class ApiService {
         final url = Uri.parse(urlString);
         // Fix: Define finalHeaders
         final Map<String, String> finalHeaders = ApiConfig.getHeaders();
+
+        // Add auth token if not already provided in headers
+        if (!finalHeaders.containsKey('Authorization') &&
+            !publicEndpoints.contains(endpoint)) {
+          final token = await StorageUtils.getToken();
+          if (token != null) {
+            finalHeaders['Authorization'] = 'Bearer $token';
+          }
+        }
+
         if (headers != null) {
           finalHeaders.addAll(headers);
         }

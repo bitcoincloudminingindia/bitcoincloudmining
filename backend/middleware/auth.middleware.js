@@ -63,6 +63,25 @@ const authenticate = catchAsync(async (req, res, next) => {
     try {
       // Verify token with explicit algorithm
       decoded = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] });
+      console.log('DEBUG ADMIN AUTH:', { decoded, ENV_ADMIN_USERID: process.env.ADMIN_USERID });
+
+      // SPECIAL CASE: If admin token, skip DB lookup
+      console.log('ADMIN BYPASS CHECK:', {
+        decodedUserId: decoded.userId,
+        decodedRole: decoded.role,
+        envUserId: process.env.ADMIN_USERID,
+        envEmail: process.env.ADMIN_EMAIL
+      });
+      if (decoded.role === 'admin' && decoded.userId === process.env.ADMIN_USERID) {
+        req.user = {
+          userId: decoded.userId,
+          userEmail: decoded.email,
+          role: 'admin',
+          status: 'active'
+        };
+        console.log('ADMIN BYPASS SUCCESS:', req.user);
+        return next();
+      }
 
       // Check minimum required fields (userId is the only mandatory field)
       if (!decoded.userId) {
@@ -262,17 +281,7 @@ const authenticate = catchAsync(async (req, res, next) => {
   }
 });
 
-// Restrict to certain roles
-exports.restrictTo = (...roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return next(new AppError('You do not have permission to perform this action', 403));
-    }
-    next();
-  };
-};
-
-exports.isAdmin = async (req, res, next) => {
+const isAdmin = async (req, res, next) => {
   try {
     if (!req.user) {
       return res.status(401).json({
@@ -299,5 +308,6 @@ exports.isAdmin = async (req, res, next) => {
 };
 
 module.exports = {
-  authenticate
+  authenticate,
+  isAdmin
 };

@@ -333,4 +333,5 @@ walletSchema.pre('save', async function (next) {
   }
 });
 
-module.exports = mongoose.model('Wallet', walletSchema);
+const Wallet = mongoose.model('Wallet', walletSchema);
+module.exports = { Wallet };

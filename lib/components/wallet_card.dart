@@ -132,7 +132,7 @@ class _WalletCardState extends State<WalletCard> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '\$${localBalance.toStringAsFixed(2)}',
+                    '\$${localBalance.toStringAsFixed(10)}',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: Colors.grey[600],
                         ),

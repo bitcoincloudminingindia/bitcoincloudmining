@@ -23,6 +23,8 @@ const referralRoutes = require('./routes/referral.routes');
 const transactionRoutes = require('./routes/transaction.routes');
 const marketRoutes = require('./routes/market.routes');
 const imagesRoutes = require('./routes/images.routes');
+const adminRoutes = require('./routes/admin.routes');
+const proxyRoutes = require('./routes/proxy.routes');
 const { authenticate } = require('./middleware/auth.middleware');
 const nodemailer = require('nodemailer');
 const mongoSanitize = require('express-mongo-sanitize');
@@ -64,20 +66,36 @@ io.on('connection', (socket) => {
 });
 
 // Middleware
+const allowedOrigins = [
+  'https://bitcoincloudmining.web.app',
+  'https://bitcoincloudmining.firebaseapp.com',
+  'https://web.bitcoincloudmining.onrender.com',
+  'https://bitcoincloudmining.onrender.com',
+  'http://localhost:3000',
+  'http://localhost:5000',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5000'
+];
+
 app.use(cors({
-  origin: [
-    '*',
-    'https://bitcoincloudmining.onrender.com',
-    'https://bitcoin-cloud-mining.onrender.com',
-    'https://bitcoin-mining.onrender.com',
-    'http://localhost:3000',
-    'http://localhost:5000',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5000',
-    'https://web.bitcoincloudmining.onrender.com',
-    'https://bitcoincloudmining.web.app',
-    'https://bitcoincloudmining.firebaseapp.com'
-  ],
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (
+      origin?.includes('localhost') ||
+      origin?.includes('127.0.0.1') ||
+      origin?.includes('[::1]') ||
+      process.env.NODE_ENV === 'development'
+    ) {
+      return callback(null, true);
+    }
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
   allowedHeaders: [
     'Content-Type',
@@ -87,9 +105,9 @@ app.use(cors({
     'Origin',
     'Access-Control-Allow-Origin',
     'Access-Control-Allow-Methods',
-    'Access-Control-Allow-Headers'
+    'Access-Control-Allow-Headers',
+    'Access-Control-Allow-Credentials'
   ],
-  credentials: true,
   preflightContinue: false,
   optionsSuccessStatus: 204,
   maxAge: 86400 // 24 hours
@@ -165,6 +183,8 @@ app.use('/api/referrals', referralRoutes);
 app.use('/api/wallet/transactions', transactionRoutes);  // Keep existing wallet transactions route
 app.use('/api/market', marketRoutes);
 app.use('/api/images', imagesRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/proxy', proxyRoutes);
 
 // Handle transaction claim endpoint
 app.post('/api/transactions/claim', authenticate, (req, res) => {

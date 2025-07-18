@@ -40,6 +40,15 @@ exports.getExchangeRate = async (fromCurrency, toCurrency = 'USD') => {
         console.warn('Failed to fetch BTC rate from rates.js, using default:', error.message);
         rate = DEFAULT_BTC_RATE;
       }
+    } else if (fromCurrency === 'USD' && toCurrency === 'INR') {
+      // USD to INR rate from CoinGecko
+      try {
+        const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=usd&vs_currencies=inr');
+        rate = response.data.usd.inr;
+      } catch (error) {
+        console.warn('Failed to fetch USD/INR rate, using fallback 83');
+        rate = 83; // fallback
+      }
     } else {
       throw new Error(`Unsupported currency pair: ${fromCurrency}/${toCurrency}`);
     }
@@ -57,6 +66,9 @@ exports.getExchangeRate = async (fromCurrency, toCurrency = 'USD') => {
     // For BTC/USD, use default rate if not in cache
     if (fromCurrency === 'BTC' && toCurrency === 'USD') {
       return DEFAULT_BTC_RATE;
+    }
+    if (fromCurrency === 'USD' && toCurrency === 'INR') {
+      return 83;
     }
 
     // For other pairs, throw error
