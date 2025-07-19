@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/admin_api_provider.dart';
 import '../providers/chart_provider.dart';
+import '../utils/safe_overflow_fix.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -133,8 +134,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-            child: Column(
+            child: SafeFix.column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header Section
@@ -155,7 +155,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     bool isMobile = constraints.maxWidth < 600;
 
                     if (isMobile) {
-                      return Column(
+                      return SafeFix.column(
                         children: [
                           _buildServerStatus(),
                           const SizedBox(height: 24),
@@ -208,7 +208,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       builder: (context, constraints) {
         bool isMobile = constraints.maxWidth < 600;
 
-        return Column(
+        return SafeFix.column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (isMobile) ...[
@@ -491,9 +491,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
             child: Padding(
               padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+              child: SafeFix.column(
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -517,8 +515,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                               : Colors.red.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                        child: SafeFix.row(
                           children: [
                             Icon(
                               trendUp ? Icons.trending_up : Icons.trending_down,
@@ -543,7 +540,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                   Text(
                     value,
                     style: GoogleFonts.poppins(
-                      fontSize: title == 'Total Earnings' ? 15 : 18,
+                      fontSize: title == 'Daily Mining'
+                          ? 13
+                          : (title == 'Total Earnings' ? 15 : 18),
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -579,11 +578,10 @@ class _DashboardScreenState extends State<DashboardScreen>
       builder: (context, constraints) {
         bool isMobile = constraints.maxWidth < 600;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        return SafeFix.column(
           children: [
             // Time Range Selector
-            Row(
+            SafeFix.row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
@@ -604,8 +602,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Colors.white.withOpacity(0.2)),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  child: SafeFix.row(
                     children: [
                       _buildTimeRangeButton('Daily', 0),
                       _buildTimeRangeButton('Weekly', 1),
@@ -624,7 +621,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               const SizedBox(height: 24),
               _buildUserActivityChart(provider),
             ] else ...[
-              Row(
+              SafeFix.row(
                 children: [
                   Expanded(child: _buildRevenueChart(provider)),
                   const SizedBox(width: 24),
@@ -682,10 +679,10 @@ class _DashboardScreenState extends State<DashboardScreen>
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
-      child: Column(
+      child: SafeFix.column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          SafeFix.row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
@@ -696,7 +693,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   color: Colors.white,
                 ),
               ),
-              Row(
+              SafeFix.row(
                 children: [
                   const Text('Count', style: TextStyle(color: Colors.white70)),
                   Switch(
@@ -873,7 +870,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
-      child: Column(
+      child: SafeFix.column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -1003,7 +1000,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
-      child: Column(
+      child: SafeFix.column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -1103,7 +1100,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             fontWeight: FontWeight.bold,
           ),
         ),
-        content: Column(
+        content: SafeFix.column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
@@ -1193,7 +1190,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             fontWeight: FontWeight.bold,
           ),
         ),
-        content: Column(
+        content: SafeFix.column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
@@ -1339,7 +1336,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         content: SizedBox(
           width: double.maxFinite,
           height: 300,
-          child: Column(
+          child: SafeFix.column(
             children: [
               Expanded(
                 child: Container(
@@ -1350,7 +1347,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     border: Border.all(color: Colors.white.withOpacity(0.1)),
                   ),
                   child: SingleChildScrollView(
-                    child: Column(
+                    child: SafeFix.column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildLogEntry(
@@ -1467,7 +1464,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildLatestWithdrawals(AdminApiProvider provider) {
-    return Column(
+    return SafeFix.column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
@@ -1504,7 +1501,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               ? Padding(
                   padding: const EdgeInsets.all(32),
                   child: Center(
-                    child: Column(
+                    child: SafeFix.column(
                       children: [
                         const Icon(
                           Icons.swap_horiz,
@@ -1559,7 +1556,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                         'Amount: ${wd['amount'] ?? '-'} BTC',
                         style: GoogleFonts.poppins(color: Colors.white70),
                       ),
-                      trailing: Column(
+                      trailing: SafeFix.column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
@@ -1614,7 +1611,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
-      child: Column(
+      child: SafeFix.column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(

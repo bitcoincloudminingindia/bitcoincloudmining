@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/admin_api_provider.dart';
+import '../utils/safe_overflow_fix.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -34,16 +35,20 @@ class _WalletScreenState extends State<WalletScreen>
     );
 
     Future.delayed(Duration.zero, () async {
+      if (!mounted) return;
       final provider = Provider.of<AdminApiProvider>(context, listen: false);
       await provider.fetchWalletData();
       await provider.fetchWalletTransactions();
       await provider.fetchMarketRates();
       // ChartProvider me sabhi users ke transactions set karo
+      if (!mounted) return;
       final chartProvider = Provider.of<ChartProvider>(context, listen: false);
       chartProvider.setAllTransactions(
         List<Map<String, dynamic>>.from(provider.walletTransactions),
       );
-      _animationController.forward();
+      if (mounted) {
+        _animationController.forward();
+      }
     });
   }
 
@@ -68,96 +73,104 @@ class _WalletScreenState extends State<WalletScreen>
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(),
-                const SizedBox(height: 32),
-                Consumer<ChartProvider>(
-                  builder: (context, chartProvider, child) {
-                    final transactions = chartProvider.transactions;
-                    final filteredTxs = _getFilteredTransactions(transactions);
-                    final filteredCount = filteredTxs.length;
-                    final filteredAmount = filteredTxs.fold<double>(
-                      0,
-                      (sum, tx) =>
-                          sum + (double.tryParse(tx['amount'].toString()) ?? 0),
-                    );
-                    // Previous period amount calculation
-                    final previousPeriodAmount = _getPreviousPeriodAmount(
-                      chartProvider.transactions,
-                    );
-                    double growth = 0;
-                    if (previousPeriodAmount > 0) {
-                      growth =
-                          ((filteredAmount - previousPeriodAmount) /
-                              previousPeriodAmount) *
-                          100;
-                    } else if (filteredAmount > 0) {
-                      growth = 100;
-                    } else {
-                      growth = 0;
-                    }
-                    return _buildWalletOverview(
-                      provider,
-                      filteredCount,
-                      filteredAmount,
-                      growth,
-                    );
-                  },
-                ),
-                const SizedBox(height: 32),
-                Consumer<ChartProvider>(
-                  builder: (context, chartProvider, child) {
-                    final transactions = chartProvider.transactions;
-                    final filteredTxs = _getFilteredTransactions(transactions);
-                    final Map<String, double> dailyVolume = {};
-                    for (var tx in filteredTxs) {
-                      final date =
-                          tx['timestamp']?.toString().substring(0, 10) ?? '';
-                      final amount =
-                          double.tryParse(tx['amount'].toString()) ?? 0;
-                      dailyVolume[date] = (dailyVolume[date] ?? 0) + amount;
-                    }
-                    final sortedDates = dailyVolume.keys.toList()..sort();
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            _buildChartFilterButton('Today'),
-                            const SizedBox(width: 8),
-                            _buildChartFilterButton('Weekly'),
-                            const SizedBox(width: 8),
-                            _buildChartFilterButton('Monthly'),
-                            const SizedBox(width: 8),
-                            _buildChartFilterButton('Yearly'),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        _buildTransactionChart(
-                          sortedDates: sortedDates,
-                          dailyVolume: dailyVolume,
-                          totalVolume: filteredTxs.fold<double>(
-                            0,
-                            (sum, tx) =>
-                                sum +
-                                (double.tryParse(tx['amount'].toString()) ?? 0),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 32),
+                  Consumer<ChartProvider>(
+                    builder: (context, chartProvider, child) {
+                      final transactions = chartProvider.transactions;
+                      final filteredTxs = _getFilteredTransactions(
+                        transactions,
+                      );
+                      final filteredCount = filteredTxs.length;
+                      final filteredAmount = filteredTxs.fold<double>(
+                        0,
+                        (sum, tx) =>
+                            sum +
+                            (double.tryParse(tx['amount'].toString()) ?? 0),
+                      );
+                      // Previous period amount calculation
+                      final previousPeriodAmount = _getPreviousPeriodAmount(
+                        chartProvider.transactions,
+                      );
+                      double growth = 0;
+                      if (previousPeriodAmount > 0) {
+                        growth =
+                            ((filteredAmount - previousPeriodAmount) /
+                                previousPeriodAmount) *
+                            100;
+                      } else if (filteredAmount > 0) {
+                        growth = 100;
+                      } else {
+                        growth = 0;
+                      }
+                      return _buildWalletOverview(
+                        provider,
+                        filteredCount,
+                        filteredAmount,
+                        growth,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                  Consumer<ChartProvider>(
+                    builder: (context, chartProvider, child) {
+                      final transactions = chartProvider.transactions;
+                      final filteredTxs = _getFilteredTransactions(
+                        transactions,
+                      );
+                      final Map<String, double> dailyVolume = {};
+                      for (var tx in filteredTxs) {
+                        final date =
+                            tx['timestamp']?.toString().substring(0, 10) ?? '';
+                        final amount =
+                            double.tryParse(tx['amount'].toString()) ?? 0;
+                        dailyVolume[date] = (dailyVolume[date] ?? 0) + amount;
+                      }
+                      final sortedDates = dailyVolume.keys.toList()..sort();
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              _buildChartFilterButton('Today'),
+                              const SizedBox(width: 8),
+                              _buildChartFilterButton('Weekly'),
+                              const SizedBox(width: 8),
+                              _buildChartFilterButton('Monthly'),
+                              const SizedBox(width: 8),
+                              _buildChartFilterButton('Yearly'),
+                            ],
                           ),
-                          totalCount: filteredTxs.length,
-                        ),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 32),
-                _buildRecentTransactions(provider),
-                const SizedBox(height: 32),
-                _buildSearchAndFilters(),
-                const SizedBox(height: 32),
-                _buildWalletList(provider),
-              ],
+                          const SizedBox(height: 16),
+                          _buildTransactionChart(
+                            sortedDates: sortedDates,
+                            dailyVolume: dailyVolume,
+                            totalVolume: filteredTxs.fold<double>(
+                              0,
+                              (sum, tx) =>
+                                  sum +
+                                  (double.tryParse(tx['amount'].toString()) ??
+                                      0),
+                            ),
+                            totalCount: filteredTxs.length,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                  _buildRecentTransactions(provider),
+                  const SizedBox(height: 32),
+                  _buildSearchAndFilters(),
+                  const SizedBox(height: 32),
+                  _buildWalletList(provider),
+                ],
+              ),
             ),
           ),
         ),
@@ -206,7 +219,11 @@ class _WalletScreenState extends State<WalletScreen>
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.account_balance_wallet, color: Colors.green, size: 20),
+              const Icon(
+                Icons.account_balance_wallet,
+                color: Colors.green,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Active Wallets',
@@ -309,7 +326,7 @@ class _WalletScreenState extends State<WalletScreen>
       builder: (context, child) {
         return Transform.scale(
           scale: 0.8 + (0.2 * _animationController.value),
-          child: Container(
+          child: SafeOverflowFix.container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.05),
               borderRadius: BorderRadius.circular(16),
@@ -324,13 +341,14 @@ class _WalletScreenState extends State<WalletScreen>
             ),
             child: Padding(
               padding: const EdgeInsets.all(20),
-              child: Column(
+              child: SafeOverflowFix.column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
+                  SafeOverflowFix.row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
+                      SafeOverflowFix.container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.1),
@@ -339,7 +357,7 @@ class _WalletScreenState extends State<WalletScreen>
                         child: Icon(icon, color: color, size: 24),
                       ),
                       Flexible(
-                        child: Container(
+                        child: SafeOverflowFix.container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
                             vertical: 4,
@@ -350,7 +368,7 @@ class _WalletScreenState extends State<WalletScreen>
                                 : Colors.red.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Row(
+                          child: SafeOverflowFix.row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
@@ -362,7 +380,7 @@ class _WalletScreenState extends State<WalletScreen>
                               ),
                               const SizedBox(width: 4),
                               Flexible(
-                                child: Text(
+                                child: SafeOverflowFix.text(
                                   trend,
                                   style: GoogleFonts.poppins(
                                     color: trendUp ? Colors.green : Colors.red,
@@ -379,7 +397,7 @@ class _WalletScreenState extends State<WalletScreen>
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Text(
+                  SafeOverflowFix.text(
                     value,
                     style: GoogleFonts.poppins(
                       fontSize: 14, // chhota size
@@ -388,7 +406,7 @@ class _WalletScreenState extends State<WalletScreen>
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  SafeOverflowFix.text(
                     title,
                     style: GoogleFonts.poppins(
                       fontSize: 14,
@@ -397,7 +415,7 @@ class _WalletScreenState extends State<WalletScreen>
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
+                  SafeOverflowFix.text(
                     subtitle,
                     style: GoogleFonts.poppins(
                       fontSize: 12,
@@ -415,10 +433,10 @@ class _WalletScreenState extends State<WalletScreen>
 
   Widget _buildSearchAndFilters() {
     final provider = Provider.of<AdminApiProvider>(context);
-    return Row(
+    return SafeOverflowFix.row(
       children: [
         Expanded(
-          child: Container(
+          child: SafeOverflowFix.container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.05),
               borderRadius: BorderRadius.circular(12),
@@ -431,7 +449,7 @@ class _WalletScreenState extends State<WalletScreen>
               decoration: InputDecoration(
                 hintText: 'Search wallets by user...',
                 hintStyle: GoogleFonts.poppins(color: Colors.white54),
-                prefixIcon: Icon(Icons.search, color: Colors.white54),
+                prefixIcon: const Icon(Icons.search, color: Colors.white54),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -461,7 +479,7 @@ class _WalletScreenState extends State<WalletScreen>
         ),
         const SizedBox(width: 12),
         // Currency dropdown
-        Container(
+        SafeOverflowFix.container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
@@ -479,7 +497,10 @@ class _WalletScreenState extends State<WalletScreen>
             dropdownColor: const Color(0xFF1E293B),
             underline: const SizedBox(),
             items: provider.marketRates.keys.map((option) {
-              return DropdownMenuItem(value: option, child: Text(option));
+              return DropdownMenuItem(
+                value: option,
+                child: SafeOverflowFix.text(option),
+              );
             }).toList(),
           ),
         ),
@@ -493,7 +514,7 @@ class _WalletScreenState extends State<WalletScreen>
     List<String> options,
     Function(String) onChanged,
   ) {
-    return Container(
+    return SafeOverflowFix.container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
@@ -507,7 +528,10 @@ class _WalletScreenState extends State<WalletScreen>
         dropdownColor: const Color(0xFF1E293B),
         underline: const SizedBox(),
         items: options.map((option) {
-          return DropdownMenuItem(value: option, child: Text(option));
+          return DropdownMenuItem(
+            value: option,
+            child: SafeOverflowFix.text(option),
+          );
         }).toList(),
       ),
     );
@@ -560,16 +584,16 @@ class _WalletScreenState extends State<WalletScreen>
     }
     if (wallets.isEmpty) {
       return Center(
-        child: Column(
+        child: SafeOverflowFix.column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.account_balance_wallet_outlined,
               color: Colors.white54,
               size: 64,
             ),
             const SizedBox(height: 16),
-            Text(
+            SafeOverflowFix.text(
               'No wallets found',
               style: GoogleFonts.poppins(color: Colors.white54, fontSize: 18),
             ),
@@ -577,10 +601,10 @@ class _WalletScreenState extends State<WalletScreen>
         ),
       );
     }
-    return Column(
+    return SafeOverflowFix.column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        SafeOverflowFix.text(
           'User Wallets',
           style: GoogleFonts.poppins(
             fontSize: 20,
@@ -613,7 +637,7 @@ class _WalletScreenState extends State<WalletScreen>
     final transactionCount = (wallet['transactions'] as List?)?.length ?? 0;
     final isActive = wallet['status'] == 'active';
 
-    return Container(
+    return SafeOverflowFix.container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
@@ -623,7 +647,7 @@ class _WalletScreenState extends State<WalletScreen>
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
         childrenPadding: const EdgeInsets.all(24),
-        leading: Container(
+        leading: SafeOverflowFix.container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: isActive
@@ -639,13 +663,13 @@ class _WalletScreenState extends State<WalletScreen>
             size: 24,
           ),
         ),
-        title: Column(
+        title: SafeOverflowFix.column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            SafeOverflowFix.row(
               children: [
                 Expanded(
-                  child: Text(
+                  child: SafeOverflowFix.text(
                     'User ID: $userId',
                     style: GoogleFonts.poppins(
                       color: Colors.white,
@@ -662,7 +686,7 @@ class _WalletScreenState extends State<WalletScreen>
                     Clipboard.setData(ClipboardData(text: userId.toString()));
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('User ID copied!'),
+                        content: SafeOverflowFix.text('User ID copied!'),
                         backgroundColor: Colors.green,
                       ),
                     );
@@ -672,11 +696,11 @@ class _WalletScreenState extends State<WalletScreen>
             ),
           ],
         ),
-        subtitle: Column(
+        subtitle: SafeOverflowFix.column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'BTC Balance: $balanceStr BTC',
+            SafeOverflowFix.text(
+              'BTC: $balanceStr BTC',
               style: GoogleFonts.poppins(
                 color: Colors.green, // hamesha green
                 fontWeight: FontWeight.w600,
@@ -684,8 +708,8 @@ class _WalletScreenState extends State<WalletScreen>
               textAlign: TextAlign.left,
               softWrap: true,
             ),
-            Text(
-              'Local Balance: ${localBalance.toStringAsFixed(18)} $selectedCurrency',
+            SafeOverflowFix.text(
+              'Local: ${localBalance.toStringAsFixed(18)} $selectedCurrency',
               style: GoogleFonts.poppins(
                 color: Colors.blueAccent,
                 fontWeight: FontWeight.w600,
@@ -694,12 +718,12 @@ class _WalletScreenState extends State<WalletScreen>
             ),
           ],
         ),
-        trailing: Column(
+        trailing: SafeOverflowFix.column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
+            SafeOverflowFix.text(
               '$transactionCount txns',
               style: GoogleFonts.poppins(color: Colors.white54, fontSize: 11),
             ),
@@ -715,9 +739,9 @@ class _WalletScreenState extends State<WalletScreen>
   }
 
   Widget _buildWalletDetails(Map<String, dynamic> wallet) {
-    return Column(
+    return SafeOverflowFix.column(
       children: [
-        Row(
+        SafeOverflowFix.row(
           children: [
             Expanded(
               child: _buildDetailItem(
@@ -737,7 +761,7 @@ class _WalletScreenState extends State<WalletScreen>
           ],
         ),
         const SizedBox(height: 16),
-        Row(
+        SafeOverflowFix.row(
           children: [
             Expanded(
               child: _buildDetailItem(
@@ -757,7 +781,7 @@ class _WalletScreenState extends State<WalletScreen>
           ],
         ),
         const SizedBox(height: 16),
-        Row(
+        SafeOverflowFix.row(
           children: [
             Expanded(
               child: _buildDetailItem(
@@ -781,18 +805,18 @@ class _WalletScreenState extends State<WalletScreen>
   }
 
   Widget _buildDetailItem(String label, String value, IconData icon) {
-    return Container(
+    return SafeOverflowFix.container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.03),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
-      child: Column(
+      child: SafeOverflowFix.column(
         children: [
-          Icon(icon, color: Colors.white54, size: 20),
+          Icon(icon, color: Colors.white54, size: 12),
           const SizedBox(height: 8),
-          Text(
+          SafeOverflowFix.text(
             label == 'Current Balance' ||
                     label == 'Total Earned' ||
                     label == 'Total Spent'
@@ -810,7 +834,7 @@ class _WalletScreenState extends State<WalletScreen>
             softWrap: true,
             // overflow: TextOverflow.ellipsis, // Hata diya
           ),
-          Text(
+          SafeOverflowFix.text(
             label,
             style: GoogleFonts.poppins(color: Colors.white54, fontSize: 12),
             textAlign: TextAlign.center,
@@ -821,7 +845,7 @@ class _WalletScreenState extends State<WalletScreen>
   }
 
   Widget _buildWalletActions(Map<String, dynamic> wallet) {
-    return Row(
+    return SafeOverflowFix.row(
       children: [
         Expanded(
           child: _buildActionButton(
@@ -864,18 +888,18 @@ class _WalletScreenState extends State<WalletScreen>
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
-        child: Container(
+        child: SafeOverflowFix.container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: color.withOpacity(0.2)),
           ),
-          child: Column(
+          child: SafeOverflowFix.column(
             children: [
               Icon(icon, color: color, size: 20),
               const SizedBox(height: 4),
-              Text(
+              SafeOverflowFix.text(
                 label,
                 style: GoogleFonts.poppins(
                   color: color,
@@ -897,10 +921,10 @@ class _WalletScreenState extends State<WalletScreen>
     required double totalVolume,
     required int totalCount,
   }) {
-    return Column(
+    return SafeOverflowFix.column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        SafeOverflowFix.text(
           'Transaction Volume',
           style: GoogleFonts.poppins(
             fontSize: 20,
@@ -909,7 +933,7 @@ class _WalletScreenState extends State<WalletScreen>
           ),
         ),
         const SizedBox(height: 20),
-        Container(
+        SafeOverflowFix.container(
           height: 300,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
@@ -959,7 +983,7 @@ class _WalletScreenState extends State<WalletScreen>
                     getTitlesWidget: (double value, TitleMeta meta) {
                       final idx = value.toInt();
                       if (idx < sortedDates.length) {
-                        return Text(
+                        return SafeOverflowFix.text(
                           sortedDates[idx],
                           style: const TextStyle(
                             fontSize: 10,
@@ -967,18 +991,18 @@ class _WalletScreenState extends State<WalletScreen>
                           ),
                         );
                       }
-                      return const Text('');
+                      return SafeOverflowFix.text('');
                     },
                     reservedSize: 40,
                   ),
                 ),
-                leftTitles: AxisTitles(
+                leftTitles: const AxisTitles(
                   sideTitles: SideTitles(showTitles: true, reservedSize: 40),
                 ),
-                topTitles: AxisTitles(
+                topTitles: const AxisTitles(
                   sideTitles: SideTitles(showTitles: false),
                 ),
-                rightTitles: AxisTitles(
+                rightTitles: const AxisTitles(
                   sideTitles: SideTitles(showTitles: false),
                 ),
               ),
@@ -1002,11 +1026,11 @@ class _WalletScreenState extends State<WalletScreen>
           ),
         ),
         const SizedBox(height: 20),
-        Text(
+        SafeOverflowFix.text(
           'Total Transaction Volume: ${totalVolume.toStringAsFixed(18)}',
           style: GoogleFonts.poppins(color: Colors.white),
         ),
-        Text(
+        SafeOverflowFix.text(
           'Total Transactions: $totalCount',
           style: GoogleFonts.poppins(color: Colors.white),
         ),
@@ -1017,13 +1041,13 @@ class _WalletScreenState extends State<WalletScreen>
   Widget _buildRecentTransactions(AdminApiProvider provider) {
     final transactions = provider.walletTransactions;
     final recentTransactions = transactions.take(10).toList(); // Sirf 10 latest
-    return Column(
+    return SafeOverflowFix.column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        SafeOverflowFix.row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
+            SafeOverflowFix.text(
               'Recent Transactions',
               style: GoogleFonts.poppins(
                 fontSize: 20,
@@ -1033,7 +1057,7 @@ class _WalletScreenState extends State<WalletScreen>
             ),
             TextButton(
               onPressed: () {},
-              child: Text(
+              child: SafeOverflowFix.text(
                 'View All',
                 style: GoogleFonts.poppins(
                   color: Colors.blue,
@@ -1044,7 +1068,7 @@ class _WalletScreenState extends State<WalletScreen>
           ],
         ),
         const SizedBox(height: 16),
-        Container(
+        SafeOverflowFix.container(
           height: 320, // Box ki height chhoti kar di
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
@@ -1073,7 +1097,7 @@ class _WalletScreenState extends State<WalletScreen>
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      leading: Container(
+      leading: SafeOverflowFix.container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isPositive
@@ -1087,14 +1111,14 @@ class _WalletScreenState extends State<WalletScreen>
           size: 20,
         ),
       ),
-      title: Text(
+      title: SafeOverflowFix.text(
         item['type'] ?? '',
         style: GoogleFonts.poppins(
           color: Colors.white,
           fontWeight: FontWeight.w600,
         ),
       ),
-      subtitle: Text(
+      subtitle: SafeOverflowFix.text(
         'Txn ID: ${item['transactionId'] ?? item['id'] ?? ''}',
         style: GoogleFonts.poppins(color: Colors.white70),
       ),
@@ -1102,12 +1126,12 @@ class _WalletScreenState extends State<WalletScreen>
         width: 180,
         child: SingleChildScrollView(
           scrollDirection: Axis.vertical,
-          child: Column(
+          child: SafeOverflowFix.column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
+              SafeOverflowFix.text(
                 item['amount']?.toString() ?? '0', // backend जैसा amount दिखाएं
                 style: GoogleFonts.poppins(
                   color: isPositive ? Colors.green : Colors.red,
@@ -1118,7 +1142,7 @@ class _WalletScreenState extends State<WalletScreen>
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 6),
-              Container(
+              SafeOverflowFix.container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: isCompleted
@@ -1126,7 +1150,7 @@ class _WalletScreenState extends State<WalletScreen>
                       : Colors.orange.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
+                child: SafeOverflowFix.text(
                   item['status'] ?? '',
                   style: GoogleFonts.poppins(
                     color: isCompleted ? Colors.green : Colors.orange,
@@ -1137,7 +1161,7 @@ class _WalletScreenState extends State<WalletScreen>
                 ),
               ),
               const SizedBox(height: 6),
-              Text(
+              SafeOverflowFix.text(
                 item['timestamp'] ?? '',
                 style: GoogleFonts.poppins(color: Colors.white54, fontSize: 11),
                 overflow: TextOverflow.ellipsis,
@@ -1172,14 +1196,14 @@ class _WalletScreenState extends State<WalletScreen>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: Text(
+        title: SafeOverflowFix.text(
           'Add Balance',
           style: GoogleFonts.poppins(color: Colors.white),
         ),
-        content: Column(
+        content: SafeOverflowFix.column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
+            SafeOverflowFix.text(
               'Add balance to ${wallet['userEmail']}',
               style: GoogleFonts.poppins(color: Colors.white70),
             ),
@@ -1190,16 +1214,18 @@ class _WalletScreenState extends State<WalletScreen>
               decoration: InputDecoration(
                 labelText: 'Amount (BTC)',
                 labelStyle: GoogleFonts.poppins(color: Colors.white54),
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
+            child: SafeOverflowFix.text(
               'Cancel',
               style: GoogleFonts.poppins(color: Colors.white54),
             ),
@@ -1210,7 +1236,9 @@ class _WalletScreenState extends State<WalletScreen>
               if (amount == 0) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Please enter a valid amount'),
+                    content: SafeOverflowFix.text(
+                      'Please enter a valid amount',
+                    ),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -1232,21 +1260,24 @@ class _WalletScreenState extends State<WalletScreen>
                 provider.refresh(userId);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Balance added successfully'),
+                    content: SafeOverflowFix.text('Balance added successfully'),
                     backgroundColor: Colors.green,
                   ),
                 );
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Failed to add balance'),
+                    content: SafeOverflowFix.text('Failed to add balance'),
                     backgroundColor: Colors.red,
                   ),
                 );
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: Text('Add', style: GoogleFonts.poppins(color: Colors.white)),
+            child: SafeOverflowFix.text(
+              'Add',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -1258,18 +1289,18 @@ class _WalletScreenState extends State<WalletScreen>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: Text(
+        title: SafeOverflowFix.text(
           'Freeze Wallet',
           style: GoogleFonts.poppins(color: Colors.white),
         ),
-        content: Text(
+        content: SafeOverflowFix.text(
           'Are you sure you want to freeze ${wallet['userEmail']}\'s wallet?',
           style: GoogleFonts.poppins(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
+            child: SafeOverflowFix.text(
               'Cancel',
               style: GoogleFonts.poppins(color: Colors.white54),
             ),
@@ -1292,21 +1323,21 @@ class _WalletScreenState extends State<WalletScreen>
                 provider.refresh(userId);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Wallet frozen successfully'),
+                    content: SafeOverflowFix.text('Wallet frozen successfully'),
                     backgroundColor: Colors.red,
                   ),
                 );
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Failed to freeze wallet'),
+                    content: SafeOverflowFix.text('Failed to freeze wallet'),
                     backgroundColor: Colors.red,
                   ),
                 );
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text(
+            child: SafeOverflowFix.text(
               'Freeze',
               style: GoogleFonts.poppins(color: Colors.white),
             ),
@@ -1325,14 +1356,14 @@ class _WalletScreenState extends State<WalletScreen>
           _selectedChartFilter = label;
         });
       },
-      child: Container(
+      child: SafeOverflowFix.container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? Colors.blue : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.white.withOpacity(0.2)),
         ),
-        child: Text(
+        child: SafeOverflowFix.text(
           label,
           style: GoogleFonts.poppins(
             color: isSelected ? Colors.white : Colors.white70,
@@ -1422,7 +1453,7 @@ class UserTransactionsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Transactions: $userId'),
+        title: SafeOverflowFix.text('Transactions: $userId'),
         backgroundColor: const Color(0xFF1E293B),
       ),
       body: Consumer<WalletProvider>(
@@ -1430,7 +1461,7 @@ class UserTransactionsScreen extends StatelessWidget {
           final txs = provider.transactions;
           if (txs.isEmpty) {
             return Center(
-              child: Text(
+              child: SafeOverflowFix.text(
                 'No transactions found',
                 style: GoogleFonts.poppins(color: Colors.white70),
               ),
@@ -1439,7 +1470,7 @@ class UserTransactionsScreen extends StatelessWidget {
           return ListView.separated(
             itemCount: txs.length,
             separatorBuilder: (_, __) =>
-                Divider(color: Colors.white24, height: 1),
+                const Divider(color: Colors.white24, height: 1),
             itemBuilder: (context, index) {
               final tx = txs[index];
               final amount =
@@ -1450,22 +1481,22 @@ class UserTransactionsScreen extends StatelessWidget {
                   isPositive ? Icons.add : Icons.remove,
                   color: isPositive ? Colors.green : Colors.red,
                 ),
-                title: Text(
+                title: SafeOverflowFix.text(
                   'Txn ID: ${tx['transactionId'] ?? tx['id'] ?? ''}',
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                subtitle: Text(
+                subtitle: SafeOverflowFix.text(
                   'Type: ${tx['type'] ?? ''}\nStatus: ${tx['status'] ?? ''}',
                   style: GoogleFonts.poppins(color: Colors.white70),
                 ),
-                trailing: Column(
+                trailing: SafeOverflowFix.column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
+                    SafeOverflowFix.text(
                       amount.toStringAsFixed(18),
                       style: GoogleFonts.poppins(
                         color: isPositive ? Colors.green : Colors.red,
@@ -1473,7 +1504,7 @@ class UserTransactionsScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
+                    SafeOverflowFix.text(
                       tx['timestamp']?.toString() ?? '',
                       style: GoogleFonts.poppins(
                         color: Colors.white54,

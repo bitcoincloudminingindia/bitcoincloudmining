@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../config/api_config.dart';
 import '../providers/admin_api_provider.dart';
 import '../services/api_service.dart';
+import '../utils/expanded_overflow_fix.dart';
 import 'new_today_users_screen.dart';
 import 'user_detail_screen.dart';
 
@@ -46,7 +47,7 @@ class _UserListScreenState extends State<UserListScreen> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            child: Column(
+            child: ExpandFix.column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(),
@@ -64,11 +65,11 @@ class _UserListScreenState extends State<UserListScreen> {
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.all(24),
-      child: Row(
+      child: ExpandFix.row(
         children: [
-          Icon(Icons.people, color: Colors.white, size: 32),
+          const Icon(Icons.people, color: Colors.white, size: 32),
           const SizedBox(width: 16),
-          Column(
+          ExpandFix.column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -86,34 +87,6 @@ class _UserListScreenState extends State<UserListScreen> {
             ],
           ),
           const Spacer(),
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.blue.withOpacity(0.3)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.add, color: Colors.blue, size: 16),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      'Add User',
-                      style: GoogleFonts.poppins(
-                        color: Colors.blue,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -122,7 +95,7 @@ class _UserListScreenState extends State<UserListScreen> {
   Widget _buildSearchAndFilters() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
+      child: ExpandFix.row(
         children: [
           Expanded(
             child: Container(
@@ -138,7 +111,7 @@ class _UserListScreenState extends State<UserListScreen> {
                 decoration: InputDecoration(
                   hintText: 'Search by email or UID...',
                   hintStyle: GoogleFonts.poppins(color: Colors.white54),
-                  prefixIcon: Icon(Icons.search, color: Colors.white54),
+                  prefixIcon: const Icon(Icons.search, color: Colors.white54),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -191,7 +164,14 @@ class _UserListScreenState extends State<UserListScreen> {
         dropdownColor: const Color(0xFF1E293B),
         underline: const SizedBox(),
         items: options.map((option) {
-          return DropdownMenuItem(value: option, child: Text(option));
+          return DropdownMenuItem(
+            value: option,
+            child: Text(
+              option,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+          );
         }).toList(),
       ),
     );
@@ -229,7 +209,7 @@ class _UserListScreenState extends State<UserListScreen> {
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 1.8,
+        childAspectRatio: 1.2,
         children: [
           _buildStatCard(
             'Total Users',
@@ -294,7 +274,7 @@ class _UserListScreenState extends State<UserListScreen> {
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Icon(icon, color: color, size: 22),
             ),
             const SizedBox(height: 8),
             Text(
@@ -304,12 +284,14 @@ class _UserListScreenState extends State<UserListScreen> {
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             Text(
               title,
               style: GoogleFonts.poppins(fontSize: 12, color: Colors.white70),
               textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -323,7 +305,7 @@ class _UserListScreenState extends State<UserListScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.people_outline, color: Colors.white54, size: 64),
+            const Icon(Icons.people_outline, color: Colors.white54, size: 64),
             const SizedBox(height: 16),
             Text(
               'No users found',
@@ -400,6 +382,7 @@ class _UserListScreenState extends State<UserListScreen> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
+      constraints: const BoxConstraints(minHeight: 100, maxHeight: 140),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
@@ -407,7 +390,7 @@ class _UserListScreenState extends State<UserListScreen> {
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: ExpandFix.row(
           children: [
             // Profile Picture
             Container(
@@ -454,10 +437,11 @@ class _UserListScreenState extends State<UserListScreen> {
             // User Info
             Expanded(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // User ID and Email
-                  Row(
+                  ExpandFix.row(
                     children: [
                       Expanded(
                         child: Column(
@@ -489,7 +473,7 @@ class _UserListScreenState extends State<UserListScreen> {
                   const SizedBox(height: 8),
 
                   // Wallet Balance and Status
-                  Row(
+                  ExpandFix.row(
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -533,7 +517,7 @@ class _UserListScreenState extends State<UserListScreen> {
             // Action Button
             IconButton(
               onPressed: () => _showUserActions(user),
-              icon: Icon(Icons.more_vert, color: Colors.white54),
+              icon: const Icon(Icons.more_vert, color: Colors.white54),
             ),
           ],
         ),
@@ -633,7 +617,7 @@ class _UserListScreenState extends State<UserListScreen> {
   void _toggleUserStatus(Map<String, dynamic> user) {
     // TODO: Implement user status toggle
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      const SnackBar(
         content: Text('User status updated'),
         backgroundColor: Colors.green,
       ),
@@ -661,7 +645,7 @@ class _UserListScreenState extends State<UserListScreen> {
               decoration: InputDecoration(
                 labelText: 'New Balance (BTC)',
                 labelStyle: GoogleFonts.poppins(color: Colors.white54),
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
@@ -671,7 +655,7 @@ class _UserListScreenState extends State<UserListScreen> {
               decoration: InputDecoration(
                 labelText: 'Notes (Optional)',
                 labelStyle: GoogleFonts.poppins(color: Colors.white54),
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
             ),
           ],
@@ -689,7 +673,7 @@ class _UserListScreenState extends State<UserListScreen> {
               final amount = double.tryParse(controller.text.trim()) ?? 0;
               if (amount == 0) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
+                  const SnackBar(
                     content: Text('Please enter a valid amount'),
                     backgroundColor: Colors.red,
                   ),
@@ -712,14 +696,14 @@ class _UserListScreenState extends State<UserListScreen> {
                   listen: false,
                 ).fetchUsers();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
+                  const SnackBar(
                     content: Text('Balance updated successfully'),
                     backgroundColor: Colors.green,
                   ),
                 );
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
+                  const SnackBar(
                     content: Text('Failed to update balance'),
                     backgroundColor: Colors.red,
                   ),

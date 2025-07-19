@@ -13,35 +13,35 @@ class AdminDrawer extends StatelessWidget {
       child: ListView(
         children: [
           DrawerHeader(
-            decoration: BoxDecoration(color: Colors.blue),
+            decoration: const BoxDecoration(color: Colors.blue),
             child: CircleAvatar(
-              radius: 32,
-              backgroundColor: Colors.white,
+              radius: 35,
+              backgroundColor: Colors.transparent,
               child: ClipOval(
                 child: Image.asset(
                   'assets/Bitcoin Cloud Mining Logo.png',
-                  width: 48,
-                  height: 48,
+                  width: 70,
+                  height: 70,
                   fit: BoxFit.cover,
                 ),
               ),
             ),
           ),
           ListTile(
-            leading: Icon(Icons.dashboard),
-            title: Text('Dashboard'),
+            leading: const Icon(Icons.dashboard),
+            title: const Text('Dashboard'),
             onTap: () =>
                 Navigator.of(context).pushReplacementNamed('/admin-dashboard'),
           ),
           ListTile(
-            leading: Icon(Icons.people),
-            title: Text('Users'),
+            leading: const Icon(Icons.people),
+            title: const Text('Users'),
             onTap: () =>
                 Navigator.of(context).pushReplacementNamed('/admin-users'),
           ),
           ListTile(
-            leading: Icon(Icons.share),
-            title: Text('Referral Analytics'),
+            leading: const Icon(Icons.share),
+            title: const Text('Referral Analytics'),
             onTap: () {
               Navigator.of(context).pop(); // Close drawer
               Navigator.of(context).push(
@@ -52,8 +52,8 @@ class AdminDrawer extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: Icon(Icons.manage_accounts),
-            title: Text('Referral Management'),
+            leading: const Icon(Icons.manage_accounts),
+            title: const Text('Referral Management'),
             onTap: () {
               Navigator.of(context).pop(); // Close drawer
               Navigator.of(context).push(
@@ -64,22 +64,22 @@ class AdminDrawer extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: Icon(Icons.ads_click),
-            title: Text('Ad Analytics'),
+            leading: const Icon(Icons.ads_click),
+            title: const Text('Ad Analytics'),
             onTap: () => Navigator.of(
               context,
             ).pushReplacementNamed('/admin-ad-analytics'),
           ),
           ListTile(
-            leading: Icon(Icons.settings),
-            title: Text('Settings'),
+            leading: const Icon(Icons.settings),
+            title: const Text('Settings'),
             onTap: () =>
                 Navigator.of(context).pushReplacementNamed('/admin-settings'),
           ),
-          Divider(),
+          const Divider(),
           ListTile(
-            leading: Icon(Icons.logout),
-            title: Text('Logout'),
+            leading: const Icon(Icons.logout),
+            title: const Text('Logout'),
             onTap: onLogout,
           ),
         ],
