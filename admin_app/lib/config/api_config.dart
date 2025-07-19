@@ -3,6 +3,10 @@ class ApiConfig {
   // static const String baseUrl = 'http://localhost:5000/api';
   // Proxy image base url
   // static const String proxyImageBase = 'http://localhost:5000/api/proxy?url=';
+  // Local development
+  // static const String baseUrl = 'http://localhost:5000/api';
+  // static const String proxyImageBase = 'http://localhost:5000/api/proxy?url=';
+
   // Production ke liye (deploy ke time isko uncomment karen):
   static const String baseUrl = 'https://bitcoincloudmining.onrender.com/api';
   static const String proxyImageBase =

@@ -66,8 +66,10 @@ class _DashboardScreenState extends State<DashboardScreen>
       ]);
 
       _checkServerStatus();
-      _animationController.forward();
-      _chartAnimationController.forward();
+      if (mounted) {
+        _animationController.forward();
+        _chartAnimationController.forward();
+      }
     });
   }
 
@@ -491,6 +493,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -695,7 +698,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
               Row(
                 children: [
-                  Text('Count', style: TextStyle(color: Colors.white70)),
+                  const Text('Count', style: TextStyle(color: Colors.white70)),
                   Switch(
                     value: showEarning,
                     onChanged: (val) {
@@ -704,7 +707,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                       });
                     },
                   ),
-                  Text('Earning', style: TextStyle(color: Colors.white70)),
+                  const Text(
+                    'Earning',
+                    style: TextStyle(color: Colors.white70),
+                  ),
                 ],
               ),
             ],
@@ -714,9 +720,9 @@ class _DashboardScreenState extends State<DashboardScreen>
             height: 200,
             child: LineChart(
               LineChartData(
-                gridData: FlGridData(show: true),
+                gridData: const FlGridData(show: true),
                 titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
+                  leftTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: true),
                   ),
                   bottomTitles: AxisTitles(
@@ -727,16 +733,19 @@ class _DashboardScreenState extends State<DashboardScreen>
                         if (idx < 0 || idx >= labels.length) return Container();
                         return Text(
                           labels[idx],
-                          style: TextStyle(color: Colors.white70, fontSize: 10),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                          ),
                         );
                       },
                       interval: 1,
                     ),
                   ),
-                  rightTitles: AxisTitles(
+                  rightTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
                   ),
-                  topTitles: AxisTitles(
+                  topTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
                   ),
                 ),
@@ -754,7 +763,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     color: const Color(0xFF3B82F6),
                     barWidth: 3,
                     isStrokeCapRound: true,
-                    dotData: FlDotData(show: false),
+                    dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
                       color: const Color(0xFF3B82F6).withOpacity(0.1),
@@ -814,8 +823,8 @@ class _DashboardScreenState extends State<DashboardScreen>
             height: 200,
             child: LineChart(
               LineChartData(
-                gridData: FlGridData(show: false),
-                titlesData: FlTitlesData(show: false),
+                gridData: const FlGridData(show: false),
+                titlesData: const FlTitlesData(show: false),
                 borderData: FlBorderData(show: false),
                 lineBarsData: [
                   LineChartBarData(
@@ -841,7 +850,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     color: const Color(0xFF3B82F6),
                     barWidth: 3,
                     isStrokeCapRound: true,
-                    dotData: FlDotData(show: false),
+                    dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
                       color: const Color(0xFF3B82F6).withOpacity(0.1),
@@ -872,7 +881,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             children: [
               Row(
                 children: [
-                  Icon(Icons.dns, color: Colors.blue, size: 24),
+                  const Icon(Icons.dns, color: Colors.blue, size: 24),
                   const SizedBox(width: 12),
                   Text(
                     'Server Status',
@@ -885,7 +894,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ],
               ),
               if (_isCheckingStatus)
-                SizedBox(
+                const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
@@ -896,7 +905,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               else
                 IconButton(
                   onPressed: _checkServerStatus,
-                  icon: Icon(Icons.refresh, color: Colors.blue, size: 20),
+                  icon: const Icon(Icons.refresh, color: Colors.blue, size: 20),
                   tooltip: 'Refresh Status',
                 ),
             ],
@@ -926,7 +935,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
             child: Row(
               children: [
-                Icon(Icons.info_outline, color: Colors.blue, size: 16),
+                const Icon(Icons.info_outline, color: Colors.blue, size: 16),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -1067,7 +1076,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ),
                 ),
                 const Spacer(),
-                Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.white54,
+                  size: 16,
+                ),
               ],
             ),
           ),
@@ -1114,7 +1127,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.blue),
+                  borderSide: const BorderSide(color: Colors.blue),
                 ),
               ),
               maxLines: 3,
@@ -1140,7 +1153,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 await provider.sendNotification(messageController.text.trim());
                 if (provider.error == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
+                    const SnackBar(
                       content: Text('Notification sent successfully'),
                       backgroundColor: Colors.green,
                     ),
@@ -1242,7 +1255,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 const SizedBox(width: 12),
                 Text(title, style: GoogleFonts.poppins(color: Colors.white)),
                 const Spacer(),
-                Icon(Icons.download, color: Colors.white54, size: 16),
+                const Icon(Icons.download, color: Colors.white54, size: 16),
               ],
             ),
           ),
@@ -1256,7 +1269,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     try {
       await provider.exportUsers();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Users data exported successfully'),
           backgroundColor: Colors.green,
         ),
@@ -1276,7 +1289,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     try {
       await provider.exportWallets();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Wallet data exported successfully'),
           backgroundColor: Colors.green,
         ),
@@ -1296,7 +1309,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     try {
       await provider.exportTransactions();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Transaction data exported successfully'),
           backgroundColor: Colors.green,
         ),
@@ -1395,7 +1408,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             onPressed: () {
               // TODO: Implement refresh logs
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
+                const SnackBar(
                   content: Text('Logs refreshed'),
                   backgroundColor: Colors.blue,
                 ),
@@ -1493,7 +1506,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                   child: Center(
                     child: Column(
                       children: [
-                        Icon(Icons.swap_horiz, color: Colors.white54, size: 48),
+                        const Icon(
+                          Icons.swap_horiz,
+                          color: Colors.white54,
+                          size: 48,
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           'No withdrawals found',
@@ -1525,7 +1542,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                           color: Colors.amber.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.swap_horiz,
                           color: Colors.amber,
                           size: 20,
@@ -1613,9 +1630,9 @@ class _DashboardScreenState extends State<DashboardScreen>
             height: 200,
             child: LineChart(
               LineChartData(
-                gridData: FlGridData(show: true),
+                gridData: const FlGridData(show: true),
                 titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
+                  leftTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: true),
                   ),
                   bottomTitles: AxisTitles(
@@ -1627,16 +1644,19 @@ class _DashboardScreenState extends State<DashboardScreen>
                           return Container();
                         return Text(
                           '$idx',
-                          style: TextStyle(color: Colors.white70, fontSize: 10),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                          ),
                         );
                       },
                       interval: 1,
                     ),
                   ),
-                  rightTitles: AxisTitles(
+                  rightTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
                   ),
-                  topTitles: AxisTitles(
+                  topTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
                   ),
                 ),
@@ -1654,7 +1674,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     color: const Color(0xFF06B6D4),
                     barWidth: 3,
                     isStrokeCapRound: true,
-                    dotData: FlDotData(show: false),
+                    dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
                       color: const Color(0xFF06B6D4).withOpacity(0.1),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -17,15 +19,35 @@ import 'screens/withdrawal_screen.dart';
 import 'widgets/admin_drawer.dart';
 
 void main() {
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => WalletProvider()),
-        ChangeNotifierProvider(create: (_) => ChartProvider()),
-        ChangeNotifierProvider(create: (context) => AdminApiProvider()),
-      ],
-      child: const AdminApp(),
-    ),
+  // Flutter framework errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    print('Flutter Error: \\${details.exception}');
+    print('Stack trace: \\${details.stack}');
+  };
+
+  // Dart (async) errors
+  runZonedGuarded<Future<void>>(
+    () async {
+      print('App is starting...');
+      WidgetsFlutterBinding.ensureInitialized();
+      print('WidgetsFlutterBinding initialized');
+      runApp(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => WalletProvider()),
+            ChangeNotifierProvider(create: (_) => ChartProvider()),
+            ChangeNotifierProvider(create: (context) => AdminApiProvider()),
+          ],
+          child: const AdminApp(),
+        ),
+      );
+      print('runApp called');
+    },
+    (error, stackTrace) {
+      print('Caught Error: \\$error');
+      print('Stack trace: \\$stackTrace');
+    },
   );
 }
 

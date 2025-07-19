@@ -24,57 +24,105 @@ class ApiService {
     Map<String, dynamic> data, {
     bool auth = false,
   }) async {
-    try {
-      final url = Uri.parse(ApiConfig.baseUrl + endpoint);
-      final headers = {
-        'Content-Type': 'application/json',
-        if (auth && _token != null) 'Authorization': 'Bearer $_token',
-      };
-      print('POST $url');
-      print('Request headers: $headers');
-      final response = await http.post(
-        url,
-        headers: headers,
-        body: jsonEncode(data),
-      );
+    int retryCount = 0;
+    const maxRetries = 3;
+    const timeoutDuration = Duration(seconds: 30);
 
-      // Check for authentication errors
-      if (response.statusCode == 401) {
-        throw Exception('Unauthorized: Token expired or invalid');
-      }
+    while (retryCount < maxRetries) {
+      try {
+        final url = Uri.parse(ApiConfig.baseUrl + endpoint);
+        final headers = {
+          'Content-Type': 'application/json',
+          if (auth && _token != null) 'Authorization': 'Bearer $_token',
+        };
+        print('POST $url (Attempt ${retryCount + 1}/$maxRetries)');
+        print('Request headers: $headers');
 
-      return response;
-    } catch (e) {
-      if (e.toString().contains('Unauthorized')) {
-        throw Exception('Unauthorized: Token expired or invalid');
+        final response = await http
+            .post(url, headers: headers, body: jsonEncode(data))
+            .timeout(timeoutDuration);
+
+        // Check for authentication errors
+        if (response.statusCode == 401) {
+          throw Exception('Unauthorized: Token expired or invalid');
+        }
+
+        return response;
+      } catch (e) {
+        retryCount++;
+        print('Attempt $retryCount failed: $e');
+
+        if (e.toString().contains('Unauthorized')) {
+          throw Exception('Unauthorized: Token expired or invalid');
+        }
+
+        if (retryCount >= maxRetries) {
+          if (e.toString().contains('SocketException') ||
+              e.toString().contains('Failed host lookup')) {
+            throw Exception(
+              'Server connection failed. Please check your internet connection and try again.',
+            );
+          }
+          throw Exception('Network error after $maxRetries attempts: $e');
+        }
+
+        // Wait before retrying (exponential backoff)
+        await Future.delayed(Duration(seconds: retryCount * 2));
       }
-      throw Exception('Network error: $e');
     }
+
+    throw Exception('Network error: Maximum retries exceeded');
   }
 
   Future<http.Response> get(String endpoint, {bool auth = false}) async {
-    try {
-      final url = Uri.parse(ApiConfig.baseUrl + endpoint);
-      final headers = {
-        'Content-Type': 'application/json',
-        if (auth && _token != null) 'Authorization': 'Bearer $_token',
-      };
-      print('GET $url');
-      print('Request headers: $headers');
-      final response = await http.get(url, headers: headers);
+    int retryCount = 0;
+    const maxRetries = 3;
+    const timeoutDuration = Duration(seconds: 30);
 
-      // Check for authentication errors
-      if (response.statusCode == 401) {
-        throw Exception('Unauthorized: Token expired or invalid');
-      }
+    while (retryCount < maxRetries) {
+      try {
+        final url = Uri.parse(ApiConfig.baseUrl + endpoint);
+        final headers = {
+          'Content-Type': 'application/json',
+          if (auth && _token != null) 'Authorization': 'Bearer $_token',
+        };
+        print('GET $url (Attempt ${retryCount + 1}/$maxRetries)');
+        print('Request headers: $headers');
 
-      return response;
-    } catch (e) {
-      if (e.toString().contains('Unauthorized')) {
-        throw Exception('Unauthorized: Token expired or invalid');
+        final response = await http
+            .get(url, headers: headers)
+            .timeout(timeoutDuration);
+
+        // Check for authentication errors
+        if (response.statusCode == 401) {
+          throw Exception('Unauthorized: Token expired or invalid');
+        }
+
+        return response;
+      } catch (e) {
+        retryCount++;
+        print('Attempt $retryCount failed: $e');
+
+        if (e.toString().contains('Unauthorized')) {
+          throw Exception('Unauthorized: Token expired or invalid');
+        }
+
+        if (retryCount >= maxRetries) {
+          if (e.toString().contains('SocketException') ||
+              e.toString().contains('Failed host lookup')) {
+            throw Exception(
+              'Server connection failed. Please check your internet connection and try again.',
+            );
+          }
+          throw Exception('Network error after $maxRetries attempts: $e');
+        }
+
+        // Wait before retrying (exponential backoff)
+        await Future.delayed(Duration(seconds: retryCount * 2));
       }
-      throw Exception('Network error: $e');
     }
+
+    throw Exception('Network error: Maximum retries exceeded');
   }
 
   Future<http.Response> put(
@@ -82,29 +130,52 @@ class ApiService {
     Map<String, dynamic> data, {
     bool auth = false,
   }) async {
-    try {
-      final url = Uri.parse(ApiConfig.baseUrl + endpoint);
-      final headers = {
-        'Content-Type': 'application/json',
-        if (auth && _token != null) 'Authorization': 'Bearer $_token',
-      };
-      print('PUT $url');
-      print('Request headers: $headers');
-      final response = await http.put(
-        url,
-        headers: headers,
-        body: jsonEncode(data),
-      );
-      if (response.statusCode == 401) {
-        throw Exception('Unauthorized: Token expired or invalid');
+    int retryCount = 0;
+    const maxRetries = 3;
+    const timeoutDuration = Duration(seconds: 30);
+
+    while (retryCount < maxRetries) {
+      try {
+        final url = Uri.parse(ApiConfig.baseUrl + endpoint);
+        final headers = {
+          'Content-Type': 'application/json',
+          if (auth && _token != null) 'Authorization': 'Bearer $_token',
+        };
+        print('PUT $url (Attempt ${retryCount + 1}/$maxRetries)');
+        print('Request headers: $headers');
+
+        final response = await http
+            .put(url, headers: headers, body: jsonEncode(data))
+            .timeout(timeoutDuration);
+
+        if (response.statusCode == 401) {
+          throw Exception('Unauthorized: Token expired or invalid');
+        }
+        return response;
+      } catch (e) {
+        retryCount++;
+        print('Attempt $retryCount failed: $e');
+
+        if (e.toString().contains('Unauthorized')) {
+          throw Exception('Unauthorized: Token expired or invalid');
+        }
+
+        if (retryCount >= maxRetries) {
+          if (e.toString().contains('SocketException') ||
+              e.toString().contains('Failed host lookup')) {
+            throw Exception(
+              'Server connection failed. Please check your internet connection and try again.',
+            );
+          }
+          throw Exception('Network error after $maxRetries attempts: $e');
+        }
+
+        // Wait before retrying (exponential backoff)
+        await Future.delayed(Duration(seconds: retryCount * 2));
       }
-      return response;
-    } catch (e) {
-      if (e.toString().contains('Unauthorized')) {
-        throw Exception('Unauthorized: Token expired or invalid');
-      }
-      throw Exception('Network error: $e');
     }
+
+    throw Exception('Network error: Maximum retries exceeded');
   }
 
   // Users
@@ -515,7 +586,14 @@ class ApiService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final hours = data['data'] ?? List.filled(24, 0);
-      return List<int>.from(hours);
+
+      // Handle mixed types safely
+      return hours.map<int>((item) {
+        if (item is int) return item;
+        if (item is String) return int.tryParse(item) ?? 0;
+        if (item is double) return item.toInt();
+        return 0;
+      }).toList();
     } else {
       throw Exception('Failed to load platform user activity hours');
     }

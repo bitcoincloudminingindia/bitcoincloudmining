@@ -99,13 +99,12 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                       ],
                     ),
-                    child: CircleAvatar(
-                      radius: 48,
-                      backgroundColor: Colors.white,
-                      child: Icon(
-                        Icons.admin_panel_settings,
-                        size: 48,
-                        color: theme.primaryColor,
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/Bitcoin Cloud Mining Logo.png',
+                        width: 96,
+                        height: 96,
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ),

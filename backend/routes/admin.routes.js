@@ -23,19 +23,20 @@ router.get('/withdrawals', authenticate, isAdmin, adminController.getLatestWithd
 router.post('/login', adminController.adminLogin);
 
 // User Management
-// User stats routes (specific first)
+// User stats routes (specific first) - these must come BEFORE dynamic routes
 router.get('/users/count', authenticate, isAdmin, adminController.getUserCount);
 router.get('/users/active-count', authenticate, isAdmin, adminController.getActiveUserCount);
 router.get('/users/active-hours', authenticate, isAdmin, adminController.getUserActiveHours);
+router.get('/users/export', authenticate, isAdmin, adminController.exportUsers);
+
+// User hourly activity (platform-wide) - must come before dynamic routes
+router.get('/users/activity-hours', authenticate, isAdmin, adminController.getUserHourlyActivity);
+
 // General user routes (dynamic last)
 router.get('/users', authenticate, isAdmin, adminController.getUsers);
-router.get('/users/export', authenticate, isAdmin, adminController.exportUsers);
 router.get('/users/:id', authenticate, isAdmin, adminController.getUserById);
 router.post('/users/:id/block', authenticate, isAdmin, adminController.blockUser);
 router.post('/users/:id/unblock', authenticate, isAdmin, adminController.unblockUser);
-
-// User hourly activity (platform-wide)
-router.get('/users/activity-hours', authenticate, isAdmin, adminController.getUserHourlyActivity);
 
 // Wallet Management
 router.get('/users/:id/wallet', authenticate, isAdmin, adminController.getUserWallet);

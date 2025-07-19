@@ -1,8 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="Bitcoin Cloud Mining Admin"
-        android:name="${applicationName}"
+        android:label="bitcoin_cloud_mining_admin"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"

@@ -304,37 +304,64 @@ class AdminApiProvider extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     notifyListeners();
+
     try {
+      print('Attempting login for email: $email');
       final response = await _apiService.post('/admin/login', {
         'email': email,
         'password': password,
       });
-      print('Login response: ${response.body}');
+
+      print('Login response status: ${response.statusCode}');
+      print('Login response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['token'];
-        print('Parsed token: $token');
+        print(
+          'Parsed token: ${token != null ? token.substring(0, 20) + "..." : "null"}',
+        );
+
         if (token != null) {
           _token = token;
           _apiService.setToken(token);
           await _saveToken(token);
           await _updateLastActivity();
-          print('Token set in ApiService: $_token');
+          print('Login successful! Token set in ApiService');
           _isLoading = false;
           notifyListeners();
           return true;
         } else {
           print('Token not found in login response!');
-          _error = 'Token not found';
+          _error = 'Server error: Token not received';
         }
-      } else {
+      } else if (response.statusCode == 401) {
         print('Login failed: Invalid credentials');
-        _error = 'Invalid credentials';
+        _error = 'Invalid email or password';
+      } else {
+        print('Login failed: HTTP ${response.statusCode}');
+        _error = 'Server error: HTTP ${response.statusCode}';
       }
     } catch (e) {
       print('Login exception: $e');
-      _error = 'Login failed: $e';
+
+      // Better error messages for different types of errors
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('Failed host lookup') ||
+          e.toString().contains('Connection refused')) {
+        _error =
+            'Network error: Unable to connect to server. Please check your internet connection.';
+      } else if (e.toString().contains('TimeoutException')) {
+        _error =
+            'Connection timeout: Server is taking too long to respond. Please try again.';
+      } else if (e.toString().contains('Unauthorized') ||
+          e.toString().contains('401')) {
+        _error = 'Invalid email or password';
+      } else {
+        _error = 'Login failed: ${e.toString().replaceAll('Exception: ', '')}';
+      }
     }
+
     _isLoading = false;
     notifyListeners();
     return false;
@@ -855,6 +882,9 @@ class AdminApiProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print('Failed to fetch platform user activity hours: $e');
+      // Set default empty array if API fails
+      _platformUserActiveHours = List.filled(24, 0);
+      notifyListeners();
     }
   }
 

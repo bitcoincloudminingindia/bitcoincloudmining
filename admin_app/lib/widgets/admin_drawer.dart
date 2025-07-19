@@ -14,9 +14,17 @@ class AdminDrawer extends StatelessWidget {
         children: [
           DrawerHeader(
             decoration: BoxDecoration(color: Colors.blue),
-            child: Text(
-              'Admin',
-              style: TextStyle(fontSize: 24, color: Colors.white),
+            child: CircleAvatar(
+              radius: 32,
+              backgroundColor: Colors.white,
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/Bitcoin Cloud Mining Logo.png',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
           ),
           ListTile(
