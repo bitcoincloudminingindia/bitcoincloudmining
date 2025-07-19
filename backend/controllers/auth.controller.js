@@ -240,7 +240,7 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
   const token = jwt.sign(
     { id: user._id },
     process.env.JWT_SECRET,
-    { expiresIn: '24h' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || process.env.JWT_EXPIRE || '30d' }
   );
 
   res.status(201).json({

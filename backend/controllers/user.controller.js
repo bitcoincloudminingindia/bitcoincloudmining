@@ -60,7 +60,7 @@ exports.register = async (req, res) => {
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: '24h' },
+      { expiresIn: process.env.JWT_EXPIRES_IN || process.env.JWT_EXPIRE || '30d' },
       (err, token) => {
         if (err) throw err;
         res.json({ token });
@@ -103,7 +103,7 @@ exports.login = catchAsync(async (req, res, next) => {
   const token = jwt.sign(
     { id: user._id },
     process.env.JWT_SECRET,
-    { expiresIn: '24h' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || process.env.JWT_EXPIRE || '30d' }
   );
 
   // Update last login

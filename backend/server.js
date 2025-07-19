@@ -383,7 +383,7 @@ app.post('/auth/register', async (req, res) => {
         role: newUser.role
       },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: process.env.JWT_EXPIRES_IN || process.env.JWT_EXPIRE || '30d' }
     );
 
     res.status(201).json({

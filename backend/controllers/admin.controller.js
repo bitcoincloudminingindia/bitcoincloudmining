@@ -232,7 +232,7 @@ const adminLogin = async (req, res) => {
     const token = jwt.sign(
       { userId: ADMIN_USERID, email, role: 'admin' },
       JWT_SECRET,
-      { expiresIn: '12h' }
+      { expiresIn: process.env.JWT_EXPIRES_IN || process.env.JWT_EXPIRE || '30d' }
     );
     return res.json({ token, admin: { email, name: ADMIN_NAME } });
   }

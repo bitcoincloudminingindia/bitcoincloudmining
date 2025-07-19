@@ -50,7 +50,7 @@ const generateToken = (user) => {
     payload,
     process.env.JWT_SECRET,
     {
-      expiresIn: process.env.JWT_EXPIRES_IN || '1d',
+      expiresIn: process.env.JWT_EXPIRES_IN || process.env.JWT_EXPIRE || '30d',
       algorithm: 'HS256' // Explicitly set algorithm
     }
   );
