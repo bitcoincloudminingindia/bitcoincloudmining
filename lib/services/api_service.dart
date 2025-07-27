@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart'; // Added for kDebugMode
 import 'package:http/http.dart' as http;
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
@@ -56,17 +57,24 @@ class ApiService {
         // Use the enhanced isServerAvailable method
         final isAvailable = await ApiConfig.isServerAvailable();
         if (isAvailable) {
-          print('✅ Connectivity check passed');
+          if (kDebugMode) {
+            // Only log in debug mode
+            print('✅ Connectivity check passed');
+          }
           return true;
         }
 
         attempts++;
         if (attempts < maxAttempts) {
-          print('🔄 Retrying connectivity check (${attempts + 1}/$maxAttempts)');
+          if (kDebugMode) {
+            print('🔄 Retrying connectivity check (${attempts + 1}/$maxAttempts)');
+          }
           await Future.delayed(const Duration(seconds: 1)); // Faster retry
         }
       } catch (e) {
-        print('❌ Connectivity check error: $e');
+        if (kDebugMode) {
+          print('❌ Connectivity check error: $e');
+        }
         attempts++;
         if (attempts < maxAttempts) {
           await Future.delayed(const Duration(seconds: 1));
@@ -74,7 +82,9 @@ class ApiService {
       }
     }
 
-    print('❌ Connectivity check failed after $maxAttempts attempts');
+    if (kDebugMode) {
+      print('❌ Connectivity check failed after $maxAttempts attempts');
+    }
     return false;
   }
 
@@ -130,7 +140,9 @@ class ApiService {
 
     // Get working URL with smart fallback (Railway → Render)
     final String workingUrl = await ApiConfig.getWorkingUrl();
-    print('🔗 Using server: $workingUrl for endpoint: $cleanEndpoint');
+    if (kDebugMode) {
+      print('🔗 Using server: $workingUrl for endpoint: $cleanEndpoint');
+    }
 
     // Build the URL with working URL
     final String finalUrl = workingUrl + cleanEndpoint;
@@ -144,7 +156,9 @@ class ApiService {
   /// 🔍 Get current server status and health
   static Future<Map<String, dynamic>> getServerHealth() async {
     try {
-      print('🏥 Checking server health...');
+      if (kDebugMode) {
+        print('🏥 Checking server health...');
+      }
       
       // Get comprehensive server status
       final serverStatus = await ApiConfig.getServerStatus();
@@ -159,7 +173,9 @@ class ApiService {
         'timestamp': DateTime.now().toIso8601String(),
       };
     } catch (e) {
-      print('❌ Server health check failed: $e');
+      if (kDebugMode) {
+        print('❌ Server health check failed: $e');
+      }
       return {
         'success': false,
         'connected': false,
@@ -172,7 +188,9 @@ class ApiService {
   /// 🔄 Force server refresh and reconnection
   static Future<bool> refreshConnection() async {
     try {
-      print('🔄 Refreshing connection...');
+      if (kDebugMode) {
+        print('🔄 Refreshing connection...');
+      }
       
       // Refresh working URL
       await ApiConfig.refreshWorkingUrl();
@@ -180,10 +198,14 @@ class ApiService {
       // Check connectivity with new URL
       final connected = await checkConnectivity();
       
-      print(connected ? '✅ Connection refreshed successfully' : '❌ Connection refresh failed');
+      if (kDebugMode) {
+        print(connected ? '✅ Connection refreshed successfully' : '❌ Connection refresh failed');
+      }
       return connected;
     } catch (e) {
-      print('❌ Connection refresh error: $e');
+      if (kDebugMode) {
+        print('❌ Connection refresh error: $e');
+      }
       return false;
     }
   }
@@ -219,7 +241,9 @@ class ApiService {
             : await buildUrlWithFallback(endpoint);  // Auto-switch to working server
 
         final url = Uri.parse(urlString);
-        print('🌐 Making ${method.toUpperCase()} request to: ${url.toString()}');
+        if (kDebugMode) {
+          print('🌐 Making ${method.toUpperCase()} request to: ${url.toString()}');
+        }
         
         final Map<String, String> finalHeaders = ApiConfig.getHeaders();
 
@@ -270,11 +294,15 @@ class ApiService {
         }
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
-          print('✅ Request successful: ${response.statusCode}');
+          if (kDebugMode) {
+            print('✅ Request successful: ${response.statusCode}');
+          }
           final data = jsonDecode(response.body);
           return data;
         } else {
-          print('⚠️  Request failed with status: ${response.statusCode}');
+          if (kDebugMode) {
+            print('⚠️  Request failed with status: ${response.statusCode}');
+          }
           final errorData = jsonDecode(response.body);
           return {
             'success': false,
@@ -283,7 +311,9 @@ class ApiService {
           };
         }
       } catch (e) {
-        print('❌ Request error (attempt ${retryCount + 1}/${maxRetries + 1}): $e');
+        if (kDebugMode) {
+          print('❌ Request error (attempt ${retryCount + 1}/${maxRetries + 1}): $e');
+        }
         
         // Check if it's a server connection error (Railway might be down)
         if (e.toString().contains('Failed host lookup') ||
@@ -294,7 +324,9 @@ class ApiService {
           
           if (retryCount < maxRetries) {
             retryCount++;
-            print('🔄 Switching to fallback server (attempt ${retryCount + 1})...');
+            if (kDebugMode) {
+              print('🔄 Switching to fallback server (attempt ${retryCount + 1})...');
+            }
             await Future.delayed(Duration(seconds: retryCount)); // Quick retry
             continue;
           }
@@ -1430,7 +1462,9 @@ class ApiService {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $authToken',
       };
-      print('postWithAuth: url=$url, headers=$headers, data=$data');
+      if (kDebugMode) {
+        print('postWithAuth: url=$url, headers=$headers, data=$data');
+      }
       final response = await http
           .post(
             Uri.parse(url),

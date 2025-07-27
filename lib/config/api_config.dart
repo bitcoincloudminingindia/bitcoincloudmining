@@ -54,7 +54,9 @@ class ApiConfig {
   static Future<String> getWorkingUrl() async {
     for (String url in fallbackUrls) {
       try {
-        print('🔍 Testing server: $url');
+        if (kDebugMode) {
+          print('🔍 Testing server: $url');
+        }
         
         final response = await http.get(
           Uri.parse('$url/health'),
@@ -68,18 +70,26 @@ class ApiConfig {
         ).timeout(const Duration(seconds: 8)); // Reduced timeout for faster switching
 
         if (response.statusCode == 200) {
-          print('✅ Server working: $url');
+          if (kDebugMode) {
+            print('✅ Server working: $url');
+          }
           return url;
         } else {
-          print('❌ Server responded with ${response.statusCode}: $url');
+          if (kDebugMode) {
+            print('❌ Server responded with ${response.statusCode}: $url');
+          }
         }
       } catch (e) {
-        print('❌ Server failed: $url - Error: $e');
+        if (kDebugMode) {
+          print('❌ Server failed: $url - Error: $e');
+        }
         continue;
       }
     }
 
-    print('⚠️  All servers failed, using primary URL as fallback');
+    if (kDebugMode) {
+      print('⚠️  All servers failed, using primary URL as fallback');
+    }
     return primaryUrl; // Return primary as last resort
   }
 
@@ -110,7 +120,10 @@ class ApiConfig {
 
       return baseResponse.statusCode < 500;
     } catch (e) {
-      print('❌ Server availability check failed for $urlToTest: $e');
+      // Only log in debug mode
+      if (kDebugMode) {
+        print('❌ Server availability check failed for $urlToTest: $e');
+      }
       return false;
     }
   }
@@ -142,10 +155,15 @@ class ApiConfig {
         status['switchRecommended'] = true;
       }
 
-      print('📊 Server Status: ${status['currentServer']} | Railway: ${status['primaryAvailable']} | Render: ${status['secondaryAvailable']}');
+      // Only log in debug mode
+      if (kDebugMode) {
+        print('📊 Server Status: ${status['currentServer']} | Railway: ${status['primaryAvailable']} | Render: ${status['secondaryAvailable']}');
+      }
       
     } catch (e) {
-      print('❌ Error checking server status: $e');
+      if (kDebugMode) {
+        print('❌ Error checking server status: $e');
+      }
     }
 
     return status;
@@ -153,7 +171,9 @@ class ApiConfig {
 
   /// 🔄 Force refresh working URL (useful after network changes)
   static Future<String> refreshWorkingUrl() async {
-    print('🔄 Refreshing server connection...');
+    if (kDebugMode) {
+      print('🔄 Refreshing server connection...');
+    }
     return await getWorkingUrl();
   }
 

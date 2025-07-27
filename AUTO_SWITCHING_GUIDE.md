@@ -79,29 +79,12 @@ static Future<String> getWorkingUrl() async {
 
 ## 🧪 Testing करने के लिए
 
-### 1. Code से Test करें:
-```dart
-import 'package:your_app/services/server_test.dart';
-
-// Simple test
-await ServerSwitchingTest.testAutoSwitching();
-
-// Detailed demonstration
-await ServerSwitchingTest.demonstrateSwitching();
+### 1. 📱 APK Build करके Mobile में Test करें:
+```bash
+flutter build apk --release
 ```
 
-### 2. UI से Test करें:
-```dart
-// Test widget add करें अपने app में
-Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (context) => ServerSwitchingTestWidget(),
-  ),
-);
-```
-
-### 3. Manual Testing:
+### 2. 🔍 Runtime में Auto-Switching Test करें:
 ```dart
 // Current server status check करें
 final status = await ApiConfig.getServerStatus();
@@ -111,6 +94,11 @@ print('Current server: ${status['currentServer']}');
 final health = await ApiService.getServerHealth();
 print('Connected: ${health['connected']}');
 ```
+
+### 3. 🌐 Network Switching Test करें:
+- WiFi को on/off करें
+- Mobile data switch करें  
+- App automatically best server use करेगा
 
 ## 📊 Monitoring और Debugging
 
@@ -212,9 +200,10 @@ static List<String> get fallbackUrls {
 3. **Logs Check करें:**
    Console में detailed logs print होते हैं
 
-4. **Manual Test करें:**
-   ```dart
-   await ServerSwitchingTest.testAutoSwitching();
+4. **Mobile में APK Test करें:**
+   ```bash
+   flutter build apk --release
+   # APK को mobile में install करके test करें
    ```
 
 ---
