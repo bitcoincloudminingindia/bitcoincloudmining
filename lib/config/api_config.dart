@@ -5,16 +5,20 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiConfig {
-  /// ✅ Auto-switching base URL based on environment with DNS fallbacks
+  /// 🔄 Primary and Secondary server URLs for auto-switching
+  static const String primaryUrl = 'https://bitcoincloudmining.up.railway.app';
+  static const String secondaryUrl = 'https://bitcoincloudmining.onrender.com';
+
+  /// ✅ Auto-switching base URL based on environment with Railway + Render fallbacks
   static String get baseUrl {
     if (kReleaseMode) {
-      // 🎯 For Play Store / App Store builds with multiple fallbacks
-      return 'https://bitcoincloudmining.onrender.com';
+      // 🎯 For Play Store / App Store builds - will auto-switch between Railway and Render
+      return primaryUrl; // Primary try Railway first
     }
 
     if (kIsWeb) {
       // 🧪 Web - use production server to avoid CORS issues
-      return 'https://bitcoincloudmining.onrender.com';
+      return primaryUrl; // Web will also use auto-switching
     }
 
     if (Platform.isAndroid) {
@@ -31,53 +35,126 @@ class ApiConfig {
     return 'http://localhost:5000';
   }
 
-  /// 🔄 Fallback URLs for DNS resolution issues
+  /// 🔄 Smart fallback URLs for automatic Railway ↔ Render switching
   static List<String> get fallbackUrls {
-    if (kReleaseMode) {
+    if (kReleaseMode || kIsWeb) {
       return [
-        'https://bitcoincloudmining.onrender.com',
-        'https://bitcoin-cloud-mining-api.onrender.com',
-        'https://bitcoin-mining-api.onrender.com',
-        'https://bitcoincloudmining-backend.onrender.com',
+        primaryUrl,      // Railway (Primary)
+        secondaryUrl,    // Render (Secondary)
+        'https://bitcoin-cloud-mining-api.onrender.com',     // Render backup 1
+        'https://bitcoin-mining-api.onrender.com',           // Render backup 2
+        'https://bitcoincloudmining-backend.onrender.com',   // Render backup 3
       ];
     }
 
-    if (kIsWeb) {
-      return [
-        'https://bitcoincloudmining.onrender.com',
-        'http://localhost:5000',
-        'https://bitcoin-cloud-mining-api.onrender.com',
-        'https://bitcoin-mining-api.onrender.com',
-      ];
-    }
-
-    return [baseUrl];
+    return [baseUrl]; // Local development
   }
 
-  /// 🌐 Get working URL with DNS fallback
+  /// 🌐 Smart URL selector with health check and auto-switching
   static Future<String> getWorkingUrl() async {
     for (String url in fallbackUrls) {
       try {
+        print('🔍 Testing server: $url');
+        
         final response = await http.get(
           Uri.parse('$url/health'),
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'Origin': kIsWeb
-                ? 'https://bitcoincloudmining.onrender.com'
+                ? primaryUrl
                 : 'http://localhost:3000',
           },
-        ).timeout(const Duration(seconds: 10));
+        ).timeout(const Duration(seconds: 8)); // Reduced timeout for faster switching
 
         if (response.statusCode == 200) {
+          print('✅ Server working: $url');
           return url;
+        } else {
+          print('❌ Server responded with ${response.statusCode}: $url');
         }
       } catch (e) {
+        print('❌ Server failed: $url - Error: $e');
         continue;
       }
     }
 
-    return baseUrl;
+    print('⚠️  All servers failed, using primary URL as fallback');
+    return primaryUrl; // Return primary as last resort
+  }
+
+  /// 🚀 Enhanced connectivity check with Railway/Render detection
+  static Future<bool> isServerAvailable([String? customUrl]) async {
+    final String urlToTest = customUrl ?? await getWorkingUrl();
+    
+    try {
+      // Test health endpoint first
+      final healthResponse = await http
+          .get(
+            Uri.parse('$urlToTest/health'),
+            headers: getHeaders(),
+          )
+          .timeout(const Duration(seconds: 8));
+
+      if (healthResponse.statusCode == 200) {
+        return true;
+      }
+
+      // If health check fails, try base URL
+      final baseResponse = await http
+          .get(
+            Uri.parse(urlToTest),
+            headers: getHeaders(),
+          )
+          .timeout(const Duration(seconds: 8));
+
+      return baseResponse.statusCode < 500;
+    } catch (e) {
+      print('❌ Server availability check failed for $urlToTest: $e');
+      return false;
+    }
+  }
+
+  /// 🔍 Get current server status (Railway vs Render)
+  static Future<Map<String, dynamic>> getServerStatus() async {
+    final Map<String, dynamic> status = {
+      'primaryAvailable': false,
+      'secondaryAvailable': false,
+      'currentServer': 'unknown',
+      'switchRecommended': false,
+    };
+
+    try {
+      // Check Railway (Primary)
+      status['primaryAvailable'] = await isServerAvailable(primaryUrl);
+      
+      // Check Render (Secondary)  
+      status['secondaryAvailable'] = await isServerAvailable(secondaryUrl);
+      
+      // Determine current working server
+      if (status['primaryAvailable']) {
+        status['currentServer'] = 'Railway';
+      } else if (status['secondaryAvailable']) {
+        status['currentServer'] = 'Render';
+        status['switchRecommended'] = true;
+      } else {
+        status['currentServer'] = 'None Available';
+        status['switchRecommended'] = true;
+      }
+
+      print('📊 Server Status: ${status['currentServer']} | Railway: ${status['primaryAvailable']} | Render: ${status['secondaryAvailable']}');
+      
+    } catch (e) {
+      print('❌ Error checking server status: $e');
+    }
+
+    return status;
+  }
+
+  /// 🔄 Force refresh working URL (useful after network changes)
+  static Future<String> refreshWorkingUrl() async {
+    print('🔄 Refreshing server connection...');
+    return await getWorkingUrl();
   }
 
   /// ⚙️ API Endpoints
@@ -230,7 +307,7 @@ class ApiConfig {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       'Origin': kIsWeb
-          ? 'https://bitcoincloudmining.onrender.com'
+          ? primaryUrl
           : 'http://localhost:3000',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -238,62 +315,6 @@ class ApiConfig {
           'Content-Type, Authorization, Accept, X-Requested-With, Origin',
       if (token != null) 'Authorization': 'Bearer $token',
     };
-  }
-
-  // Add connection status check with better error handling
-  static Future<bool> isServerAvailable() async {
-    int attempts = 0;
-    const maxAttempts = 3;
-
-    while (attempts < maxAttempts) {
-      try {
-        // First try health endpoint
-        final healthResponse = await http
-            .get(
-              Uri.parse('$baseUrl/health'),
-              headers: getHeaders(),
-            )
-            .timeout(const Duration(seconds: 10));
-
-        if (healthResponse.statusCode == 200) {
-          return true;
-        }
-
-        // If health check fails, try base URL
-        final baseResponse = await http
-            .get(
-              Uri.parse(baseUrl),
-              headers: getHeaders(),
-            )
-            .timeout(const Duration(seconds: 10));
-
-        if (baseResponse.statusCode < 500) {
-          return true;
-        }
-
-        attempts++;
-        if (attempts < maxAttempts) {
-          await Future.delayed(retryDelay);
-        }
-      } on SocketException {
-        attempts++;
-        if (attempts < maxAttempts) {
-          await Future.delayed(retryDelay);
-        }
-      } on TimeoutException {
-        attempts++;
-        if (attempts < maxAttempts) {
-          await Future.delayed(retryDelay);
-        }
-      } catch (e) {
-        attempts++;
-        if (attempts < maxAttempts) {
-          await Future.delayed(retryDelay);
-        }
-      }
-    }
-
-    return false;
   }
 
   // FCM Token endpoint

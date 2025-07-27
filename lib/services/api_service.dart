@@ -49,31 +49,32 @@ class ApiService {
 
   static Future<bool> checkConnectivity() async {
     int attempts = 0;
-    const maxAttempts = 3;
+    const maxAttempts = 2; // Reduced for faster switching
 
     while (attempts < maxAttempts) {
       try {
-        // Try to get working URL first
-        // final workingUrl = await ApiConfig.getWorkingUrl(); // Unused, isliye hata diya
-
+        // Use the enhanced isServerAvailable method
         final isAvailable = await ApiConfig.isServerAvailable();
         if (isAvailable) {
+          print('✅ Connectivity check passed');
           return true;
         }
 
         attempts++;
         if (attempts < maxAttempts) {
-          const delay = ApiConfig.retryDelay;
-          await Future.delayed(delay);
+          print('🔄 Retrying connectivity check (${attempts + 1}/$maxAttempts)');
+          await Future.delayed(const Duration(seconds: 1)); // Faster retry
         }
       } catch (e) {
+        print('❌ Connectivity check error: $e');
         attempts++;
         if (attempts < maxAttempts) {
-          await Future.delayed(ApiConfig.retryDelay);
+          await Future.delayed(const Duration(seconds: 1));
         }
       }
     }
 
+    print('❌ Connectivity check failed after $maxAttempts attempts');
     return false;
   }
 
@@ -112,7 +113,7 @@ class ApiService {
     final String cleanEndpoint =
         endpoint.startsWith('/') ? endpoint : '/$endpoint';
 
-    // Build the URL with base URL
+    // Build the URL with base URL (will use primary URL first)
     final String finalUrl = ApiConfig.baseUrl + cleanEndpoint;
 
     // Remove any double slashes except after protocol (http:// or https://)
@@ -121,13 +122,15 @@ class ApiService {
     return cleanUrl;
   }
 
+  /// 🚀 Enhanced URL builder with automatic Railway/Render fallback
   static Future<String> buildUrlWithFallback(String endpoint) async {
     // Ensure endpoint starts with '/'
     final String cleanEndpoint =
         endpoint.startsWith('/') ? endpoint : '/$endpoint';
 
-    // Get working URL with fallback
+    // Get working URL with smart fallback (Railway → Render)
     final String workingUrl = await ApiConfig.getWorkingUrl();
+    print('🔗 Using server: $workingUrl for endpoint: $cleanEndpoint');
 
     // Build the URL with working URL
     final String finalUrl = workingUrl + cleanEndpoint;
@@ -136,6 +139,53 @@ class ApiService {
     final String cleanUrl = finalUrl.replaceAll(RegExp(r'(?<!:)\/\/+'), '/');
 
     return cleanUrl;
+  }
+
+  /// 🔍 Get current server status and health
+  static Future<Map<String, dynamic>> getServerHealth() async {
+    try {
+      print('🏥 Checking server health...');
+      
+      // Get comprehensive server status
+      final serverStatus = await ApiConfig.getServerStatus();
+      
+      // Get connectivity status
+      final isConnected = await checkConnectivity();
+      
+      return {
+        'success': true,
+        'connected': isConnected,
+        'serverStatus': serverStatus,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+    } catch (e) {
+      print('❌ Server health check failed: $e');
+      return {
+        'success': false,
+        'connected': false,
+        'error': e.toString(),
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+    }
+  }
+
+  /// 🔄 Force server refresh and reconnection
+  static Future<bool> refreshConnection() async {
+    try {
+      print('🔄 Refreshing connection...');
+      
+      // Refresh working URL
+      await ApiConfig.refreshWorkingUrl();
+      
+      // Check connectivity with new URL
+      final connected = await checkConnectivity();
+      
+      print(connected ? '✅ Connection refreshed successfully' : '❌ Connection refresh failed');
+      return connected;
+    } catch (e) {
+      print('❌ Connection refresh error: $e');
+      return false;
+    }
   }
 
   // List of endpoints that don't require authentication
@@ -151,6 +201,7 @@ class ApiService {
     '/api/auth/health'
   ];
 
+  /// 🚀 Enhanced API request method with Railway/Render auto-switching
   Future<Map<String, dynamic>> _makeRequest({
     required String endpoint,
     required String method,
@@ -162,13 +213,14 @@ class ApiService {
 
     while (retryCount <= maxRetries) {
       try {
-        // Use fallback URL for DNS resolution issues
+        // Smart URL selection: Railway first, then Render fallback
         final urlString = retryCount == 0
-            ? buildUrl(endpoint)
-            : await buildUrlWithFallback(endpoint);
+            ? buildUrl(endpoint)  // Try primary (Railway) first
+            : await buildUrlWithFallback(endpoint);  // Auto-switch to working server
 
         final url = Uri.parse(urlString);
-        // Fix: Define finalHeaders
+        print('🌐 Making ${method.toUpperCase()} request to: ${url.toString()}');
+        
         final Map<String, String> finalHeaders = ApiConfig.getHeaders();
 
         // Add auth token if not already provided in headers
@@ -183,23 +235,13 @@ class ApiService {
         if (headers != null) {
           finalHeaders.addAll(headers);
         }
-        // Debug headers
-        final headersDebug = Map<String, String>.from(finalHeaders);
-        if (headersDebug.containsKey('Authorization')) {
-          final authHeader = headersDebug['Authorization'] ?? '';
-          if (authHeader.startsWith('Bearer ')) {
-            final token = authHeader.substring(7);
-            headersDebug['Authorization'] =
-                'Bearer ${token.substring(0, 10)}...';
-          }
-        }
 
         late http.Response response;
 
         switch (method.toUpperCase()) {
           case 'GET':
-            response =
-                await http.get(url, headers: finalHeaders).timeout(_timeout);
+            response = await http.get(url, headers: finalHeaders)
+                .timeout(const Duration(seconds: 15)); // Reduced timeout for faster switching
             break;
           case 'POST':
             response = await http
@@ -208,7 +250,7 @@ class ApiService {
                   headers: finalHeaders,
                   body: body != null ? jsonEncode(body) : null,
                 )
-                .timeout(_timeout);
+                .timeout(const Duration(seconds: 15));
             break;
           case 'PUT':
             response = await http
@@ -217,20 +259,22 @@ class ApiService {
                   headers: finalHeaders,
                   body: body != null ? jsonEncode(body) : null,
                 )
-                .timeout(_timeout);
+                .timeout(const Duration(seconds: 15));
             break;
           case 'DELETE':
-            response =
-                await http.delete(url, headers: finalHeaders).timeout(_timeout);
+            response = await http.delete(url, headers: finalHeaders)
+                .timeout(const Duration(seconds: 15));
             break;
           default:
             throw Exception('Unsupported HTTP method: $method');
         }
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
+          print('✅ Request successful: ${response.statusCode}');
           final data = jsonDecode(response.body);
           return data;
         } else {
+          print('⚠️  Request failed with status: ${response.statusCode}');
           final errorData = jsonDecode(response.body);
           return {
             'success': false,
@@ -239,19 +283,24 @@ class ApiService {
           };
         }
       } catch (e) {
-        // Check if it's a DNS resolution error
+        print('❌ Request error (attempt ${retryCount + 1}/${maxRetries + 1}): $e');
+        
+        // Check if it's a server connection error (Railway might be down)
         if (e.toString().contains('Failed host lookup') ||
             e.toString().contains('no address associated with hostname') ||
-            e.toString().contains('SocketException')) {
+            e.toString().contains('SocketException') ||
+            e.toString().contains('TimeoutException') ||
+            e.toString().contains('Connection refused')) {
+          
           if (retryCount < maxRetries) {
             retryCount++;
-            await Future.delayed(
-                Duration(seconds: retryCount * 2)); // Exponential backoff
+            print('🔄 Switching to fallback server (attempt ${retryCount + 1})...');
+            await Future.delayed(Duration(seconds: retryCount)); // Quick retry
             continue;
           }
         }
 
-        // If it's not a DNS error or we've exhausted retries, return error
+        // If all retries failed, return error
         return {
           'success': false,
           'message': 'Network error: ${e.toString()}',
@@ -264,7 +313,7 @@ class ApiService {
     // This should never be reached, but just in case
     return {
       'success': false,
-      'message': 'All retry attempts failed',
+      'message': 'All retry attempts failed - Both Railway and Render servers unavailable',
       'error': 'MAX_RETRIES_EXCEEDED',
     };
   }
