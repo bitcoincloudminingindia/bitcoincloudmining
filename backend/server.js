@@ -466,64 +466,66 @@ app.get('/api/metrics', (req, res) => {
   }
 });
 
-// Failover test endpoint (helps verify failover system)
-app.get('/api/failover-test', (req, res) => {
-  const { action } = req.query;
+// Failover test endpoint (helps verify failover system) - Only available in development
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/api/failover-test', (req, res) => {
+    const { action } = req.query;
 
-  if (action === 'identify') {
-    // Help identify which backend is responding
-    const backendType = process.env.BACKEND_TYPE || 'render';
-    const serverInfo = {
-      success: true,
-      backend: backendType,
-      hostname: require('os').hostname(),
-      timestamp: new Date().toISOString(),
-      message: `This response is from the ${backendType} backend`,
-      environment: process.env.NODE_ENV || 'development',
-      headers: {
-        'X-Backend-Server': backendType,
-        'X-Server-Instance': process.env.HOSTNAME || require('os').hostname(),
-        'X-Deploy-Platform': backendType
-      }
-    };
-
-    // Set response headers to identify the backend
-    res.set('X-Backend-Server', backendType);
-    res.set('X-Server-Instance', process.env.HOSTNAME || require('os').hostname());
-    res.set('X-Deploy-Platform', backendType);
-
-    res.status(200).json(serverInfo);
-  } else if (action === 'delay') {
-    // Simulate slow response (for testing failover timing)
-    const delay = parseInt(req.query.ms) || 5000;
-    setTimeout(() => {
-      res.status(200).json({
+    if (action === 'identify') {
+      // Help identify which backend is responding
+      const backendType = process.env.BACKEND_TYPE || 'render';
+      const serverInfo = {
         success: true,
-        message: `Response delayed by ${delay}ms`,
+        backend: backendType,
+        hostname: require('os').hostname(),
+        timestamp: new Date().toISOString(),
+        message: `This response is from the ${backendType} backend`,
+        environment: process.env.NODE_ENV || 'development',
+        headers: {
+          'X-Backend-Server': backendType,
+          'X-Server-Instance': process.env.HOSTNAME || require('os').hostname(),
+          'X-Deploy-Platform': backendType
+        }
+      };
+
+      // Set response headers to identify the backend
+      res.set('X-Backend-Server', backendType);
+      res.set('X-Server-Instance', process.env.HOSTNAME || require('os').hostname());
+      res.set('X-Deploy-Platform', backendType);
+
+      res.status(200).json(serverInfo);
+    } else if (action === 'delay') {
+      // Simulate slow response (for testing failover timing)
+      const delay = parseInt(req.query.ms) || 5000;
+      setTimeout(() => {
+        res.status(200).json({
+          success: true,
+          message: `Response delayed by ${delay}ms`,
+          timestamp: new Date().toISOString()
+        });
+      }, delay);
+    } else if (action === 'error') {
+      // Simulate server error (for testing error handling)
+      res.status(500).json({
+        success: false,
+        message: 'Simulated server error for testing',
         timestamp: new Date().toISOString()
       });
-    }, delay);
-  } else if (action === 'error') {
-    // Simulate server error (for testing error handling)
-    res.status(500).json({
-      success: false,
-      message: 'Simulated server error for testing',
-      timestamp: new Date().toISOString()
-    });
-  } else {
-    res.status(200).json({
-      success: true,
-      message: 'Failover test endpoint',
-      availableActions: ['identify', 'delay', 'error'],
-      usage: {
-        identify: '/api/failover-test?action=identify',
-        delay: '/api/failover-test?action=delay&ms=3000',
-        error: '/api/failover-test?action=error'
-      },
-      timestamp: new Date().toISOString()
-    });
-  }
-});
+    } else {
+      res.status(200).json({
+        success: true,
+        message: 'Failover test endpoint',
+        availableActions: ['identify', 'delay', 'error'],
+        usage: {
+          identify: '/api/failover-test?action=identify',
+          delay: '/api/failover-test?action=delay&ms=3000',
+          error: '/api/failover-test?action=error'
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+}
 
 
 
@@ -748,7 +750,12 @@ server.listen(PORT, () => {
   console.log('   ├─ /ping (Fastest response)');
   console.log('   └─ /api/metrics (Server metrics)');
   console.log('\x1b[34m%s\x1b[0m', '🔄 Failover System: Ready for Flutter app');
-  console.log('\x1b[31m%s\x1b[0m', '🧪 Test Endpoint: /api/failover-test');
+  
+  // Only show test endpoint in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('\x1b[31m%s\x1b[0m', '🧪 Test Endpoint: /api/failover-test');
+  }
+  
   console.log('----------------------------------------\n');
 });
 
