@@ -4,16 +4,33 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:flutter/foundation.dart';
 
 import '../config/api_config.dart';
 import '../utils/error_handler.dart';
 import '../utils/number_formatter.dart';
 import '../utils/storage_utils.dart';
+import 'backend_failover_manager.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
   ApiService._internal();
+
+  /// Initialize the failover system (call this during app startup)
+  static Future<void> initializeFailover() async {
+    try {
+      if (kReleaseMode || kIsWeb) {
+        // Warm up the failover manager by getting the active backend
+        final activeBackend = await BackendFailoverManager().getActiveBackendUrl();
+        debugPrint('🚀 Failover system initialized with backend: $activeBackend');
+      } else {
+        debugPrint('🧪 Development mode: Using local backend');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Failed to initialize failover system: $e');
+    }
+  }
 
   // Constants for retry logic
   static const int maxRetries = 3;
@@ -157,18 +174,102 @@ class ApiService {
     Map<String, dynamic>? body,
     Map<String, String>? headers,
   }) async {
+    try {
+      // For production builds, use BackendFailoverManager
+      if (kReleaseMode || kIsWeb) {
+        return await _makeRequestWithFailover(
+          endpoint: endpoint,
+          method: method,
+          body: body,
+          headers: headers,
+        );
+      }
+
+      // For development builds, use the existing local server logic
+      return await _makeLocalRequest(
+        endpoint: endpoint,
+        method: method,
+        body: body,
+        headers: headers,
+      );
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Request failed: ${e.toString()}',
+        'error': 'REQUEST_FAILED',
+        'details': e.toString(),
+      };
+    }
+  }
+
+  /// Make request using BackendFailoverManager (production)
+  Future<Map<String, dynamic>> _makeRequestWithFailover({
+    required String endpoint,
+    required String method,
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+  }) async {
+    try {
+      // Build headers with auth token
+      final Map<String, String> finalHeaders = ApiConfig.getHeaders();
+
+      // Add auth token if not already provided in headers
+      if (!finalHeaders.containsKey('Authorization') &&
+          !publicEndpoints.contains(endpoint)) {
+        final token = await StorageUtils.getToken();
+        if (token != null) {
+          finalHeaders['Authorization'] = 'Bearer $token';
+        }
+      }
+
+      if (headers != null) {
+        finalHeaders.addAll(headers);
+      }
+
+      // Use BackendFailoverManager for the request
+      final response = await BackendFailoverManager().makeRequest(
+        endpoint: endpoint,
+        method: method,
+        headers: finalHeaders,
+        body: body != null ? jsonEncode(body) : null,
+        timeout: _timeout,
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return data;
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Request failed',
+          'error': errorData['error'] ?? 'UNKNOWN_ERROR'
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+        'error': 'NETWORK_ERROR',
+        'details': e.toString(),
+      };
+    }
+  }
+
+  /// Make request for local development (original logic)
+  Future<Map<String, dynamic>> _makeLocalRequest({
+    required String endpoint,
+    required String method,
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+  }) async {
     int retryCount = 0;
     const maxRetries = 2;
 
     while (retryCount <= maxRetries) {
       try {
-        // Use fallback URL for DNS resolution issues
-        final urlString = retryCount == 0
-            ? buildUrl(endpoint)
-            : await buildUrlWithFallback(endpoint);
-
+        final urlString = buildUrl(endpoint);
         final url = Uri.parse(urlString);
-        // Fix: Define finalHeaders
         final Map<String, String> finalHeaders = ApiConfig.getHeaders();
 
         // Add auth token if not already provided in headers
@@ -183,45 +284,29 @@ class ApiService {
         if (headers != null) {
           finalHeaders.addAll(headers);
         }
-        // Debug headers
-        final headersDebug = Map<String, String>.from(finalHeaders);
-        if (headersDebug.containsKey('Authorization')) {
-          final authHeader = headersDebug['Authorization'] ?? '';
-          if (authHeader.startsWith('Bearer ')) {
-            final token = authHeader.substring(7);
-            headersDebug['Authorization'] =
-                'Bearer ${token.substring(0, 10)}...';
-          }
-        }
 
         late http.Response response;
 
         switch (method.toUpperCase()) {
           case 'GET':
-            response =
-                await http.get(url, headers: finalHeaders).timeout(_timeout);
+            response = await http.get(url, headers: finalHeaders).timeout(_timeout);
             break;
           case 'POST':
-            response = await http
-                .post(
-                  url,
-                  headers: finalHeaders,
-                  body: body != null ? jsonEncode(body) : null,
-                )
-                .timeout(_timeout);
+            response = await http.post(
+              url,
+              headers: finalHeaders,
+              body: body != null ? jsonEncode(body) : null,
+            ).timeout(_timeout);
             break;
           case 'PUT':
-            response = await http
-                .put(
-                  url,
-                  headers: finalHeaders,
-                  body: body != null ? jsonEncode(body) : null,
-                )
-                .timeout(_timeout);
+            response = await http.put(
+              url,
+              headers: finalHeaders,
+              body: body != null ? jsonEncode(body) : null,
+            ).timeout(_timeout);
             break;
           case 'DELETE':
-            response =
-                await http.delete(url, headers: finalHeaders).timeout(_timeout);
+            response = await http.delete(url, headers: finalHeaders).timeout(_timeout);
             break;
           default:
             throw Exception('Unsupported HTTP method: $method');
@@ -239,19 +324,12 @@ class ApiService {
           };
         }
       } catch (e) {
-        // Check if it's a DNS resolution error
-        if (e.toString().contains('Failed host lookup') ||
-            e.toString().contains('no address associated with hostname') ||
-            e.toString().contains('SocketException')) {
-          if (retryCount < maxRetries) {
-            retryCount++;
-            await Future.delayed(
-                Duration(seconds: retryCount * 2)); // Exponential backoff
-            continue;
-          }
+        if (retryCount < maxRetries) {
+          retryCount++;
+          await Future.delayed(Duration(seconds: retryCount * 2));
+          continue;
         }
 
-        // If it's not a DNS error or we've exhausted retries, return error
         return {
           'success': false,
           'message': 'Network error: ${e.toString()}',
@@ -261,7 +339,6 @@ class ApiService {
       }
     }
 
-    // This should never be reached, but just in case
     return {
       'success': false,
       'message': 'All retry attempts failed',
