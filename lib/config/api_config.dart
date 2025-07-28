@@ -3,32 +3,37 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../services/backend_failover_manager.dart';
 
 class ApiConfig {
-  /// ✅ Auto-switching base URL based on environment with DNS fallbacks
+  /// ✅ Auto-switching base URL with intelligent failover
   static String get baseUrl {
-    if (kReleaseMode) {
-      // 🎯 For Play Store / App Store builds with multiple fallbacks
-      return 'https://bitcoincloudmining.onrender.com';
+    if (kReleaseMode || kIsWeb) {
+      // 🎯 For production builds, use cached URL from failover manager
+      // This will return the last known working backend without async call
+      final cachedUrl = BackendFailoverManager().getCachedBackendUrl();
+      return cachedUrl ?? 'https://bitcoincloudmining.onrender.com';
     }
 
-    if (kIsWeb) {
-      // 🧪 Web - use production server to avoid CORS issues
-      return 'https://bitcoincloudmining.onrender.com';
-    }
-
+    // 🧪 Development mode - use local servers
     if (Platform.isAndroid) {
-      // 🧪 Android Emulator on PC
       return 'http://10.0.2.2:5000';
     }
 
     if (Platform.isIOS) {
-      // 🧪 iOS Simulator (Mac)
       return 'http://localhost:5000';
     }
 
-    // 🧪 Fallback (desktop)
     return 'http://localhost:5000';
+  }
+
+  /// Get the active backend URL with failover (async version)
+  /// Use this for initial app setup or when you need fresh backend selection
+  static Future<String> getActiveBackendUrl() async {
+    if (kReleaseMode || kIsWeb) {
+      return await BackendFailoverManager().getActiveBackendUrl();
+    }
+    return baseUrl; // Return local URL for development
   }
 
   /// 🔄 Fallback URLs for DNS resolution issues
