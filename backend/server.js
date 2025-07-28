@@ -257,11 +257,7 @@ app.get('/', (req, res) => {
 const getHealthStatus = () => {
   const uptime = process.uptime();
   const memUsage = process.memoryUsage();
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> b26ead6 (Added backend failover support and updated API service)
   return {
     success: true,
     status: 'healthy',
@@ -293,11 +289,7 @@ const getHealthStatus = () => {
 app.get('/health', async (req, res) => {
   try {
     const healthData = getHealthStatus();
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> b26ead6 (Added backend failover support and updated API service)
     // Quick database connectivity check
     try {
       const mongoose = require('mongoose');
@@ -332,11 +324,7 @@ app.get('/health', async (req, res) => {
 app.get('/api/health', async (req, res) => {
   try {
     const healthData = getHealthStatus();
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> b26ead6 (Added backend failover support and updated API service)
     // Enhanced checks for API health
     const checks = {
       server: true,
@@ -369,11 +357,6 @@ app.get('/api/health', async (req, res) => {
 
     healthData.checks = checks;
     healthData.overall = Object.values(checks).every(check => check === true);
-<<<<<<< HEAD
-    
-=======
-
->>>>>>> b26ead6 (Added backend failover support and updated API service)
     if (!healthData.overall) {
       healthData.status = 'degraded';
       healthData.message = 'Some services are experiencing issues';
@@ -439,11 +422,7 @@ app.get('/api/metrics', (req, res) => {
     const uptime = process.uptime();
     const memUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> b26ead6 (Added backend failover support and updated API service)
     res.status(200).json({
       success: true,
       timestamp: new Date().toISOString(),
@@ -489,11 +468,7 @@ app.get('/api/metrics', (req, res) => {
 // Failover test endpoint (helps verify failover system)
 app.get('/api/failover-test', (req, res) => {
   const { action } = req.query;
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> b26ead6 (Added backend failover support and updated API service)
   if (action === 'identify') {
     // Help identify which backend is responding
     const backendType = process.env.BACKEND_TYPE || 'render';
@@ -510,20 +485,12 @@ app.get('/api/failover-test', (req, res) => {
         'X-Deploy-Platform': backendType
       }
     };
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> b26ead6 (Added backend failover support and updated API service)
     // Set response headers to identify the backend
     res.set('X-Backend-Server', backendType);
     res.set('X-Server-Instance', process.env.HOSTNAME || require('os').hostname());
     res.set('X-Deploy-Platform', backendType);
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> b26ead6 (Added backend failover support and updated API service)
     res.status(200).json(serverInfo);
   } else if (action === 'delay') {
     // Simulate slow response (for testing failover timing)
