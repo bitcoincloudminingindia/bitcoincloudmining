@@ -305,6 +305,54 @@ When modifying the failover system:
 4. Test development mode functionality
 5. Verify performance impact
 
+## 🔧 Backend Enhancements
+
+The backend has been enhanced with comprehensive health check endpoints and monitoring:
+
+### New Health Endpoints
+
+- **`/health`** - Primary health check (fastest response)
+- **`/api/health`** - Detailed API health with service checks
+- **`/status`** - Lightweight status for load balancers
+- **`/ping`** - Fastest possible response
+- **`/api/metrics`** - Server performance metrics
+- **`/api/failover-test`** - Testing endpoint for failover scenarios
+
+### Backend Testing
+
+Run the included test script to verify your backend setup:
+
+```bash
+# In the backend directory
+node test-failover.js
+
+# Test specific components
+node test-failover.js --health      # Test health endpoints
+node test-failover.js --speed       # Test connection speed
+node test-failover.js --identify    # Test backend identification
+node test-failover.js --scenarios   # Test failover scenarios
+```
+
+### Environment Variables
+
+For Railway deployment, set `BACKEND_TYPE=railway` to properly identify the backend.
+For Render deployment, set `BACKEND_TYPE=render` (or leave unset as it's the default).
+
+## 📊 Monitoring Endpoints
+
+Your backends now provide detailed monitoring information:
+
+```bash
+# Check detailed health
+curl https://bitcoincloudmining.onrender.com/api/health
+
+# Get server metrics
+curl https://bitcoincloudmining.onrender.com/api/metrics
+
+# Test backend identification
+curl https://bitcoincloudmining.onrender.com/api/failover-test?action=identify
+```
+
 ## 📝 Changelog
 
 ### v1.0.0 (Current)
@@ -316,6 +364,38 @@ When modifying the failover system:
 - ✅ Comprehensive error handling
 - ✅ Zero-configuration integration
 
+### Backend v1.1.0 (Current)
+- ✅ Enhanced health check endpoints (`/health`, `/api/health`, `/status`, `/ping`)
+- ✅ Server metrics endpoint (`/api/metrics`)
+- ✅ Failover testing endpoint (`/api/failover-test`)
+- ✅ Environment-based backend identification
+- ✅ Enhanced logging for health checks
+- ✅ Comprehensive monitoring capabilities
+- ✅ Automated testing script
+
+## 🚀 Deployment Checklist
+
+### For Render Deployment:
+1. ✅ Deploy with current `server.js`
+2. ✅ Set `BACKEND_TYPE=render` (optional, as it's default)
+3. ✅ Test health endpoints
+4. ✅ Verify failover test endpoint
+
+### For Railway Deployment:
+1. ✅ Deploy with current `server.js`
+2. ✅ Set `BACKEND_TYPE=railway` environment variable
+3. ✅ Test health endpoints
+4. ✅ Verify backend identification
+
+### For Flutter App:
+1. ✅ Add `await ApiService.initializeFailover();` to main.dart
+2. ✅ All existing API calls automatically use failover
+3. ✅ Optional: Add backend status monitoring widgets
+
 ---
 
-**Need Help?** Check the example usage in `lib/examples/failover_usage_example.dart` or review the implementation in `lib/services/backend_failover_manager.dart`.
+**Need Help?** 
+- Flutter Integration: Check `lib/examples/failover_usage_example.dart`
+- Backend Implementation: Review `lib/services/backend_failover_manager.dart`
+- Backend Testing: Run `backend/test-failover.js`
+- Railway Deployment: See `backend/railway-deployment-notes.md`

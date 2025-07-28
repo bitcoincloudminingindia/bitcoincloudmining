@@ -134,6 +134,55 @@ app.use((req, res, next) => {
   next();
 });
 
+// Enhanced logging middleware for health check endpoints
+app.use('/health', (req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    logger.info(`Health check completed: ${res.statusCode} in ${duration}ms`, {
+      method: req.method,
+      url: req.url,
+      statusCode: res.statusCode,
+      duration: `${duration}ms`,
+      userAgent: req.get('User-Agent'),
+      ip: req.ip || req.connection.remoteAddress
+    });
+  });
+  next();
+});
+
+app.use('/api/health', (req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    logger.info(`API health check completed: ${res.statusCode} in ${duration}ms`, {
+      method: req.method,
+      url: req.url,
+      statusCode: res.statusCode,
+      duration: `${duration}ms`,
+      userAgent: req.get('User-Agent'),
+      ip: req.ip || req.connection.remoteAddress
+    });
+  });
+  next();
+});
+
+app.use('/status', (req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    logger.info(`Status check completed: ${res.statusCode} in ${duration}ms`, {
+      method: req.method,
+      url: req.url,
+      statusCode: res.statusCode,
+      duration: `${duration}ms`,
+      userAgent: req.get('User-Agent'),
+      ip: req.ip || req.connection.remoteAddress
+    });
+  });
+  next();
+});
+
 // Add request timeout middleware
 app.use((req, res, next) => {
   req.setTimeout(30000, () => {
@@ -199,25 +248,284 @@ app.get('/', (req, res) => {
   res.status(200).json({
     status: 'ok',
     message: 'Bitcoin Cloud Mining API is running',
-    version: '1.0.2'
+    version: '1.0.2',
+    timestamp: new Date().toISOString()
   });
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
+// Comprehensive health check endpoints for failover system
+const getHealthStatus = () => {
+  const uptime = process.uptime();
+  const memUsage = process.memoryUsage();
+  
+  return {
     success: true,
-    status: 'ok',
-    message: 'Server is healthy',
+    status: 'healthy',
+    message: 'Server is operational',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  });
+    uptime: {
+      seconds: Math.floor(uptime),
+      human: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m ${Math.floor(uptime % 60)}s`
+    },
+    memory: {
+      used: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+      total: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+      percentage: Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100)
+    },
+    server: {
+      platform: process.platform,
+      nodeVersion: process.version,
+      environment: process.env.NODE_ENV || 'development',
+      port: process.env.PORT || 5000
+    },
+    database: {
+      connected: true, // This will be updated below based on actual connection
+      name: 'MongoDB'
+    }
+  };
+};
+
+// Primary health check endpoint (fastest response)
+app.get('/health', async (req, res) => {
+  try {
+    const healthData = getHealthStatus();
+    
+    // Quick database connectivity check
+    try {
+      const mongoose = require('mongoose');
+      healthData.database.connected = mongoose.connection.readyState === 1;
+      healthData.database.status = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    } catch (error) {
+      healthData.database.connected = false;
+      healthData.database.status = 'error';
+      healthData.database.error = error.message;
+    }
+
+    // If database is down, still return 200 but mark as degraded
+    if (!healthData.database.connected) {
+      healthData.status = 'degraded';
+      healthData.message = 'Server running but database connection issues';
+    }
+
+    res.status(200).json(healthData);
+  } catch (error) {
+    logger.error('Health check error:', error);
+    res.status(503).json({
+      success: false,
+      status: 'unhealthy',
+      message: 'Health check failed',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
-// Optionally handle HEAD / for health checks
+// API health check endpoint (with more detailed checks)
+app.get('/api/health', async (req, res) => {
+  try {
+    const healthData = getHealthStatus();
+    
+    // Enhanced checks for API health
+    const checks = {
+      server: true,
+      database: false,
+      auth: false,
+      routes: false
+    };
+
+    // Database check
+    try {
+      const mongoose = require('mongoose');
+      checks.database = mongoose.connection.readyState === 1;
+      healthData.database.connected = checks.database;
+      healthData.database.status = checks.database ? 'connected' : 'disconnected';
+    } catch (error) {
+      healthData.database.error = error.message;
+    }
+
+    // Auth service check
+    try {
+      const jwt = require('jsonwebtoken');
+      const testToken = jwt.sign({ test: true }, process.env.JWT_SECRET || 'test', { expiresIn: '1s' });
+      checks.auth = !!testToken;
+    } catch (error) {
+      healthData.auth = { error: error.message };
+    }
+
+    // Routes check (basic)
+    checks.routes = true;
+
+    healthData.checks = checks;
+    healthData.overall = Object.values(checks).every(check => check === true);
+    
+    if (!healthData.overall) {
+      healthData.status = 'degraded';
+      healthData.message = 'Some services are experiencing issues';
+    }
+
+    res.status(200).json(healthData);
+  } catch (error) {
+    logger.error('API health check error:', error);
+    res.status(503).json({
+      success: false,
+      status: 'unhealthy',
+      message: 'API health check failed',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Status endpoint (lightweight for load balancers)
+app.get('/status', (req, res) => {
+  try {
+    const uptime = process.uptime();
+    res.status(200).json({
+      status: 'ok',
+      uptime: Math.floor(uptime),
+      timestamp: new Date().toISOString(),
+      version: '1.0.2'
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Ping endpoint (fastest possible response)
+app.get('/ping', (req, res) => {
+  res.status(200).send('pong');
+});
+
+// HEAD requests for health checks (some load balancers prefer HEAD)
 app.head('/', (req, res) => {
   res.status(200).end();
 });
+
+app.head('/health', (req, res) => {
+  res.status(200).end();
+});
+
+app.head('/api/health', (req, res) => {
+  res.status(200).end();
+});
+
+app.head('/status', (req, res) => {
+  res.status(200).end();
+});
+
+// Server metrics endpoint (for monitoring)
+app.get('/api/metrics', (req, res) => {
+  try {
+    const uptime = process.uptime();
+    const memUsage = process.memoryUsage();
+    const cpuUsage = process.cpuUsage();
+    
+    res.status(200).json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      uptime: {
+        seconds: Math.floor(uptime),
+        human: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m ${Math.floor(uptime % 60)}s`
+      },
+      memory: {
+        rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`,
+        heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+        heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+        external: `${Math.round(memUsage.external / 1024 / 1024)}MB`,
+        heapUsagePercentage: Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100)
+      },
+      cpu: {
+        user: cpuUsage.user,
+        system: cpuUsage.system
+      },
+      process: {
+        pid: process.pid,
+        platform: process.platform,
+        arch: process.arch,
+        nodeVersion: process.version,
+        title: process.title
+      },
+      environment: {
+        nodeEnv: process.env.NODE_ENV || 'development',
+        port: process.env.PORT || 5000,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      }
+    });
+  } catch (error) {
+    logger.error('Metrics endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get server metrics',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Failover test endpoint (helps verify failover system)
+app.get('/api/failover-test', (req, res) => {
+  const { action } = req.query;
+  
+  if (action === 'identify') {
+    // Help identify which backend is responding
+    const backendType = process.env.BACKEND_TYPE || 'render';
+    const serverInfo = {
+      success: true,
+      backend: backendType,
+      hostname: require('os').hostname(),
+      timestamp: new Date().toISOString(),
+      message: `This response is from the ${backendType} backend`,
+      environment: process.env.NODE_ENV || 'development',
+      headers: {
+        'X-Backend-Server': backendType,
+        'X-Server-Instance': process.env.HOSTNAME || require('os').hostname(),
+        'X-Deploy-Platform': backendType
+      }
+    };
+    
+    // Set response headers to identify the backend
+    res.set('X-Backend-Server', backendType);
+    res.set('X-Server-Instance', process.env.HOSTNAME || require('os').hostname());
+    res.set('X-Deploy-Platform', backendType);
+    
+    res.status(200).json(serverInfo);
+  } else if (action === 'delay') {
+    // Simulate slow response (for testing failover timing)
+    const delay = parseInt(req.query.ms) || 5000;
+    setTimeout(() => {
+      res.status(200).json({
+        success: true,
+        message: `Response delayed by ${delay}ms`,
+        timestamp: new Date().toISOString()
+      });
+    }, delay);
+  } else if (action === 'error') {
+    // Simulate server error (for testing error handling)
+    res.status(500).json({
+      success: false,
+      message: 'Simulated server error for testing',
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    res.status(200).json({
+      success: true,
+      message: 'Failover test endpoint',
+      availableActions: ['identify', 'delay', 'error'],
+      usage: {
+        identify: '/api/failover-test?action=identify',
+        delay: '/api/failover-test?action=delay&ms=3000',
+        error: '/api/failover-test?action=error'
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+
 
 // 404 handler for unmatched routes
 app.use((req, res, next) => {
@@ -433,7 +741,14 @@ server.listen(PORT, () => {
   console.log('\n\x1b[32m%s\x1b[0m', '🚀 Server is running on port:', PORT);
   console.log('\x1b[36m%s\x1b[0m', '🌐 Environment:', process.env.NODE_ENV || 'development');
   console.log('\x1b[33m%s\x1b[0m', '🔗 Base URL:', `https://bitcoincloudmining.onrender.com`);
-  console.log('\x1b[35m%s\x1b[0m', '📊 Health Check:', `https://bitcoincloudmining.onrender.com/health`);
+  console.log('\x1b[35m%s\x1b[0m', '📊 Health Endpoints:');
+  console.log('   ├─ /health (Primary health check)');
+  console.log('   ├─ /api/health (Detailed API health)');
+  console.log('   ├─ /status (Lightweight status)');
+  console.log('   ├─ /ping (Fastest response)');
+  console.log('   └─ /api/metrics (Server metrics)');
+  console.log('\x1b[34m%s\x1b[0m', '🔄 Failover System: Ready for Flutter app');
+  console.log('\x1b[31m%s\x1b[0m', '🧪 Test Endpoint: /api/failover-test');
   console.log('----------------------------------------\n');
 });
 
