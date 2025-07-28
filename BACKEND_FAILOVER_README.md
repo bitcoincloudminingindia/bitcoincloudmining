@@ -320,18 +320,7 @@ The backend has been enhanced with comprehensive health check endpoints and moni
 
 ### Backend Testing
 
-Run the included test script to verify your backend setup:
-
-```bash
-# In the backend directory
-node test-failover.js
-
-# Test specific components
-node test-failover.js --health      # Test health endpoints
-node test-failover.js --speed       # Test connection speed
-node test-failover.js --identify    # Test backend identification
-node test-failover.js --scenarios   # Test failover scenarios
-```
+You can test your backend endpoints manually using curl or any HTTP client:
 
 ### Environment Variables
 
@@ -371,7 +360,6 @@ curl https://bitcoincloudmining.onrender.com/api/failover-test?action=identify
 - ✅ Environment-based backend identification
 - ✅ Enhanced logging for health checks
 - ✅ Comprehensive monitoring capabilities
-- ✅ Automated testing script
 
 ## 🚀 Deployment Checklist
 
@@ -397,5 +385,4 @@ curl https://bitcoincloudmining.onrender.com/api/failover-test?action=identify
 **Need Help?** 
 - Flutter Integration: Check `lib/examples/failover_usage_example.dart`
 - Backend Implementation: Review `lib/services/backend_failover_manager.dart`
-- Backend Testing: Run `backend/test-failover.js`
 - Railway Deployment: See `backend/railway-deployment-notes.md`
