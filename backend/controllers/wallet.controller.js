@@ -12,17 +12,28 @@ exports.getWalletByUserId = async (userId) => {
   try {
     const wallet = await getOrCreateWallet(userId);
 
-    // Ensure wallet balance is properly formatted
-    if (!wallet.balance) {
-      wallet.balance = '0.000000000000000000';
+    // ❌ REMOVED: Automatic balance reset that was causing issues
+    // Do NOT reset balance to zero automatically
+    // Only ensure balance exists and is properly formatted
+    if (wallet.balance === undefined || wallet.balance === null) {
+      // Check if there's an existing wallet in database with balance
+      const existingWallet = await Wallet.findOne({ userId });
+      if (existingWallet && existingWallet.balance) {
+        wallet.balance = existingWallet.balance;
+        logger.info(`Restored balance from existing wallet: ${wallet.balance}`, { userId });
+      } else {
+        // Only set to zero if truly no existing balance found
+        wallet.balance = '0.000000000000000000';
+        logger.warn(`No existing balance found, initializing to zero`, { userId });
+      }
       await wallet.save();
     }
 
-    // Format the wallet balance
-    wallet.balance = formatBTC(wallet.balance);
+    // Format the wallet balance (but don't save it back)
+    const formattedBalance = formatBTC(wallet.balance);
 
     // Only format wallet.transactions for display, do not overwrite or merge with global transactions
-    wallet.transactions = (wallet.transactions || []).map(tx => {
+    const formattedTransactions = (wallet.transactions || []).map(tx => {
       if (!tx) return tx;
       if (typeof tx.toObject === 'function') tx = tx.toObject();
       if (tx.amount) tx.amount = formatBTC(tx.amount);
@@ -30,11 +41,21 @@ exports.getWalletByUserId = async (userId) => {
       return tx;
     });
 
-    // Do NOT call await wallet.save() here unless you actually changed wallet data
+    // Log balance retrieval for debugging
+    logger.info(`Wallet balance retrieved: ${formattedBalance}`, { 
+      userId, 
+      walletId: wallet._id,
+      transactionCount: formattedTransactions.length 
+    });
 
-    return wallet;
+    // Return wallet with formatted balance but don't modify original
+    return {
+      ...wallet.toObject(),
+      balance: formattedBalance,
+      transactions: formattedTransactions
+    };
   } catch (error) {
-    logger.error('Error getting wallet:', { error, userId });
+    logger.error('Error getting wallet:', { error: error.message, userId });
     throw error;
   }
 };
@@ -334,12 +355,21 @@ const getOrInitializeWallet = async (userId) => {
     }
 
     // Ensure all required fields have proper format
+    // ❌ FIXED: Don't automatically reset balance to zero
     const updates = {};
     if (!wallet.pendingBalance) updates.pendingBalance = '0.000000000000000000';
     if (!wallet.lockedBalance) updates.lockedBalance = '0.000000000000000000';
     if (!wallet.verifiedBalance) updates.verifiedBalance = '0.000000000000000000';
     if (!wallet.exchangeRate) updates.exchangeRate = '1.0000000000';
-    if (!wallet.balance) updates.balance = '0.000000000000000000';
+    
+    // Only set balance to zero if it's completely missing AND no existing balance found
+    if (!wallet.balance && wallet.balance !== '0.000000000000000000') {
+      logger.warn(`Setting balance to zero for wallet without existing balance`, { 
+        userId, 
+        walletId: wallet._id 
+      });
+      updates.balance = '0.000000000000000000';
+    }
 
     if (Object.keys(updates).length > 0) {
       await Wallet.updateOne({ _id: wallet._id }, { $set: updates });

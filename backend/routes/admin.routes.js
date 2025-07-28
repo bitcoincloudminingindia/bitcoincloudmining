@@ -62,4 +62,9 @@ router.put('/settings/referral', authenticate, isAdmin, adminController.updateRe
 // Dashboard Analytics
 router.get('/dashboard/analytics', authenticate, isAdmin, adminController.getDashboardAnalytics);
 
+// Balance Monitoring & Security
+router.get('/monitoring/balance-stats', authenticate, isAdmin, adminController.getBalanceMonitoringStats);
+router.get('/users/:id/balance-history', authenticate, isAdmin, adminController.getUserBalanceHistory);
+router.get('/users/:id/wallet-consistency', authenticate, isAdmin, adminController.verifyUserWalletConsistency);
+
 module.exports = router; 

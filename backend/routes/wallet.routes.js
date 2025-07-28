@@ -55,16 +55,39 @@ router.get('/balance', authenticate, async (req, res) => {
         });
     } catch (error) {
         logger.error('Error fetching wallet balance:', error);
-        res.status(200).json({
-            success: true,
-            data: {
-                balance: formatBTC('0'),
-                currency: 'BTC',
-                transactions: [],
-                balanceHistory: []
-            },
-            message: 'Initializing wallet'
-        });
+        
+        // ❌ FIXED: Don't return zero balance in error case
+        // Try to get existing wallet balance first
+        try {
+            const { Wallet } = require('../models');
+            const existingWallet = await Wallet.findOne({ userId: req.user.userId });
+            const existingBalance = existingWallet?.balance || '0.000000000000000000';
+            
+            logger.info(`Fallback: Retrieved existing balance ${existingBalance} for user ${req.user.userId}`);
+            
+            res.status(200).json({
+                success: true,
+                data: {
+                    balance: formatBTC(existingBalance),
+                    currency: 'BTC',
+                    transactions: existingWallet?.transactions || [],
+                    balanceHistory: existingWallet?.balanceHistory || []
+                },
+                message: 'Retrieved existing wallet data'
+            });
+        } catch (fallbackError) {
+            logger.error('Fallback wallet fetch also failed:', fallbackError);
+            res.status(200).json({
+                success: true,
+                data: {
+                    balance: formatBTC('0'),
+                    currency: 'BTC',
+                    transactions: [],
+                    balanceHistory: []
+                },
+                message: 'Initializing wallet - no existing data found'
+            });
+        }
     }
 });
 
@@ -88,13 +111,36 @@ router.get('/transactions', authenticate, async (req, res) => {
         });
     } catch (error) {
         logger.error('Error fetching wallet transactions:', error);
-        res.status(200).json({
-            success: true,
-            data: {
-                transactions: []
-            },
-            message: 'No wallet transactions found'
-        });
+        
+        // ❌ FIXED: Try to get existing transactions before returning empty array
+        try {
+            const { Wallet } = require('../models');
+            const existingWallet = await Wallet.findOne({ userId: req.user.userId });
+            const existingTransactions = existingWallet?.transactions || [];
+            
+            logger.info(`Fallback: Retrieved ${existingTransactions.length} existing transactions for user ${req.user.userId}`);
+            
+            res.status(200).json({
+                success: true,
+                data: {
+                    transactions: existingTransactions.map(tx => ({
+                        ...(typeof tx.toObject === 'function' ? tx.toObject() : tx),
+                        amount: formatBTC(tx.amount),
+                        netAmount: formatBTC(tx.netAmount)
+                    }))
+                },
+                message: 'Retrieved existing transactions'
+            });
+        } catch (fallbackError) {
+            logger.error('Fallback transaction fetch also failed:', fallbackError);
+            res.status(200).json({
+                success: true,
+                data: {
+                    transactions: []
+                },
+                message: 'No wallet transactions found'
+            });
+        }
     }
 });
 
