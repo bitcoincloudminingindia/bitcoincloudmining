@@ -26,7 +26,7 @@
         <!-- ✅ AdMob App ID (REAL) -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3537329799200606~9074161734" />
+            android:value="ca-app-pub-5665808302542045~3121278276" />
 
         <!-- ✅ Firebase Messaging Services -->
         <service
