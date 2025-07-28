@@ -334,11 +334,20 @@ const adjustWallet = async (req, res) => {
   try {
     const { amount, type, note } = req.body; // type: 'credit' or 'debit'
     const userId = req.params.id;
-    console.log('AdjustWallet API called:', { userId, amount, type, note });
+    
+    // Enhanced logging for balance operations
+    logger.info('AdjustWallet API called:', { userId, amount, type, note, timestamp: new Date() });
 
     if (!amount || !type) {
-      console.log('AdjustWallet error: Amount or type missing', { userId, amount, type });
+      logger.error('AdjustWallet error: Amount or type missing', { userId, amount, type });
       return res.status(400).json({ success: false, message: 'Amount and type are required' });
+    }
+
+    // Validate amount
+    const adjustmentAmount = parseFloat(amount);
+    if (isNaN(adjustmentAmount) || adjustmentAmount <= 0) {
+      logger.error('AdjustWallet error: Invalid amount', { userId, amount, type });
+      return res.status(400).json({ success: false, message: 'Amount must be a positive number' });
     }
 
     // 1. User exist check (userId ya _id dono se)
@@ -350,40 +359,83 @@ const adjustWallet = async (req, res) => {
       } else {
         user = await User.findOne({ userId });
       }
-      console.log('Debug - Finding user with query:', mongoose.Types.ObjectId.isValid(userId) ? { $or: [{ userId }, { _id: userId }] } : { userId });
-      console.log('Debug - User find result:', user ? 'User found' : 'No user found');
+      logger.info('User lookup result:', { 
+        userId, 
+        found: !!user, 
+        userIdField: user?.userId,
+        userEmail: user?.userEmail 
+      });
     } catch (e) {
-      console.log('Debug - User find error:', e);
+      logger.error('User find error:', e);
     }
     if (!user) {
+      logger.error('User not found for wallet adjustment', { userId });
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     // 2. Wallet exist check, do NOT create if not found
     let wallet = await Wallet.findOne({ $or: [{ userId }, { userId: user._id }] });
     if (!wallet) {
-      console.log('AdjustWallet error: Wallet not found', { userId });
+      logger.error('Wallet not found for user', { userId, userIdField: user.userId });
       return res.status(404).json({ success: false, message: 'Wallet not found' });
     }
 
-    // 3. Amount add/subtract
-    let newBalance = parseFloat(wallet.balance);
-    if (type === 'credit') newBalance += parseFloat(amount);
-    else if (type === 'debit') newBalance -= parseFloat(amount);
-    else {
-      console.log('AdjustWallet error: Invalid type', { userId, type });
-      return res.status(400).json({ success: false, message: 'Invalid type' });
+    // Log current state before adjustment
+    const currentBalance = parseFloat(wallet.balance || '0');
+    logger.info('Wallet adjustment - Current state:', {
+      userId,
+      currentBalance,
+      adjustmentAmount,
+      type,
+      walletId: wallet._id
+    });
+
+    // 3. Calculate new balance with proper validation
+    let newBalance;
+    if (type === 'credit') {
+      newBalance = currentBalance + adjustmentAmount;
+    } else if (type === 'debit') {
+      // Check for sufficient balance
+      if (currentBalance < adjustmentAmount) {
+        logger.error('Insufficient balance for debit', {
+          userId,
+          currentBalance,
+          requestedDebit: adjustmentAmount
+        });
+        return res.status(400).json({ 
+          success: false, 
+          message: `Insufficient balance. Current: ${currentBalance}, Requested: ${adjustmentAmount}` 
+        });
+      }
+      newBalance = currentBalance - adjustmentAmount;
+    } else {
+      logger.error('Invalid adjustment type', { userId, type });
+      return res.status(400).json({ success: false, message: 'Invalid type. Must be credit or debit' });
     }
+
+    // Ensure balance doesn't go negative
+    if (newBalance < 0) {
+      logger.error('Balance would go negative', { userId, newBalance, currentBalance, adjustmentAmount });
+      return res.status(400).json({ success: false, message: 'Operation would result in negative balance' });
+    }
+
     wallet.balance = newBalance.toFixed(18);
 
-    // 4. Transaction add
+    // 4. Transaction add with enhanced details
+    const transactionId = uuidv4();
     wallet.transactions.push({
-      transactionId: uuidv4(), // unique id
-      type: type === 'credit' ? 'deposit' : 'withdrawal', // allowed enum value
-      amount: parseFloat(amount).toFixed(18), // 18 decimal places
+      transactionId,
+      type: type === 'credit' ? 'deposit' : 'withdrawal',
+      amount: adjustmentAmount.toFixed(18),
       status: 'completed',
       timestamp: new Date(),
-      details: { note: note || '' }
+      details: { 
+        note: note || '',
+        adminAdjustment: true,
+        previousBalance: currentBalance.toFixed(18),
+        newBalance: newBalance.toFixed(18),
+        adjustmentType: type
+      }
     });
 
     await wallet.save();
@@ -395,12 +447,40 @@ const adjustWallet = async (req, res) => {
       await user.save();
     }
 
-    console.log('AdjustWallet success:', { userId, newBalance: wallet.balance });
-    res.json({ success: true, message: 'Wallet adjusted successfully', data: wallet });
+    // Success logging with complete details
+    logger.info('AdjustWallet success:', {
+      userId,
+      transactionId,
+      previousBalance: currentBalance.toFixed(18),
+      newBalance: wallet.balance,
+      adjustmentAmount: adjustmentAmount.toFixed(18),
+      type,
+      note,
+      timestamp: new Date()
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Wallet adjusted successfully', 
+      data: {
+        ...wallet.toObject(),
+        adjustment: {
+          amount: adjustmentAmount.toFixed(18),
+          type,
+          previousBalance: currentBalance.toFixed(18),
+          newBalance: wallet.balance,
+          transactionId
+        }
+      }
+    });
   } catch (error) {
-    console.log('AdjustWallet exception:', error);
-    logger.error('Error adjusting wallet:', error);
-    res.status(500).json({ success: false, message: 'Failed to adjust wallet' });
+    logger.error('AdjustWallet exception:', {
+      error: error.message,
+      stack: error.stack,
+      userId: req.params.id,
+      body: req.body
+    });
+    res.status(500).json({ success: false, message: 'Failed to adjust wallet', error: error.message });
   }
 };
 
@@ -901,6 +981,65 @@ const updateTransactionStatus = async (req, res) => {
   }
 };
 
+// Balance monitoring endpoints
+const getBalanceMonitoringStats = async (req, res) => {
+  try {
+    const balanceMonitor = require('../utils/balance-monitor');
+    const stats = balanceMonitor.getMonitoringStats();
+    
+    res.json({
+      success: true,
+      data: stats,
+      message: 'Balance monitoring statistics retrieved'
+    });
+  } catch (error) {
+    logger.error('Error getting balance monitoring stats:', error);
+    res.status(500).json({ success: false, message: 'Failed to get monitoring stats' });
+  }
+};
+
+const getUserBalanceHistory = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const balanceMonitor = require('../utils/balance-monitor');
+    const history = balanceMonitor.getRecentBalanceChanges(userId);
+    
+    res.json({
+      success: true,
+      data: {
+        userId,
+        recentChanges: history,
+        changeCount: history.length
+      },
+      message: 'User balance history retrieved'
+    });
+  } catch (error) {
+    logger.error('Error getting user balance history:', error);
+    res.status(500).json({ success: false, message: 'Failed to get balance history' });
+  }
+};
+
+const verifyUserWalletConsistency = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const balanceMonitor = require('../utils/balance-monitor');
+    const isConsistent = await balanceMonitor.verifyWalletConsistency(userId);
+    
+    res.json({
+      success: true,
+      data: {
+        userId,
+        isConsistent,
+        timestamp: new Date()
+      },
+      message: isConsistent ? 'Wallet is consistent' : 'Wallet inconsistency detected'
+    });
+  } catch (error) {
+    logger.error('Error verifying wallet consistency:', error);
+    res.status(500).json({ success: false, message: 'Failed to verify wallet consistency' });
+  }
+};
+
 // Helper function to format BTC with exactly 18 decimal places (handles minus/plus, strict)
 function formatBTC(val) {
   let num = val.toString().replace(/^\+/, '').trim();
@@ -947,7 +1086,10 @@ module.exports = {
   getReferralSettings,
   updateReferralSettings,
   getUserHourlyActivity,
-  updateTransactionStatus
+  updateTransactionStatus,
+  getBalanceMonitoringStats,
+  getUserBalanceHistory,
+  verifyUserWalletConsistency
 };
 
 console.log('admin.controller.js loaded', Object.keys(module.exports)); 

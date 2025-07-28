@@ -116,21 +116,40 @@ exports.getClaimedRewardsInfo = async (userId) => {
         console.log('Last claim date:', lastClaimDate);
         console.log('Current date:', now);
 
-        // Reset today's rewards if it's a new day
+        // Reset today's rewards if it's a new day (but preserve main wallet balance)
         if (!isToday) {
-            console.log('Resetting today\'s rewards to 0');
+            console.log('Resetting today\'s rewards to 0 - but preserving main wallet balance');
+            
+            // Store current wallet balance before any operations
+            const currentWalletBalance = user.wallet ? user.wallet.balance : null;
+            
             user.todayRewardsClaimed = '0.000000000000000000';
             
-            // Clean up invalid transactions
+            // Clean up invalid transactions but don't modify wallet balance
             if (user.wallet && user.wallet.transactions) {
                 user.wallet.transactions = user.wallet.transactions.filter(tx => 
                     tx && tx.type && tx.amount && 
                     ['deposit', 'withdrawal', 'mining', 'referral', 'tap', 'game', 'penalty', 
                      'Withdrawal - Paypal', 'Withdrawal - Paytm', 'Withdrawal - Bitcoin'].includes(tx.type)
                 );
+                
+                // ❌ CRITICAL FIX: Preserve wallet balance during daily reset
+                if (currentWalletBalance && user.wallet.balance !== currentWalletBalance) {
+                    logger.warn('Wallet balance changed during daily reset, restoring original balance', {
+                        userId: user.userId,
+                        originalBalance: currentWalletBalance,
+                        newBalance: user.wallet.balance
+                    });
+                    user.wallet.balance = currentWalletBalance;
+                }
             }
             
             await user.save();
+            
+            logger.info('Daily rewards reset completed while preserving wallet balance', {
+                userId: user.userId,
+                preservedBalance: currentWalletBalance
+            });
         }
 
         // Ensure we have valid values
