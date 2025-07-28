@@ -22,16 +22,14 @@ class AdService {
   // Ad unit IDs - Real AdMob IDs for production with mediation
   final Map<String, Map<String, String>> _adUnitIds = {
     'android': {
-      'banner': 'ca-app-pub-3537329799200606/2028008282', // Home_Banner_Ad
-      'rewarded': 'ca-app-pub-3537329799200606/7827129874', // Rewarded_BTC_Ad
-      'native':
-          'ca-app-pub-3537329799200606/2260507229', // Native_Contract_Card
+      'banner': 'ca-app-pub-5665808302542045/7066879258', // Game banner
+      'rewarded': 'ca-app-pub-5665808302542045/5415935986', // Game Reward
+      'native': 'ca-app-pub-5665808302542045/3859644872', // Home Native
     },
     'ios': {
-      'banner': 'ca-app-pub-3537329799200606/2028008282', // Home_Banner_Ad
-      'rewarded': 'ca-app-pub-3537329799200606/7827129874', // Rewarded_BTC_Ad
-      'native':
-          'ca-app-pub-3537329799200606/2260507229', // Native_Contract_Card
+      'banner': 'ca-app-pub-5665808302542045/7066879258', // Game banner
+      'rewarded': 'ca-app-pub-5665808302542045/5415935986', // Game Reward
+      'native': 'ca-app-pub-5665808302542045/3859644872', // Home Native
     },
   };
 
@@ -996,11 +994,11 @@ class AdService {
   }
 
   static const String bannerAdUnitId =
-      'ca-app-pub-3537329799200606/2028008282'; // Home_Banner_Ad
+      'ca-app-pub-5665808302542045/7066879258'; // Game banner
   static const String rewardedAdUnitId =
-      'ca-app-pub-3537329799200606/7827129874'; // Rewarded_BTC_Ad
+      'ca-app-pub-5665808302542045/5415935986'; // Game Reward
   static const String nativeAdUnitId =
-      'ca-app-pub-3537329799200606/2260507229'; // Native_Contract_Card
+      'ca-app-pub-5665808302542045/3859644872'; // Home Native
 
   Future<RewardedAd?> getRewardedAd() async {
     if (_rewardedAd != null) {
