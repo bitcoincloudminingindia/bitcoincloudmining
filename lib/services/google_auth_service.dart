@@ -10,6 +10,7 @@ import '../config/api_config.dart';
 import '../providers/auth_provider.dart'
     as my_auth; // Added for AuthProvider with alias
 import '../utils/storage_utils.dart';
+import 'backend_failover_manager.dart'; // Import failover manager
 
 class GoogleAuthService {
   static final GoogleAuthService _instance = GoogleAuthService._internal();
@@ -18,11 +19,12 @@ class GoogleAuthService {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final BackendFailoverManager _failoverManager = BackendFailoverManager(); // Use failover manager
 
   /// Test backend connectivity and return detailed info
   Future<Map<String, dynamic>> testBackendConnection() async {
     try {
-      final backendUrl = await ApiConfig.getActiveBackendUrl();
+      final backendUrl = await _failoverManager.getActiveBackendUrl();
       print('🔍 Testing backend connection to: $backendUrl');
       
       // Test health endpoint
@@ -181,28 +183,25 @@ class GoogleAuthService {
 
   Future<Map<String, dynamic>> _sendToBackend(User user, String idToken) async {
     try {
-      // Get the current backend URL using failover manager
-      final backendUrl = await ApiConfig.getActiveBackendUrl();
-      final url = Uri.parse('$backendUrl/api/auth/google-signin');
+      print('🔵 Starting backend request with automatic failover...');
       
-      print('🔵 Attempting Google signin to: $url');
-      
-      final response = await http
-          .post(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $idToken',
-            },
-            body: jsonEncode({
-              'firebaseUid': user.uid,
-              'email': user.email,
-              'displayName': user.displayName,
-              'photoURL': user.photoURL,
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
+      // Use failover manager's makeRequest for automatic retry across backends
+      final response = await _failoverManager.makeRequest(
+        endpoint: '/api/auth/google-signin',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $idToken',
+        },
+        body: jsonEncode({
+          'firebaseUid': user.uid,
+          'email': user.email,
+          'displayName': user.displayName,
+          'photoURL': user.photoURL,
+        }),
+        timeout: const Duration(seconds: 30),
+      );
 
       print('🔵 Response status: ${response.statusCode}');
       print('🔵 Response headers: ${response.headers}');
@@ -244,7 +243,7 @@ class GoogleAuthService {
       }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('🟢 Google signin successful');
+        print('🟢 Google signin successful via ${_failoverManager.getCachedBackendUrl()}');
         return {'success': true, 'data': responseData['data']};
       } else {
         print('🔴 Backend error: ${responseData['message']}');
@@ -256,6 +255,11 @@ class GoogleAuthService {
       }
     } catch (e) {
       print('🔴 Network error in Google signin: $e');
+      
+      // Get failover status for debugging
+      final failoverStatus = _failoverManager.getStatus();
+      print('🔍 Failover status: $failoverStatus');
+      
       return {
         'success': false,
         'message': 'Network error: ${e.toString()}',

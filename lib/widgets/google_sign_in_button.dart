@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../utils/color_constants.dart';
+import '../utils/backend_failover_debug.dart';
 
 // Custom Google Logo Widget with fallback
 class GoogleLogo extends StatelessWidget {
@@ -64,6 +65,7 @@ class GoogleSignInButton extends StatefulWidget {
   final String? buttonText;
   final double? width;
   final double? height;
+  final bool? showDebugInfo; // Add debug option
 
   const GoogleSignInButton({
     super.key,
@@ -72,6 +74,7 @@ class GoogleSignInButton extends StatefulWidget {
     this.buttonText,
     this.width,
     this.height,
+    this.showDebugInfo = false, // Default to false for production
   });
 
   @override
@@ -80,13 +83,78 @@ class GoogleSignInButton extends StatefulWidget {
 
 class _GoogleSignInButtonState extends State<GoogleSignInButton> {
   bool _isLoading = false;
+  String _backendStatus = 'Backend: Checking...';
+
+  @override
+  void initState() {
+    super.initState();
+    _updateBackendStatus();
+  }
+
+  Future<void> _updateBackendStatus() async {
+    final status = await BackendFailoverDebug.getBackendStatusString();
+    if (mounted) {
+      setState(() {
+        _backendStatus = status;
+      });
+    }
+  }
+
+  Future<void> _testBackendFailover() async {
+    print('🧪 Testing backend failover system...');
+    await BackendFailoverDebug.printBackendStatus();
+    await BackendFailoverDebug.testFailover();
+    await _updateBackendStatus();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: widget.width ?? double.infinity,
-      height: widget.height ?? 50,
-      child: ElevatedButton(
+    return Column(
+      children: [
+        // Backend status display (only when debug is enabled)
+        if (widget.showDebugInfo == true) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(8),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _backendStatus,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh, size: 16),
+                  onPressed: _updateBackendStatus,
+                  tooltip: 'Refresh backend status',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.bug_report, size: 16),
+                  onPressed: _testBackendFailover,
+                  tooltip: 'Test failover system',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+        ],
+        
+        // Main Google Sign-In button
+        SizedBox(
+          width: widget.width ?? double.infinity,
+          height: widget.height ?? 50,
+          child: ElevatedButton(
         onPressed: _isLoading ? null : _handleGoogleSignIn,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
@@ -124,7 +192,9 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
                   ),
                 ],
               ),
-      ),
+          ),
+        ),
+      ],
     );
   }
 
