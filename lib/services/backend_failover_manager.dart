@@ -1,20 +1,32 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:http/http.dart' as http;
+
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+
 import '../utils/storage_utils.dart';
 
 /// Singleton class that manages backend failover logic
 /// Automatically switches between primary (Render) and secondary (Railway) backends
 class BackendFailoverManager {
-  static final BackendFailoverManager _instance = BackendFailoverManager._internal();
+  static final BackendFailoverManager _instance =
+      BackendFailoverManager._internal();
   factory BackendFailoverManager() => _instance;
   BackendFailoverManager._internal();
 
-  // Backend URLs
-  static const String _primaryBackend = 'https://bitcoincloudmining.onrender.com';
-  static const String _secondaryBackend = 'https://bitcoincloudmining-production.up.railway.app';
-  
+  // Backend URLs - Enhanced with multiple fallbacks
+  static const String _primaryBackend =
+      'https://bitcoincloudmining.onrender.com';
+  static const String _secondaryBackend =
+      'https://bitcoincloudmining-production.up.railway.app'; // ✅ Working
+
+  // Additional backup URLs for comprehensive failover
+  static const List<String> _backupBackends = [
+    'https://bitcoin-cloud-mining-api.onrender.com',
+    'https://bitcoin-mining-api.onrender.com',
+    'https://bitcoincloudmining-backend.onrender.com',
+  ];
+
   // Configuration
   static const Duration _healthCheckTimeout = Duration(seconds: 3);
   static const Duration _cacheValidityDuration = Duration(minutes: 5);
@@ -41,11 +53,12 @@ class BackendFailoverManager {
     if (_isHealthChecking) {
       // Wait for ongoing health check to complete
       int attempts = 0;
-      while (_isHealthChecking && attempts < 30) { // Max 3 seconds wait
+      while (_isHealthChecking && attempts < 30) {
+        // Max 3 seconds wait
         await Future.delayed(const Duration(milliseconds: 100));
         attempts++;
       }
-      
+
       if (_cachedBackendUrl != null) {
         return _cachedBackendUrl!;
       }
@@ -54,37 +67,41 @@ class BackendFailoverManager {
     return await _performHealthCheck();
   }
 
-  /// Perform health check on both backends and select the best one
+  /// Perform health check on all backends and select the best one
   Future<String> _performHealthCheck() async {
     if (_isHealthChecking) return _cachedBackendUrl ?? _primaryBackend;
-    
+
     _isHealthChecking = true;
-    
+
     try {
       // Try to load previously successful backend from storage
       final storedBackend = await _loadStoredBackend();
-      
-      // Check primary backend first
-      if (await _isBackendHealthy(_primaryBackend)) {
-        await _updateCache(_primaryBackend);
-        return _primaryBackend;
+
+      // Create priority list: Primary → Railway → Backups
+      final allBackends = [
+        _primaryBackend,
+        _secondaryBackend,
+        ..._backupBackends,
+      ];
+
+      debugPrint('🔍 Testing ${allBackends.length} backend URLs...');
+
+      // Check each backend in priority order
+      for (String backend in allBackends) {
+        if (await _isBackendHealthy(backend)) {
+          debugPrint('✅ Selected working backend: $backend');
+          await _updateCache(backend);
+          return backend;
+        }
+        debugPrint('❌ Backend failed: $backend');
       }
 
-      debugPrint('🔄 Primary backend failed, switching to secondary...');
+      debugPrint('⚠️ All backends failed, using stored or default');
 
-      // If primary fails, try secondary
-      if (await _isBackendHealthy(_secondaryBackend)) {
-        await _updateCache(_secondaryBackend);
-        return _secondaryBackend;
-      }
-
-      debugPrint('⚠️ Both backends failed, using stored or default');
-
-      // If both fail, use stored backend or fall back to primary
-      final fallbackUrl = storedBackend ?? _primaryBackend;
+      // If all fail, use stored backend or fall back to Railway (since it was working)
+      final fallbackUrl = storedBackend ?? _secondaryBackend;
       await _updateCache(fallbackUrl);
       return fallbackUrl;
-
     } finally {
       _isHealthChecking = false;
     }
@@ -94,7 +111,7 @@ class BackendFailoverManager {
   Future<bool> _isBackendHealthy(String baseUrl) async {
     try {
       final healthEndpoints = ['/health', '/api/health', '/status'];
-      
+
       for (String endpoint in healthEndpoints) {
         try {
           final url = Uri.parse('$baseUrl$endpoint');
@@ -108,7 +125,8 @@ class BackendFailoverManager {
           ).timeout(_healthCheckTimeout);
 
           if (response.statusCode >= 200 && response.statusCode < 400) {
-            debugPrint('✅ Backend healthy: $baseUrl$endpoint (${response.statusCode})');
+            debugPrint(
+                '✅ Backend healthy: $baseUrl$endpoint (${response.statusCode})');
             return true;
           }
         } catch (e) {
@@ -119,7 +137,6 @@ class BackendFailoverManager {
 
       debugPrint('❌ Backend unhealthy: $baseUrl');
       return false;
-
     } on SocketException catch (e) {
       debugPrint('❌ Network error for $baseUrl: $e');
       return false;
@@ -136,22 +153,22 @@ class BackendFailoverManager {
   Future<void> _updateCache(String backendUrl) async {
     _cachedBackendUrl = backendUrl;
     _lastHealthCheck = DateTime.now();
-    
+
     // Persist to storage for next app launch
     try {
       await StorageUtils.setValue(_storageKey, backendUrl);
     } catch (e) {
       debugPrint('Warning: Failed to persist backend URL: $e');
     }
-    
+
     debugPrint('🎯 Active backend: $backendUrl');
   }
 
   /// Check if the cached backend URL is still valid
   bool _isCacheValid() {
     return _cachedBackendUrl != null &&
-           _lastHealthCheck != null &&
-           DateTime.now().difference(_lastHealthCheck!) < _cacheValidityDuration;
+        _lastHealthCheck != null &&
+        DateTime.now().difference(_lastHealthCheck!) < _cacheValidityDuration;
   }
 
   /// Load previously stored backend URL
@@ -199,16 +216,23 @@ class BackendFailoverManager {
 
         switch (method.toUpperCase()) {
           case 'GET':
-            response = await http.get(url, headers: headers).timeout(requestTimeout);
+            response =
+                await http.get(url, headers: headers).timeout(requestTimeout);
             break;
           case 'POST':
-            response = await http.post(url, headers: headers, body: body).timeout(requestTimeout);
+            response = await http
+                .post(url, headers: headers, body: body)
+                .timeout(requestTimeout);
             break;
           case 'PUT':
-            response = await http.put(url, headers: headers, body: body).timeout(requestTimeout);
+            response = await http
+                .put(url, headers: headers, body: body)
+                .timeout(requestTimeout);
             break;
           case 'DELETE':
-            response = await http.delete(url, headers: headers).timeout(requestTimeout);
+            response = await http
+                .delete(url, headers: headers)
+                .timeout(requestTimeout);
             break;
           default:
             throw ArgumentError('Unsupported HTTP method: $method');
@@ -221,7 +245,6 @@ class BackendFailoverManager {
 
         // If server error, try failover
         throw HttpException('Server error: ${response.statusCode}');
-
       } on SocketException catch (e) {
         lastException = e;
         debugPrint('Network error on attempt ${retryCount + 1}: $e');
@@ -269,6 +292,55 @@ class BackendFailoverManager {
       'isHealthChecking': _isHealthChecking,
       'primaryBackend': _primaryBackend,
       'secondaryBackend': _secondaryBackend,
+    };
+  }
+
+  /// Get all available backend URLs in priority order
+  List<String> getAllBackends() {
+    return [
+      _primaryBackend,
+      _secondaryBackend,
+      ..._backupBackends,
+    ];
+  }
+
+  /// Check the health status of all backends
+  Future<Map<String, dynamic>> checkAllBackendsHealth() async {
+    final allBackends = getAllBackends();
+    final results = <String, dynamic>{};
+
+    for (String backend in allBackends) {
+      final startTime = DateTime.now();
+      final isHealthy = await _isBackendHealthy(backend);
+      final responseTime = DateTime.now().difference(startTime).inMilliseconds;
+
+      results[backend] = {
+        'healthy': isHealthy,
+        'responseTime': responseTime,
+        'status': isHealthy ? 'online' : 'offline',
+      };
+    }
+
+    return {
+      'timestamp': DateTime.now().toIso8601String(),
+      'results': results,
+      'currentBackend': _cachedBackendUrl,
+    };
+  }
+
+  /// Get detailed status information about the failover manager
+  Map<String, dynamic> getDetailedStatus() {
+    return {
+      'cachedBackendUrl': _cachedBackendUrl,
+      'lastHealthCheck': _lastHealthCheck?.toIso8601String(),
+      'isCacheValid': _isCacheValid(),
+      'isHealthChecking': _isHealthChecking,
+      'primaryBackend': _primaryBackend,
+      'secondaryBackend': _secondaryBackend,
+      'backupBackends': _backupBackends,
+      'allBackends': getAllBackends(),
+      'cacheValidityDuration': _cacheValidityDuration.inMinutes,
+      'healthCheckTimeout': _healthCheckTimeout.inSeconds,
     };
   }
 }

@@ -6,13 +6,16 @@ import 'package:http/http.dart' as http;
 import '../services/backend_failover_manager.dart';
 
 class ApiConfig {
+  // Initialize failover manager
+  static final BackendFailoverManager _failoverManager = BackendFailoverManager();
+
   /// ✅ Auto-switching base URL with intelligent failover
   static String get baseUrl {
     if (kReleaseMode || kIsWeb) {
       // 🎯 For production builds, use cached URL from failover manager
       // This will return the last known working backend without async call
-      final cachedUrl = BackendFailoverManager().getCachedBackendUrl();
-      return cachedUrl ?? 'https://bitcoincloudmining.onrender.com';
+      final cachedUrl = _failoverManager.getCachedBackendUrl();
+      return cachedUrl ?? 'https://bitcoincloudmining-production.up.railway.app'; // Use Railway as fallback since it's working
     }
 
     // 🧪 Development mode - use local servers
@@ -31,58 +34,65 @@ class ApiConfig {
   /// Use this for initial app setup or when you need fresh backend selection
   static Future<String> getActiveBackendUrl() async {
     if (kReleaseMode || kIsWeb) {
-      return await BackendFailoverManager().getActiveBackendUrl();
+      return await _failoverManager.getActiveBackendUrl();
     }
     return baseUrl; // Return local URL for development
   }
 
-  /// 🔄 Fallback URLs for DNS resolution issues
+  /// 🔄 Fallback URLs for DNS resolution issues - synced with BackendFailoverManager
   static List<String> get fallbackUrls {
-    if (kReleaseMode) {
-      return [
-        'https://bitcoincloudmining.onrender.com',
-        'https://bitcoin-cloud-mining-api.onrender.com',
-        'https://bitcoin-mining-api.onrender.com',
-        'https://bitcoincloudmining-backend.onrender.com',
-      ];
-    }
-
-    if (kIsWeb) {
-      return [
-        'https://bitcoincloudmining.onrender.com',
-        'http://localhost:5000',
-        'https://bitcoin-cloud-mining-api.onrender.com',
-        'https://bitcoin-mining-api.onrender.com',
-      ];
+    if (kReleaseMode || kIsWeb) {
+      // Use the same URLs as BackendFailoverManager for consistency
+      return _failoverManager.getAllBackends();
     }
 
     return [baseUrl];
   }
 
-  /// 🌐 Get working URL with DNS fallback
+  /// 🌐 Get working URL with enhanced failover using BackendFailoverManager
   static Future<String> getWorkingUrl() async {
-    for (String url in fallbackUrls) {
-      try {
-        final response = await http.get(
-          Uri.parse('$url/health'),
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Origin': kIsWeb
-                ? 'https://bitcoincloudmining.onrender.com'
-                : 'http://localhost:3000',
-          },
-        ).timeout(const Duration(seconds: 10));
+    try {
+      return await _failoverManager.getActiveBackendUrl();
+    } catch (e) {
+      // Fallback to traditional method if failover manager fails
+      for (String url in fallbackUrls) {
+        try {
+          final response = await http.get(
+            Uri.parse('$url/health'),
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'Origin': kIsWeb
+                  ? 'https://bitcoincloudmining.onrender.com'
+                  : 'http://localhost:3000',
+            },
+          ).timeout(const Duration(seconds: 10));
 
-        if (response.statusCode == 200) {
-          return url;
+          if (response.statusCode == 200) {
+            return url;
+          }
+        } catch (e) {
+          continue;
         }
-      } catch (e) {
-        continue;
       }
-    }
 
-    return baseUrl;
+      return baseUrl;
+    }
+  }
+
+  /// Check all backends health status - useful for debugging
+  static Future<Map<String, dynamic>> checkAllBackendsHealth() async {
+    return await _failoverManager.checkAllBackendsHealth();
+  }
+
+  /// Force refresh backend selection
+  static Future<String> forceRefreshBackend() async {
+    return await _failoverManager.forceRefresh();
+  }
+
+  /// Get detailed failover status
+  static Map<String, dynamic> getFailoverStatus() {
+    return _failoverManager.getDetailedStatus();
   }
 
   /// ⚙️ API Endpoints

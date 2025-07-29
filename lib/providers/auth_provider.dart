@@ -1417,10 +1417,24 @@ class AuthProvider extends ChangeNotifier {
       if (!await checkConnectivity()) {
         return {
           'success': false,
-          'message': 'No internet connection',
+          'message': 'No internet connection. Please check your network and try again.',
           'error': 'NETWORK_ERROR'
         };
       }
+
+      // Check if backend is available before attempting Google sign-in
+      print('🔵 Checking backend availability...');
+      final isBackendAvailable = await ApiConfig.isServerAvailable();
+      if (!isBackendAvailable) {
+        print('🔴 Backend is not available');
+        return {
+          'success': false,
+          'message': 'Service is temporarily unavailable. Please try again in a few moments.',
+          'error': 'BACKEND_UNAVAILABLE'
+        };
+      }
+
+      print('🔵 Backend is available, proceeding with Google Sign-In...');
 
       // Use Google Auth Service
       final result = await GoogleAuthService().signInWithGoogle(context);
@@ -1438,19 +1452,32 @@ class AuthProvider extends ChangeNotifier {
           'data': result['data']
         };
       } else {
+        // Handle specific error types with better user messages
+        String userMessage = result['message'];
+        if (result['error'] == 'SERVER_UNAVAILABLE') {
+          userMessage = 'Our servers are temporarily busy. Please try again in a few minutes.';
+        } else if (result['error'] == 'INVALID_JSON_RESPONSE') {
+          userMessage = 'Service temporarily unavailable. Please try again shortly.';
+        } else if (result['error'] == 'NETWORK_ERROR') {
+          userMessage = 'Network connection issue. Please check your internet and try again.';
+        } else if (result['error'] == 'SIGN_IN_CANCELLED') {
+          userMessage = 'Sign-in was cancelled. Please try again if you want to continue.';
+        }
+
         return {
           'success': false,
-          'message': result['message'],
-          'error': 'GOOGLE_SIGN_IN_FAILED'
+          'message': userMessage,
+          'error': result['error'] ?? 'GOOGLE_SIGN_IN_FAILED'
         };
       }
     } catch (e) {
+      print('🔴 Unexpected error in Google Sign-In: $e');
       AnalyticsService().logEvent('google_sign_in_error',
           parameters: {'error': e.toString()});
 
       return {
         'success': false,
-        'message': 'Google Sign-In failed: ${e.toString()}',
+        'message': 'An unexpected error occurred. Please try again.',
         'error': 'GOOGLE_SIGN_IN_ERROR'
       };
     }
