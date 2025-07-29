@@ -357,6 +357,11 @@ class AdminApiProvider extends ChangeNotifier {
       } else if (e.toString().contains('Unauthorized') ||
           e.toString().contains('401')) {
         _error = 'Invalid email or password';
+      } else if (e.toString().contains('Server error: HTTP 503')) {
+        _error = 'Server temporarily unavailable. Trying backup server...';
+        // Trigger UI update to show server switch
+        notifyListeners();
+        await Future.delayed(const Duration(seconds: 1));
       } else {
         _error = 'Login failed: ${e.toString().replaceAll('Exception: ', '')}';
       }
