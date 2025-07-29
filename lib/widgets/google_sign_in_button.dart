@@ -139,35 +139,110 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final result = await authProvider.signInWithGoogle(context);
 
+      setState(() {
+        _isLoading = false;
+      });
+
       if (result['success']) {
-        // Call success callback
-        widget.onSuccess?.call();
+        if (mounted) {
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Sign-In successful!'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+
+          // Navigate based on user role or verification status
+          final userData = result['data']['user'];
+          if (userData != null) {
+            // Navigate to appropriate screen
+            Navigator.of(context).pushReplacementNamed('/home');
+          }
+        }
       } else {
-        // Show error message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Google Sign-In failed'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        // Call error callback
-        widget.onError?.call();
+        if (mounted) {
+          // Enhanced error handling with specific messages
+          String errorMessage = result['message'] ?? 'Google Sign-In failed';
+          String debugInfo = '';
+          
+          // Add debug information for development
+          if (result['debug_info'] != null) {
+            final debug = result['debug_info'];
+            if (debug['backend_url'] != null) {
+              debugInfo = '\nTrying to connect to: ${debug['backend_url']}';
+            }
+            if (debug['error'] != null) {
+              debugInfo += '\nError details: ${debug['error']}';
+            }
+          }
+          
+          // Show specific error messages based on error type
+          if (result['error'] == 'BACKEND_CONNECTION_FAILED') {
+            errorMessage = 'Unable to connect to our servers. Please check your internet connection and try again.';
+          } else if (result['error'] == 'SERVER_UNAVAILABLE') {
+            errorMessage = 'Our servers are temporarily busy. Please try again in a few minutes.';
+          } else if (result['error'] == 'INVALID_JSON_RESPONSE') {
+            errorMessage = 'Service temporarily unavailable. Please try again shortly.';
+          } else if (result['error'] == 'SIGN_IN_CANCELLED') {
+            errorMessage = 'Sign-in was cancelled. Please try again if you want to continue.';
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(errorMessage),
+                  if (debugInfo.isNotEmpty && result['error'] != 'SIGN_IN_CANCELLED')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        debugInfo,
+                        style: const TextStyle(fontSize: 12, opacity: 0.8),
+                      ),
+                    ),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+              action: result['error'] != 'SIGN_IN_CANCELLED' 
+                ? SnackBarAction(
+                    label: 'Retry',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      // Retry the sign-in
+                      _handleGoogleSignIn();
+                    },
+                  )
+                : null,
+            ),
+          );
+        }
       }
     } catch (e) {
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('An unexpected error occurred'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      // Call error callback
-      widget.onError?.call();
-    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        print('🔴 Unexpected error in Google Sign-In button: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('An unexpected error occurred. Please try again.'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: () {
+                _handleGoogleSignIn();
+              },
+            ),
+          ),
+        );
       }
     }
   }
