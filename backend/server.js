@@ -120,6 +120,9 @@ app.use(compression());
 app.use(mongoSanitize()); // This will now work
 app.use(xss());
 
+// Trust proxy for correct IP detection (Railway, Heroku, etc.)
+app.set('trust proxy', true);
+
 // Debug middleware to log all requests
 app.use((req, res, next) => {
   logger.info(`Incoming request: ${req.method} ${req.url}`, {
