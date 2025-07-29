@@ -13,10 +13,10 @@ class AdService {
   factory AdService() => _instance;
   AdService._internal();
 
-  // Ad configuration
-  static const int MAX_RETRY_ATTEMPTS = 2; // Reduced from 3 to 2
+  // Ad configuration - Updated for AdMob policy compliance
+  static const int MAX_RETRY_ATTEMPTS = 1; // Reduced to 1 attempt to prevent rapid requests
   static const Duration RETRY_DELAY =
-      Duration(seconds: 3); // Reduced from 5 to 3
+      Duration(seconds: 30); // Increased to 30 seconds to comply with AdMob policies
   static const Duration AD_CACHE_DURATION = Duration(minutes: 30);
 
   // Ad unit IDs - Real AdMob IDs for production with mediation
@@ -53,13 +53,18 @@ class AdService {
   bool _isMediationInitialized = false;
   final Map<String, bool> _mediationNetworkStates = {};
 
-  // Ad tracking
+  // Ad tracking with frequency capping
   final Map<String, int> _adShowCounts = {};
   final Map<String, DateTime> _lastAdShowTimes = {};
   final Map<String, int> _adLoadAttempts = {};
   final Map<String, DateTime> _adCacheTimes = {};
   final Map<String, int> _adFailures = {};
   final Map<String, List<Duration>> _adLoadTimes = {};
+  
+  // Frequency capping to comply with AdMob policies
+  final Map<String, int> _sessionAdCounts = {};
+  static const int MAX_ADS_PER_SESSION = 5; // Maximum ads per session per type
+  static const Duration MIN_TIME_BETWEEN_ADS = Duration(minutes: 2); // Minimum time between same ad type
 
   // Mediation tracking
   final Map<String, int> _mediationAdShows = {};
@@ -119,12 +124,13 @@ class AdService {
     return _adUnitIds[platform]?[adType] ?? '';
   }
 
-  // Update ad metrics
+  // Update ad metrics with session tracking
   void _updateAdMetrics(String adType, bool success, Duration? loadTime) {
     _totalAdShows++;
     if (success) {
       _successfulAdShows++;
       _adShowCounts[adType] = (_adShowCounts[adType] ?? 0) + 1;
+      _sessionAdCounts[adType] = (_sessionAdCounts[adType] ?? 0) + 1; // Track session count
       _lastAdShowTimes[adType] = DateTime.now();
     } else {
       _failedAdShows++;
@@ -180,7 +186,7 @@ class AdService {
     } catch (e) {}
   }
 
-  // Load ad with retry mechanism
+  // Load ad with retry mechanism - Updated for AdMob policy compliance
   Future<void> _loadAdWithRetry(
     String adType,
     Future<void> Function() loadFunction,
@@ -190,11 +196,8 @@ class AdService {
 
     final startTime = DateTime.now();
     int attempts = 0;
-    const int maxAttempts = 2; // Reduced from 3 to 2 attempts
-    const Duration retryDelay =
-        Duration(seconds: 3); // Reduced from 5 to 3 seconds
 
-    while (attempts < maxAttempts) {
+    while (attempts < MAX_RETRY_ATTEMPTS) {
       try {
         await loadFunction();
         final loadTime = DateTime.now().difference(startTime);
@@ -206,8 +209,8 @@ class AdService {
         attempts++;
         _adLoadAttempts[adType] = attempts;
 
-        if (attempts < maxAttempts) {
-          await Future.delayed(retryDelay * attempts);
+        if (attempts < MAX_RETRY_ATTEMPTS) {
+          await Future.delayed(RETRY_DELAY * attempts);
         }
       }
     }
@@ -224,13 +227,33 @@ class AdService {
     return DateTime.now().difference(cacheTime) < AD_CACHE_DURATION;
   }
 
+  // Check frequency capping to comply with AdMob policies
+  bool _canShowAd(String adType) {
+    // Check session limit
+    final sessionCount = _sessionAdCounts[adType] ?? 0;
+    if (sessionCount >= MAX_ADS_PER_SESSION) {
+      return false;
+    }
+
+    // Check minimum time between ads
+    final lastShowTime = _lastAdShowTimes[adType];
+    if (lastShowTime != null) {
+      final timeSinceLastAd = DateTime.now().difference(lastShowTime);
+      if (timeSinceLastAd < MIN_TIME_BETWEEN_ADS) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   Timer? _bannerAdRefreshTimer;
 
   // Start auto-refresh timer for banner ads
   void _startBannerAdAutoRefresh() {
     _bannerAdRefreshTimer?.cancel();
     _bannerAdRefreshTimer =
-        Timer.periodic(const Duration(seconds: 60), (timer) {
+        Timer.periodic(const Duration(minutes: 3), (timer) { // Changed from 60 seconds to 3 minutes (180 seconds)
       _isBannerAdLoaded = false;
       _bannerAd?.dispose();
       _bannerAd = null;
@@ -238,9 +261,14 @@ class AdService {
     });
   }
 
-  // Load banner ad
+  // Load banner ad with frequency capping
   Future<void> loadBannerAd() async {
     if (_isBannerAdLoaded && _isCachedAdValid('banner')) return;
+    
+    // Check frequency capping
+    if (!_canShowAd('banner')) {
+      return;
+    }
 
     await _loadAdWithRetry(
       'banner',
@@ -329,11 +357,16 @@ class AdService {
     }
   }
 
-  // Load rewarded ad with better error handling and mediation tracking
+  // Load rewarded ad only when explicitly requested by user interaction
   Future<void> loadRewardedAd() async {
     if (kIsWeb) return;
 
     if (_isRewardedAdLoading) {
+      return;
+    }
+
+    // Check frequency capping for rewarded ads
+    if (!_canShowAd('rewarded')) {
       return;
     }
 
@@ -501,8 +534,8 @@ class AdService {
   // Start auto-refresh timer for native ads
   void _startNativeAdAutoRefresh() {
     _nativeAdRefreshTimer?.cancel();
-    // Refresh native ad every 5 minutes
-    _nativeAdRefreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+    // Refresh native ad every 15 minutes (increased from 5 minutes to comply with AdMob policies)
+    _nativeAdRefreshTimer = Timer.periodic(const Duration(minutes: 15), (timer) {
       _isNativeAdLoaded = false;
       _nativeAd?.dispose();
       _nativeAd = null;
@@ -542,28 +575,13 @@ class AdService {
               ),
             ),
             const SizedBox(height: 4),
-            // Add refresh button for failed ads
-            GestureDetector(
-              onTap: () {
-                _isNativeAdLoaded = false;
-                _nativeAd?.dispose();
-                _nativeAd = null;
-                loadNativeAd();
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withAlpha(51),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'Refresh',
-                  style: TextStyle(
-                    color: Colors.blue,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+            // Removed manual refresh button to comply with AdMob policies
+            const Text(
+              'Please wait...',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 10,
+                fontWeight: FontWeight.w400,
               ),
             ),
           ],
@@ -649,7 +667,7 @@ class AdService {
     );
   }
 
-  // Show rewarded ad with better error handling
+  // Show rewarded ad with user interaction validation
   Future<bool> showRewardedAd({
     required Function(double) onRewarded,
     required VoidCallback onAdDismissed,
@@ -661,9 +679,24 @@ class AdService {
       return true;
     }
 
+    // Check frequency capping before attempting to show
+    if (!_canShowAd('rewarded')) {
+      onAdDismissed();
+      return false;
+    }
+
+    // Always load fresh rewarded ad on user interaction to comply with policies
     if (!_isRewardedAdLoaded || _rewardedAd == null) {
       await loadRewardedAd();
+      // Wait a moment for ad to load
+      int attempts = 0;
+      while ((!_isRewardedAdLoaded || _rewardedAd == null) && attempts < 30) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        attempts++;
+      }
+      
       if (!_isRewardedAdLoaded || _rewardedAd == null) {
+        onAdDismissed();
         return false;
       }
     }
@@ -743,7 +776,7 @@ class AdService {
     }
   }
 
-  // Initialize ads
+  // Initialize ads with staggered loading to comply with AdMob policies
   Future<void> initialize() async {
     if (kIsWeb) return;
 
@@ -751,13 +784,22 @@ class AdService {
       await MobileAds.instance.initialize();
       await _loadMetrics();
 
+      // Reset session counts for new app session
+      resetSessionCounts();
+
       // Initialize mediation
       await _initializeMediation();
 
-      // Preload ads
-      loadBannerAd();
-      loadRewardedAd();
-      loadNativeAd();
+      // Staggered ad loading to prevent simultaneous requests
+      loadBannerAd(); // Load banner first
+      
+      // Wait 10 seconds before loading native ad
+      Future.delayed(const Duration(seconds: 10), () {
+        loadNativeAd();
+      });
+      
+      // Only load rewarded ads when explicitly requested by user
+      // Removed automatic preloading of rewarded ads
     } catch (e) {}
   }
 
@@ -993,6 +1035,11 @@ class AdService {
     await _saveMetrics();
   }
 
+  // Reset session ad counts (call when app starts new session)
+  void resetSessionCounts() {
+    _sessionAdCounts.clear();
+  }
+
   static const String bannerAdUnitId =
       'ca-app-pub-5665808302542045/7066879258'; // Game banner
   static const String rewardedAdUnitId =
@@ -1171,25 +1218,13 @@ class AdService {
               ),
             ),
             const SizedBox(height: 4),
-            // Add refresh button for failed ads
-            GestureDetector(
-              onTap: () {
-                loadNativeAdWithId(adId);
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withAlpha(51),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'Refresh',
-                  style: TextStyle(
-                    color: Colors.blue,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+            // Removed manual refresh button to comply with AdMob policies
+            const Text(
+              'Please wait...',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 10,
+                fontWeight: FontWeight.w400,
               ),
             ),
           ],
