@@ -271,3 +271,8 @@ class _GoogleSignInButtonOutlinedState
     }
   }
 }
+
+// Fix for TextStyle opacity error using withAlpha:
+// ❌ Wrong: style: const TextStyle(fontSize: 12, opacity: 0.8),
+// ✅ Correct: style: TextStyle(fontSize: 12, color: Colors.black.withAlpha(204)),
+// Note: Alpha value 204 = 0.8 * 255
