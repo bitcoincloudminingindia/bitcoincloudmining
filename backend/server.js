@@ -120,6 +120,9 @@ app.use(compression());
 app.use(mongoSanitize()); // This will now work
 app.use(xss());
 
+// Trust proxy for correct IP detection (Railway, Heroku, etc.)
+app.set('trust proxy', true);
+
 // Debug middleware to log all requests
 app.use((req, res, next) => {
   logger.info(`Incoming request: ${req.method} ${req.url}`, {
@@ -473,10 +476,10 @@ app.get('/api/failover-test', (req, res) => {
   if (action === 'identify') {
     // Help identify which backend is responding
     const backendType = process.env.BACKEND_TYPE || 'render';
-    const baseUrl = backendType === 'railway' 
+    const baseUrl = backendType === 'railway'
       ? 'https://bitcoincloudmining-production.up.railway.app'
       : 'https://bitcoincloudmining.onrender.com';
-    
+
     const serverInfo = {
       success: true,
       backend: backendType,
@@ -524,10 +527,10 @@ app.get('/api/failover-test', (req, res) => {
     });
   } else {
     const backendType = process.env.BACKEND_TYPE || 'render';
-    const baseUrl = backendType === 'railway' 
+    const baseUrl = backendType === 'railway'
       ? 'https://bitcoincloudmining-production.up.railway.app'
       : 'https://bitcoincloudmining.onrender.com';
-      
+
     res.status(200).json({
       success: true,
       backend: backendType,
@@ -757,13 +760,13 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
-  
+
   // Determine backend type and URL based on environment
   const backendType = process.env.BACKEND_TYPE || 'render';
-  const baseUrl = backendType === 'railway' 
+  const baseUrl = backendType === 'railway'
     ? 'https://bitcoincloudmining-production.up.railway.app'
     : 'https://bitcoincloudmining.onrender.com';
-  
+
   console.log('\n\x1b[32m%s\x1b[0m', '🚀 Server is running on port:', PORT);
   console.log('\x1b[36m%s\x1b[0m', '🌐 Environment:', process.env.NODE_ENV || 'development', `node server.js`);
   console.log('\x1b[33m%s\x1b[0m', '🔗 Base URL:', baseUrl);
@@ -774,10 +777,10 @@ server.listen(PORT, () => {
   console.log('   ├─ /ping (Fastest response)');
   console.log('   └─ /api/metrics (Server metrics)');
   console.log('\x1b[34m%s\x1b[0m', '🔄 Failover System: Ready for Flutter app');
-  
+
   // Show backend type information
   console.log('\x1b[32m%s\x1b[0m', '🎯 Backend Type:', backendType.toUpperCase());
-  
+
   // Show both URLs for failover system
   if (process.env.NODE_ENV === 'production') {
     console.log('\x1b[36m%s\x1b[0m', '🔄 Failover URLs:');
