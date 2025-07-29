@@ -466,66 +466,83 @@ app.get('/api/metrics', (req, res) => {
   }
 });
 
-// Failover test endpoint (helps verify failover system) - Only available in development
-if (process.env.NODE_ENV !== 'production') {
-  app.get('/api/failover-test', (req, res) => {
-    const { action } = req.query;
+// Failover test endpoint (helps verify failover system) - Available in all environments for monitoring
+app.get('/api/failover-test', (req, res) => {
+  const { action } = req.query;
 
-    if (action === 'identify') {
-      // Help identify which backend is responding
+  if (action === 'identify') {
+    // Help identify which backend is responding
+    const backendType = process.env.BACKEND_TYPE || 'render';
+    const baseUrl = backendType === 'railway' 
+      ? 'https://bitcoincloudmining-production.up.railway.app'
+      : 'https://bitcoincloudmining.onrender.com';
+    
+    const serverInfo = {
+      success: true,
+      backend: backendType,
+      baseUrl: baseUrl,
+      hostname: require('os').hostname(),
+      timestamp: new Date().toISOString(),
+      message: `This response is from the ${backendType.toUpperCase()} backend`,
+      environment: process.env.NODE_ENV || 'development',
+      port: process.env.PORT || 5000,
+      headers: {
+        'X-Backend-Server': backendType,
+        'X-Server-Instance': process.env.HOSTNAME || require('os').hostname(),
+        'X-Deploy-Platform': backendType,
+        'X-Base-URL': baseUrl
+      }
+    };
+
+    // Set response headers to identify the backend
+    res.set('X-Backend-Server', backendType);
+    res.set('X-Server-Instance', process.env.HOSTNAME || require('os').hostname());
+    res.set('X-Deploy-Platform', backendType);
+    res.set('X-Base-URL', baseUrl);
+
+    res.status(200).json(serverInfo);
+  } else if (action === 'delay') {
+    // Simulate slow response (for testing failover timing)
+    const delay = parseInt(req.query.ms) || 5000;
+    setTimeout(() => {
       const backendType = process.env.BACKEND_TYPE || 'render';
-      const serverInfo = {
-        success: true,
-        backend: backendType,
-        hostname: require('os').hostname(),
-        timestamp: new Date().toISOString(),
-        message: `This response is from the ${backendType} backend`,
-        environment: process.env.NODE_ENV || 'development',
-        headers: {
-          'X-Backend-Server': backendType,
-          'X-Server-Instance': process.env.HOSTNAME || require('os').hostname(),
-          'X-Deploy-Platform': backendType
-        }
-      };
-
-      // Set response headers to identify the backend
-      res.set('X-Backend-Server', backendType);
-      res.set('X-Server-Instance', process.env.HOSTNAME || require('os').hostname());
-      res.set('X-Deploy-Platform', backendType);
-
-      res.status(200).json(serverInfo);
-    } else if (action === 'delay') {
-      // Simulate slow response (for testing failover timing)
-      const delay = parseInt(req.query.ms) || 5000;
-      setTimeout(() => {
-        res.status(200).json({
-          success: true,
-          message: `Response delayed by ${delay}ms`,
-          timestamp: new Date().toISOString()
-        });
-      }, delay);
-    } else if (action === 'error') {
-      // Simulate server error (for testing error handling)
-      res.status(500).json({
-        success: false,
-        message: 'Simulated server error for testing',
-        timestamp: new Date().toISOString()
-      });
-    } else {
       res.status(200).json({
         success: true,
-        message: 'Failover test endpoint',
-        availableActions: ['identify', 'delay', 'error'],
-        usage: {
-          identify: '/api/failover-test?action=identify',
-          delay: '/api/failover-test?action=delay&ms=3000',
-          error: '/api/failover-test?action=error'
-        },
+        backend: backendType,
+        message: `Response delayed by ${delay}ms from ${backendType.toUpperCase()} backend`,
         timestamp: new Date().toISOString()
       });
-    }
-  });
-}
+    }, delay);
+  } else if (action === 'error') {
+    // Simulate server error (for testing error handling)
+    const backendType = process.env.BACKEND_TYPE || 'render';
+    res.status(500).json({
+      success: false,
+      backend: backendType,
+      message: `Simulated server error from ${backendType.toUpperCase()} backend for testing`,
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    const backendType = process.env.BACKEND_TYPE || 'render';
+    const baseUrl = backendType === 'railway' 
+      ? 'https://bitcoincloudmining-production.up.railway.app'
+      : 'https://bitcoincloudmining.onrender.com';
+      
+    res.status(200).json({
+      success: true,
+      backend: backendType,
+      baseUrl: baseUrl,
+      message: `Failover test endpoint - ${backendType.toUpperCase()} backend`,
+      availableActions: ['identify', 'delay', 'error'],
+      usage: {
+        identify: `${baseUrl}/api/failover-test?action=identify`,
+        delay: `${baseUrl}/api/failover-test?action=delay&ms=3000`,
+        error: `${baseUrl}/api/failover-test?action=error`
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 
 
@@ -740,9 +757,16 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
+  
+  // Determine backend type and URL based on environment
+  const backendType = process.env.BACKEND_TYPE || 'render';
+  const baseUrl = backendType === 'railway' 
+    ? 'https://bitcoincloudmining-production.up.railway.app'
+    : 'https://bitcoincloudmining.onrender.com';
+  
   console.log('\n\x1b[32m%s\x1b[0m', '🚀 Server is running on port:', PORT);
-  console.log('\x1b[36m%s\x1b[0m', '🌐 Environment:', process.env.NODE_ENV || 'development');
-  console.log('\x1b[33m%s\x1b[0m', '🔗 Base URL:', `https://bitcoincloudmining.onrender.com`);
+  console.log('\x1b[36m%s\x1b[0m', '🌐 Environment:', process.env.NODE_ENV || 'development', `node server.js`);
+  console.log('\x1b[33m%s\x1b[0m', '🔗 Base URL:', baseUrl);
   console.log('\x1b[35m%s\x1b[0m', '📊 Health Endpoints:');
   console.log('   ├─ /health (Primary health check)');
   console.log('   ├─ /api/health (Detailed API health)');
@@ -750,6 +774,16 @@ server.listen(PORT, () => {
   console.log('   ├─ /ping (Fastest response)');
   console.log('   └─ /api/metrics (Server metrics)');
   console.log('\x1b[34m%s\x1b[0m', '🔄 Failover System: Ready for Flutter app');
+  
+  // Show backend type information
+  console.log('\x1b[32m%s\x1b[0m', '🎯 Backend Type:', backendType.toUpperCase());
+  
+  // Show both URLs for failover system
+  if (process.env.NODE_ENV === 'production') {
+    console.log('\x1b[36m%s\x1b[0m', '🔄 Failover URLs:');
+    console.log('   ├─ Primary (Render):', 'https://bitcoincloudmining.onrender.com');
+    console.log('   └─ Secondary (Railway):', 'https://bitcoincloudmining-production.up.railway.app');
+  }
 
   // Only show test endpoint in development
   if (process.env.NODE_ENV !== 'production') {
