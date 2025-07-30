@@ -259,7 +259,7 @@ class NotificationService {
 
       final deviceInfo = {
         'appName': 'bitcoin_cloud_mining',
-        'appVersion': '1.0.0',
+        'appVersion': '1.0.4',
         'browser': 'BrowserName.chrome',
         'platform': kIsWeb ? 'Web' : Platform.operatingSystem,
         'userAgent': 'Unknown', // Simplified for non-web platforms

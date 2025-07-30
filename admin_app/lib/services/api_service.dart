@@ -19,110 +19,174 @@ class ApiService {
 
   String? get token => _token;
 
+  // Failover helper method to try all servers
+  Future<http.Response> _makeRequestWithFailover(
+    Future<http.Response> Function(String baseUrl) requestFunction,
+  ) async {
+    final totalServers = ApiConfig.serverUrls.length;
+    
+    for (int serverAttempt = 0; serverAttempt < totalServers; serverAttempt++) {
+      try {
+        print('🌐 Trying server: ${ApiConfig.currentServerName} (${ApiConfig.baseUrl})');
+        
+        final response = await requestFunction(ApiConfig.baseUrl);
+        
+        // Reset to primary server on successful request
+        if (serverAttempt > 0) {
+          print('✅ Server ${ApiConfig.currentServerName} working! Keeping this server active.');
+        }
+        
+        return response;
+        
+      } catch (e) {
+        print('❌ Server ${ApiConfig.currentServerName} failed: $e');
+        
+        // If this is not the last server, switch to next
+        if (serverAttempt < totalServers - 1) {
+          ApiConfig.switchToNextServer();
+          print('🔄 Switching to fallback server: ${ApiConfig.currentServerName}');
+        } else {
+          // All servers failed, reset to primary and throw error
+          ApiConfig.resetToPrimaryServer();
+          print('❌ All servers failed. Reset to primary server.');
+          rethrow;
+        }
+      }
+    }
+    
+    throw Exception('All servers failed');
+  }
+
   Future<http.Response> post(
     String endpoint,
     Map<String, dynamic> data, {
     bool auth = false,
   }) async {
-    int retryCount = 0;
-    const maxRetries = 3;
-    const timeoutDuration = Duration(seconds: 30);
+    return await _makeRequestWithFailover((baseUrl) async {
+      int retryCount = 0;
+      const maxRetries = 2; // Reduced retries since we have server failover
+      const timeoutDuration = Duration(seconds: 30);
 
-    while (retryCount < maxRetries) {
-      try {
-        final url = Uri.parse(ApiConfig.baseUrl + endpoint);
-        final headers = {
-          'Content-Type': 'application/json',
-          if (auth && _token != null) 'Authorization': 'Bearer $_token',
-        };
-        print('POST $url (Attempt ${retryCount + 1}/$maxRetries)');
-        print('Request headers: $headers');
+      while (retryCount < maxRetries) {
+        try {
+          final url = Uri.parse(baseUrl + endpoint);
+          final headers = {
+            'Content-Type': 'application/json',
+            if (auth && _token != null) 'Authorization': 'Bearer $_token',
+          };
+          print('POST $url (Attempt ${retryCount + 1}/$maxRetries)');
 
-        final response = await http
-            .post(url, headers: headers, body: jsonEncode(data))
-            .timeout(timeoutDuration);
+          final response = await http
+              .post(url, headers: headers, body: jsonEncode(data))
+              .timeout(timeoutDuration);
 
-        // Check for authentication errors
-        if (response.statusCode == 401) {
-          throw Exception('Unauthorized: Token expired or invalid');
-        }
-
-        return response;
-      } catch (e) {
-        retryCount++;
-        print('Attempt $retryCount failed: $e');
-
-        if (e.toString().contains('Unauthorized')) {
-          throw Exception('Unauthorized: Token expired or invalid');
-        }
-
-        if (retryCount >= maxRetries) {
-          if (e.toString().contains('SocketException') ||
-              e.toString().contains('Failed host lookup')) {
-            throw Exception(
-              'Server connection failed. Please check your internet connection and try again.',
-            );
+          // Check for server errors that should trigger failover
+          if (response.statusCode == 503 || 
+              response.statusCode == 502 || 
+              response.statusCode >= 500) {
+            throw Exception('Server error: HTTP ${response.statusCode}');
           }
-          throw Exception('Network error after $maxRetries attempts: $e');
+
+          // Check for authentication errors (don't trigger failover)
+          if (response.statusCode == 401) {
+            throw Exception('Unauthorized: Token expired or invalid');
+          }
+
+          return response;
+        } catch (e) {
+          retryCount++;
+          print('Attempt $retryCount failed: $e');
+
+          if (e.toString().contains('Unauthorized')) {
+            throw Exception('Unauthorized: Token expired or invalid');
+          }
+
+          // Check for network/server errors that should trigger failover
+          if (e.toString().contains('SocketException') ||
+              e.toString().contains('Failed host lookup') ||
+              e.toString().contains('Connection refused') ||
+              e.toString().contains('TimeoutException') ||
+              e.toString().contains('Server error: HTTP 503') ||
+              e.toString().contains('Server error: HTTP 502')) {
+            
+            if (retryCount >= maxRetries) {
+              throw Exception('Server connection failed: $e');
+            }
+          } else if (retryCount >= maxRetries) {
+            throw Exception('Network error after $maxRetries attempts: $e');
+          }
+
+          // Wait before retrying
+          await Future.delayed(Duration(seconds: retryCount));
         }
-
-        // Wait before retrying (exponential backoff)
-        await Future.delayed(Duration(seconds: retryCount * 2));
       }
-    }
 
-    throw Exception('Network error: Maximum retries exceeded');
+      throw Exception('Network error: Maximum retries exceeded');
+    });
   }
 
   Future<http.Response> get(String endpoint, {bool auth = false}) async {
-    int retryCount = 0;
-    const maxRetries = 3;
-    const timeoutDuration = Duration(seconds: 30);
+    return await _makeRequestWithFailover((baseUrl) async {
+      int retryCount = 0;
+      const maxRetries = 2; // Reduced retries since we have server failover
+      const timeoutDuration = Duration(seconds: 30);
 
-    while (retryCount < maxRetries) {
-      try {
-        final url = Uri.parse(ApiConfig.baseUrl + endpoint);
-        final headers = {
-          'Content-Type': 'application/json',
-          if (auth && _token != null) 'Authorization': 'Bearer $_token',
-        };
-        print('GET $url (Attempt ${retryCount + 1}/$maxRetries)');
-        print('Request headers: $headers');
+      while (retryCount < maxRetries) {
+        try {
+          final url = Uri.parse(baseUrl + endpoint);
+          final headers = {
+            'Content-Type': 'application/json',
+            if (auth && _token != null) 'Authorization': 'Bearer $_token',
+          };
+          print('GET $url (Attempt ${retryCount + 1}/$maxRetries)');
 
-        final response = await http
-            .get(url, headers: headers)
-            .timeout(timeoutDuration);
+          final response = await http
+              .get(url, headers: headers)
+              .timeout(timeoutDuration);
 
-        // Check for authentication errors
-        if (response.statusCode == 401) {
-          throw Exception('Unauthorized: Token expired or invalid');
-        }
-
-        return response;
-      } catch (e) {
-        retryCount++;
-        print('Attempt $retryCount failed: $e');
-
-        if (e.toString().contains('Unauthorized')) {
-          throw Exception('Unauthorized: Token expired or invalid');
-        }
-
-        if (retryCount >= maxRetries) {
-          if (e.toString().contains('SocketException') ||
-              e.toString().contains('Failed host lookup')) {
-            throw Exception(
-              'Server connection failed. Please check your internet connection and try again.',
-            );
+          // Check for server errors that should trigger failover
+          if (response.statusCode == 503 || 
+              response.statusCode == 502 || 
+              response.statusCode >= 500) {
+            throw Exception('Server error: HTTP ${response.statusCode}');
           }
-          throw Exception('Network error after $maxRetries attempts: $e');
+
+          // Check for authentication errors (don't trigger failover)
+          if (response.statusCode == 401) {
+            throw Exception('Unauthorized: Token expired or invalid');
+          }
+
+          return response;
+        } catch (e) {
+          retryCount++;
+          print('Attempt $retryCount failed: $e');
+
+          if (e.toString().contains('Unauthorized')) {
+            throw Exception('Unauthorized: Token expired or invalid');
+          }
+
+          // Check for network/server errors that should trigger failover
+          if (e.toString().contains('SocketException') ||
+              e.toString().contains('Failed host lookup') ||
+              e.toString().contains('Connection refused') ||
+              e.toString().contains('TimeoutException') ||
+              e.toString().contains('Server error: HTTP 503') ||
+              e.toString().contains('Server error: HTTP 502')) {
+            
+            if (retryCount >= maxRetries) {
+              throw Exception('Server connection failed: $e');
+            }
+          } else if (retryCount >= maxRetries) {
+            throw Exception('Network error after $maxRetries attempts: $e');
+          }
+
+          // Wait before retrying
+          await Future.delayed(Duration(seconds: retryCount));
         }
-
-        // Wait before retrying (exponential backoff)
-        await Future.delayed(Duration(seconds: retryCount * 2));
       }
-    }
 
-    throw Exception('Network error: Maximum retries exceeded');
+      throw Exception('Network error: Maximum retries exceeded');
+    });
   }
 
   Future<http.Response> put(
@@ -130,52 +194,67 @@ class ApiService {
     Map<String, dynamic> data, {
     bool auth = false,
   }) async {
-    int retryCount = 0;
-    const maxRetries = 3;
-    const timeoutDuration = Duration(seconds: 30);
+    return await _makeRequestWithFailover((baseUrl) async {
+      int retryCount = 0;
+      const maxRetries = 2; // Reduced retries since we have server failover
+      const timeoutDuration = Duration(seconds: 30);
 
-    while (retryCount < maxRetries) {
-      try {
-        final url = Uri.parse(ApiConfig.baseUrl + endpoint);
-        final headers = {
-          'Content-Type': 'application/json',
-          if (auth && _token != null) 'Authorization': 'Bearer $_token',
-        };
-        print('PUT $url (Attempt ${retryCount + 1}/$maxRetries)');
-        print('Request headers: $headers');
+      while (retryCount < maxRetries) {
+        try {
+          final url = Uri.parse(baseUrl + endpoint);
+          final headers = {
+            'Content-Type': 'application/json',
+            if (auth && _token != null) 'Authorization': 'Bearer $_token',
+          };
+          print('PUT $url (Attempt ${retryCount + 1}/$maxRetries)');
 
-        final response = await http
-            .put(url, headers: headers, body: jsonEncode(data))
-            .timeout(timeoutDuration);
+          final response = await http
+              .put(url, headers: headers, body: jsonEncode(data))
+              .timeout(timeoutDuration);
 
-        if (response.statusCode == 401) {
-          throw Exception('Unauthorized: Token expired or invalid');
-        }
-        return response;
-      } catch (e) {
-        retryCount++;
-        print('Attempt $retryCount failed: $e');
-
-        if (e.toString().contains('Unauthorized')) {
-          throw Exception('Unauthorized: Token expired or invalid');
-        }
-
-        if (retryCount >= maxRetries) {
-          if (e.toString().contains('SocketException') ||
-              e.toString().contains('Failed host lookup')) {
-            throw Exception(
-              'Server connection failed. Please check your internet connection and try again.',
-            );
+          // Check for server errors that should trigger failover
+          if (response.statusCode == 503 || 
+              response.statusCode == 502 || 
+              response.statusCode >= 500) {
+            throw Exception('Server error: HTTP ${response.statusCode}');
           }
-          throw Exception('Network error after $maxRetries attempts: $e');
+
+          // Check for authentication errors (don't trigger failover)
+          if (response.statusCode == 401) {
+            throw Exception('Unauthorized: Token expired or invalid');
+          }
+
+          return response;
+        } catch (e) {
+          retryCount++;
+          print('Attempt $retryCount failed: $e');
+
+          if (e.toString().contains('Unauthorized')) {
+            throw Exception('Unauthorized: Token expired or invalid');
+          }
+
+          // Check for network/server errors that should trigger failover
+          if (e.toString().contains('SocketException') ||
+              e.toString().contains('Failed host lookup') ||
+              e.toString().contains('Connection refused') ||
+              e.toString().contains('TimeoutException') ||
+              e.toString().contains('Server error: HTTP 503') ||
+              e.toString().contains('Server error: HTTP 502')) {
+            
+            if (retryCount >= maxRetries) {
+              throw Exception('Server connection failed: $e');
+            }
+          } else if (retryCount >= maxRetries) {
+            throw Exception('Network error after $maxRetries attempts: $e');
+          }
+
+          // Wait before retrying
+          await Future.delayed(Duration(seconds: retryCount));
         }
-
-        // Wait before retrying (exponential backoff)
-        await Future.delayed(Duration(seconds: retryCount * 2));
       }
-    }
 
-    throw Exception('Network error: Maximum retries exceeded');
+      throw Exception('Network error: Maximum retries exceeded');
+    });
   }
 
   // Users

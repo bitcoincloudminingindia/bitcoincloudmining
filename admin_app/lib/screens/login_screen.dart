@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../providers/admin_api_provider.dart';
+import '../config/api_config.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -64,6 +65,44 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  Widget _buildServerStatusIndicator() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: ApiConfig.isUsingFallback 
+            ? Colors.orange.withOpacity(0.1)
+            : Colors.green.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: ApiConfig.isUsingFallback 
+              ? Colors.orange.withOpacity(0.3)
+              : Colors.green.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            ApiConfig.isUsingFallback ? Icons.warning : Icons.cloud_done,
+            color: ApiConfig.isUsingFallback ? Colors.orange : Colors.green,
+            size: 16,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Server: ${ApiConfig.currentServerName}',
+            style: TextStyle(
+              color: ApiConfig.isUsingFallback ? Colors.orange : Colors.green,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -109,6 +148,8 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   ),
                 ),
+                // Server Status Indicator
+                _buildServerStatusIndicator(),
                 // Glassmorphism Card
                 Container(
                   decoration: BoxDecoration(

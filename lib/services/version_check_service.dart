@@ -10,7 +10,7 @@ class VersionCheckService {
 
       // 🔧 Step 1: Set default version
       await remoteConfig.setDefaults({
-        'latest_version_android': '1.0.0', // fallback if Firebase fails
+        'latest_version_android': '1.0.4', // fallback if Firebase fails
       });
 
       // 🌐 Step 2: Fetch latest config from Firebase
@@ -28,8 +28,7 @@ class VersionCheckService {
       if (_isOutdated(currentVersion, latestVersion)) {
         _showForceUpdateDialog(context);
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   static bool _isOutdated(String current, String latest) {
@@ -41,8 +40,7 @@ class VersionCheckService {
         if (curr.length <= i || curr[i] < latestV[i]) return true;
         if (curr[i] > latestV[i]) return false;
       }
-    } catch (e) {
-    }
+    } catch (e) {}
     return false;
   }
 
@@ -61,8 +59,7 @@ class VersionCheckService {
               final uri = Uri.parse(url);
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
-              } else {
-              }
+              } else {}
             },
             child: const Text('Update Now'),
           ),
