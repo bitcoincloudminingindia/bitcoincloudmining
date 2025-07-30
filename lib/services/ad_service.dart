@@ -7,6 +7,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/mediation_config.dart';
+import 'dart:async' show TimeoutException;
 
 class AdService {
   static final AdService _instance = AdService._internal();
@@ -14,10 +15,11 @@ class AdService {
   AdService._internal();
 
   // Ad configuration
-  static const int MAX_RETRY_ATTEMPTS = 2; // Reduced from 3 to 2
+  static const int MAX_RETRY_ATTEMPTS = 3; // Increased for better mediation
   static const Duration RETRY_DELAY =
-      Duration(seconds: 3); // Reduced from 5 to 3
+      Duration(seconds: 2); // Reduced for faster retry
   static const Duration AD_CACHE_DURATION = Duration(minutes: 30);
+  static const Duration MEDIATION_TIMEOUT = Duration(seconds: 15); // Unity ads timeout
 
   // Ad unit IDs - Real AdMob IDs for production with mediation
   final Map<String, Map<String, String>> _adUnitIds = {
@@ -194,9 +196,9 @@ class AdService {
 
     final startTime = DateTime.now();
     int attempts = 0;
-    const int maxAttempts = 2; // Reduced from 3 to 2 attempts
+    const int maxAttempts = 3; // Increased for mediation support
     const Duration retryDelay =
-        Duration(seconds: 3); // Reduced from 5 to 3 seconds
+        Duration(seconds: 2); // Faster retry for mediation
 
     while (attempts < maxAttempts) {
       try {
@@ -299,12 +301,12 @@ class AdService {
     // Try to load the banner ad
     await loadBannerAd();
 
-    // Wait for the ad to be loaded, polling every 50ms, up to 1.5 seconds (faster)
-    const int maxTries = 30; // 30 * 50ms = 1.5 seconds
+    // Wait for the ad to be loaded, polling every 100ms, up to 5 seconds (for mediation)
+    const int maxTries = 50; // 50 * 100ms = 5 seconds (better for mediation)
     int tries = 0;
     while ((!_isBannerAdLoaded || _bannerAd == null) && tries < maxTries) {
       await Future.delayed(
-          const Duration(milliseconds: 50)); // Reduced from 100ms to 50ms
+          const Duration(milliseconds: 100)); // Stable for mediation networks
       tries++;
     }
 
@@ -350,10 +352,12 @@ class AdService {
         return;
       }
 
-      await RewardedAd.load(
-        adUnitId: adUnitId,
-        request: const AdRequest(),
-        rewardedAdLoadCallback: RewardedAdLoadCallback(
+      // Add timeout for mediation support
+      await Future.any([
+        RewardedAd.load(
+          adUnitId: adUnitId,
+          request: const AdRequest(),
+          rewardedAdLoadCallback: RewardedAdLoadCallback(
           onAdLoaded: (ad) {
             _rewardedAd = ad;
             _isRewardedAdLoaded = true;
@@ -397,13 +401,21 @@ class AdService {
             }
           },
         ),
-      );
+        // Timeout after 15 seconds for mediation
+        Future.delayed(MEDIATION_TIMEOUT, () {
+          throw TimeoutException('Rewarded ad loading timeout', MEDIATION_TIMEOUT);
+        }),
+      ]);
     } catch (e) {
       _isRewardedAdLoading = false;
 
       // Update mediation metrics for exception
       if (_isMediationEnabled) {
         _updateMediationMetrics('admob', false, null);
+      }
+      
+      if (kDebugMode) {
+        print('❌ Rewarded Ad Loading Failed: $e');
       }
     }
   }
@@ -758,11 +770,63 @@ class AdService {
       // Initialize mediation
       await _initializeMediation();
 
-      // Preload ads
-      loadBannerAd();
-      loadRewardedAd();
-      loadNativeAd();
-    } catch (e) {}
+      // Enhanced preloading strategy for mediation
+      await _enhancedPreloadStrategy();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Ad Service initialization failed: $e');
+      }
+    }
+  }
+
+  // Enhanced preload strategy for faster ad loading
+  Future<void> _enhancedPreloadStrategy() async {
+    if (kDebugMode) {
+      print('🚀 Starting enhanced ad preload strategy...');
+    }
+
+    // Preload ads in parallel for faster loading
+    final futures = <Future>[];
+    
+    // Preload banner ad with priority
+    futures.add(loadBannerAd().timeout(
+      Duration(seconds: 8),
+      onTimeout: () {
+        if (kDebugMode) {
+          print('⚠️ Banner ad preload timeout');
+        }
+      },
+    ));
+
+    // Preload rewarded ad
+    futures.add(loadRewardedAd().timeout(
+      Duration(seconds: 12),
+      onTimeout: () {
+        if (kDebugMode) {
+          print('⚠️ Rewarded ad preload timeout');
+        }
+      },
+    ));
+
+    // Preload native ad
+    futures.add(loadNativeAd().timeout(
+      Duration(seconds: 10),
+      onTimeout: () {
+        if (kDebugMode) {
+          print('⚠️ Native ad preload timeout');
+        }
+      },
+    ));
+
+    // Wait for all ads to load (or timeout)
+    await Future.wait(futures, eagerError: false);
+
+    if (kDebugMode) {
+      print('✅ Enhanced preload strategy completed');
+      print('   Banner loaded: $_isBannerAdLoaded');
+      print('   Rewarded loaded: $_isRewardedAdLoaded');
+      print('   Native loaded: $_isNativeAdLoaded');
+    }
   }
 
   // Initialize mediation configuration
@@ -842,7 +906,7 @@ class AdService {
   Future<void> _initializeMediationNetwork(String network) async {
     switch (network) {
       case 'unity_ads':
-        // Unity Ads is already initialized via build.gradle
+        await _initializeUnityAds();
         break;
       case 'facebook_audience_network':
         // Facebook Audience Network initialization
@@ -857,6 +921,34 @@ class AdService {
         if (kDebugMode) {
           print('⚠️ Unknown mediation network: $network');
         }
+    }
+  }
+
+  // Initialize Unity Ads specifically
+  Future<void> _initializeUnityAds() async {
+    try {
+      final config = MediationConfig.unityAdsConfig;
+      if (config['enabled'] != true) return;
+
+      if (kDebugMode) {
+        print('🎮 Initializing Unity Ads...');
+        print('   Android Game ID: ${config['game_id_android']}');
+        print('   iOS Game ID: ${config['game_id_ios']}');
+        print('   Test Mode: ${config['test_mode']}');
+      }
+
+      // Unity Ads configuration is handled by AdMob mediation
+      // The actual initialization happens through the mediation adapter
+      await Future.delayed(Duration(milliseconds: 500)); // Allow time for initialization
+
+      if (kDebugMode) {
+        print('✅ Unity Ads mediation configured');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Unity Ads initialization failed: $e');
+      }
+      throw e;
     }
   }
 
@@ -1291,5 +1383,152 @@ class AdService {
     }
     _nativeAds.clear();
     _nativeAdLoadedStates.clear();
+  }
+
+  // Diagnostic methods for ad loading issues
+  Future<Map<String, dynamic>> runAdLoadingDiagnostic() async {
+    if (kDebugMode) {
+      print('🔍 Running Ad Loading Diagnostic...');
+    }
+
+    final diagnostic = <String, dynamic>{
+      'timestamp': DateTime.now().toIso8601String(),
+      'mediation_enabled': _isMediationEnabled,
+      'mediation_initialized': _isMediationInitialized,
+      'network_states': Map.from(_mediationNetworkStates),
+      'ad_states': {
+        'banner_loaded': _isBannerAdLoaded,
+        'rewarded_loaded': _isRewardedAdLoaded,
+        'rewarded_loading': _isRewardedAdLoading,
+        'native_loaded': _isNativeAdLoaded,
+      },
+      'performance_metrics': {
+        'total_shows': _totalAdShows,
+        'successful_shows': _successfulAdShows,
+        'failed_shows': _failedAdShows,
+        'success_rate': _totalAdShows > 0 ? (_successfulAdShows / _totalAdShows) * 100 : 0,
+        'average_load_time': _averageAdLoadTime,
+      },
+      'cache_status': {
+        'banner_cached': _isCachedAdValid('banner'),
+        'rewarded_cached': _isCachedAdValid('rewarded'),
+        'native_cached': _isCachedAdValid('native'),
+      },
+      'load_attempts': Map.from(_adLoadAttempts),
+      'failures': Map.from(_adFailures),
+      'recommendations': <String>[],
+    };
+
+    // Add recommendations
+    final recommendations = diagnostic['recommendations'] as List<String>;
+    
+    if (!_isMediationEnabled) {
+      recommendations.add('Mediation disabled होने की वजह से ads slow load हो रहे हैं');
+    }
+    
+    if (!_isMediationInitialized && _isMediationEnabled) {
+      recommendations.add('Mediation initialized नहीं है - इसे check करें');
+    }
+    
+    if (_adFailures.isNotEmpty) {
+      final totalFailures = _adFailures.values.fold(0, (sum, count) => sum + count);
+      if (totalFailures > 5) {
+        recommendations.add('बहुत ज्यादा ad failures हैं ($totalFailures) - network connectivity check करें');
+      }
+    }
+    
+    if (_averageAdLoadTime > 5000) {
+      recommendations.add('Average load time बहुत ज्यादा है (${_averageAdLoadTime.toStringAsFixed(0)}ms) - Unity Ads configuration check करें');
+    }
+    
+    if (!_isRewardedAdLoaded && !_isRewardedAdLoading) {
+      recommendations.add('Rewarded ad preload नहीं हुई है - manually load करने की कोशिश करें');
+    }
+
+    if (kDebugMode) {
+      print('📊 Diagnostic Results:');
+      print('   Mediation Working: ${isMediationWorking}');
+      print('   Ads Loaded: Banner=$_isBannerAdLoaded, Rewarded=$_isRewardedAdLoaded, Native=$_isNativeAdLoaded');
+      print('   Average Load Time: ${_averageAdLoadTime.toStringAsFixed(0)}ms');
+      print('   Success Rate: ${diagnostic['performance_metrics']['success_rate'].toStringAsFixed(1)}%');
+      if (recommendations.isNotEmpty) {
+        print('   Recommendations: ${recommendations.length} items');
+      }
+    }
+
+    return diagnostic;
+  }
+
+  // Force reload all ads (for troubleshooting)
+  Future<void> forceReloadAllAds() async {
+    if (kDebugMode) {
+      print('🔄 Force reloading all ads...');
+    }
+
+    // Reset all states
+    _isBannerAdLoaded = false;
+    _isRewardedAdLoaded = false;
+    _isRewardedAdLoading = false;
+    _isNativeAdLoaded = false;
+
+    // Dispose existing ads
+    _bannerAd?.dispose();
+    _rewardedAd?.dispose();
+    _nativeAd?.dispose();
+
+    // Clear cache times
+    _adCacheTimes.clear();
+    _adLoadAttempts.clear();
+
+    // Reload with enhanced strategy
+    await _enhancedPreloadStrategy();
+
+    if (kDebugMode) {
+      print('✅ Force reload completed');
+    }
+  }
+
+  // Test specific ad type loading
+  Future<bool> testAdLoading(String adType) async {
+    if (kDebugMode) {
+      print('🧪 Testing $adType ad loading...');
+    }
+
+    final startTime = DateTime.now();
+    bool success = false;
+
+    try {
+      switch (adType) {
+        case 'banner':
+          await loadBannerAd();
+          success = _isBannerAdLoaded;
+          break;
+        case 'rewarded':
+          await loadRewardedAd();
+          success = _isRewardedAdLoaded;
+          break;
+        case 'native':
+          await loadNativeAd();
+          success = _isNativeAdLoaded;
+          break;
+        default:
+          throw ArgumentError('Unknown ad type: $adType');
+      }
+
+      final loadTime = DateTime.now().difference(startTime);
+      
+      if (kDebugMode) {
+        print('📊 $adType ad test result:');
+        print('   Success: $success');
+        print('   Load Time: ${loadTime.inMilliseconds}ms');
+      }
+
+      return success;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ $adType ad test failed: $e');
+      }
+      return false;
+    }
   }
 }
