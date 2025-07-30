@@ -115,6 +115,22 @@ class AppStrings {
       'Enter your registered email and we will send you a reset link';
 }
 
+class AppConstants {
+  static const String appName = 'Bitcoin Cloud Mining';
+  static const String version = '1.0.0';
+  static const String privacyPolicyUrl = 'https://example.com/privacy';
+  static const String termsOfServiceUrl = 'https://example.com/terms';
+  static const String supportEmail = 'support@example.com';
+  
+  // AdMob Policy Compliance
+  static const String appDisclaimer = 
+    'This is a simulation/gaming app. No real Bitcoin mining occurs. '
+    'All rewards are virtual and for entertainment purposes only. '
+    'Real cryptocurrency withdrawal requires actual deposits.';
+  
+  static const String appTitle = 'Bitcoin Cloud Mining';
+}
+
 class ApiConstants {
   static const String baseUrl = 'http://localhost:5000/api';
   static const Duration requestTimeout = Duration(seconds: 30);
@@ -144,10 +160,10 @@ class ApiConstants {
 }
 
 class WalletConstants {
-  static const double minWithdrawalBtc = 0.00005;
-  static const double minWithdrawalUsd = 1.0;
-  static const double minWithdrawalInr = 100.0;
-  static const double dailyWithdrawalLimit = 1.0; // BTC
+  static const double minWithdrawalBtc = 0.001; // Increased from 0.00005 to be more realistic
+  static const double minWithdrawalUsd = 10.0; // Increased from 1.0 to be more achievable
+  static const double minWithdrawalInr = 500.0; // Increased from 100.0 to be more realistic
+  static const double dailyWithdrawalLimit = 0.1; // Reduced from 1.0 BTC to be more realistic
   static const int transactionHistoryLimit = 50;
   static const Duration balanceUpdateInterval = Duration(minutes: 1);
 }

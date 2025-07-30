@@ -96,9 +96,10 @@ class RewardProvider with ChangeNotifier {
 
   // Add reward amount getters
 
-  double get adReward => 0.000000000000005000;
-  double get referralReward => 0.000000000000005000;
-  double get socialMediaReward => 0.000000000000010000;
+  // Get reward amount getters with realistic values
+  double get adReward => 0.000001; // 1 satoshi equivalent
+  double get referralReward => 0.000005; // 5 satoshi equivalent  
+  double get socialMediaReward => 0.000001; // 1 satoshi equivalent
 
   // Social media reward claim status cache
   final Map<String, bool> _socialMediaRewardClaimed = {};
