@@ -125,15 +125,15 @@ class AdService {
   // Show consent dialog if required
   Future<bool> ensureConsentAndShowAds(BuildContext context) async {
     final consentService = ConsentService();
-    
+
     if (!consentService.isInitialized) {
       await consentService.initialize();
     }
-    
+
     if (consentService.isConsentRequired && !consentService.hasUserConsent) {
-      return await consentService.showConsentDialog(context);
+      return consentService.showConsentDialog(context);
     }
-    
+
     return true;
   }
 
@@ -427,7 +427,7 @@ class AdService {
 
       // Update mediation metrics for exception
       if (_isMediationEnabled) {
-        _updateMediationMetrics("admob", false, null);
+        _updateMediationMetrics('admob', false, null);
       }
     }
   }
@@ -700,7 +700,6 @@ class AdService {
     bool rewardGranted = false;
     bool adShown = false;
     bool adCompletelyWatched = false;
-    DateTime? adStartTime;
 
     try {
       _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
@@ -733,7 +732,6 @@ class AdService {
         },
         onAdShowedFullScreenContent: (ad) {
           adShown = true;
-          adStartTime = DateTime.now();
         },
       );
 
@@ -743,7 +741,7 @@ class AdService {
           // onUserEarnedReward callback से pata chalta hai ki ad pura dekha gaya
           rewardGranted = true;
           adCompletelyWatched = true;
-          
+
           // Give reward only when ad is completely watched
           // No minimum time check needed - onUserEarnedReward ensures complete viewing
           onRewarded(reward.amount.toDouble());

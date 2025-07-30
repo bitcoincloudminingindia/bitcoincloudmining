@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -14,10 +13,10 @@ class ConsentService {
   static const String _consentStatusKey = 'user_consent_status';
   static const String _consentVersionKey = 'consent_version';
   static const String _consentTimestampKey = 'consent_timestamp';
-  
+
   // Current consent version - increment when privacy policy changes
   static const String currentConsentVersion = '1.0';
-  
+
   // Consent status
   bool _isConsentRequired = false;
   bool _hasUserConsent = false;
@@ -32,15 +31,15 @@ class ConsentService {
   Future<void> initialize() async {
     try {
       _isConsentRequired = await _checkIfConsentRequired();
-      
+
       if (_isConsentRequired) {
         await _loadConsentStatus();
       } else {
         _hasUserConsent = true; // No consent required for non-EU/CA users
       }
-      
+
       _isInitialized = true;
-      
+
       if (kDebugMode) {
         print('ConsentService: Initialized');
         print('Consent Required: $_isConsentRequired');
@@ -61,7 +60,7 @@ class ConsentService {
       // For EU GDPR compliance, check if user is in EU
       // For CCPA compliance, check if user is in California
       // This is a simplified check - in production, use proper geolocation
-      
+
       // You can implement actual geolocation check here
       // For now, we'll assume consent is required for all users
       return true; // Change this based on your geo-targeting logic
@@ -74,10 +73,10 @@ class ConsentService {
   Future<void> _loadConsentStatus() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       final savedVersion = prefs.getString(_consentVersionKey);
       final hasConsent = prefs.getBool(_consentStatusKey) ?? false;
-      
+
       // Check if consent version is current
       if (savedVersion == currentConsentVersion && hasConsent) {
         _hasUserConsent = true;
@@ -97,11 +96,12 @@ class ConsentService {
   Future<void> _saveConsentStatus(bool consent) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       await prefs.setBool(_consentStatusKey, consent);
       await prefs.setString(_consentVersionKey, currentConsentVersion);
-      await prefs.setString(_consentTimestampKey, DateTime.now().toIso8601String());
-      
+      await prefs.setString(
+          _consentTimestampKey, DateTime.now().toIso8601String());
+
       _hasUserConsent = consent;
     } catch (e) {
       if (kDebugMode) {
@@ -302,7 +302,8 @@ class ConsentManagementWidget extends StatefulWidget {
   const ConsentManagementWidget({super.key});
 
   @override
-  State<ConsentManagementWidget> createState() => _ConsentManagementWidgetState();
+  State<ConsentManagementWidget> createState() =>
+      _ConsentManagementWidgetState();
 }
 
 class _ConsentManagementWidgetState extends State<ConsentManagementWidget> {
