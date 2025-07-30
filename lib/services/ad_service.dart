@@ -930,19 +930,28 @@ class AdService {
       final config = MediationConfig.unityAdsConfig;
       if (config['enabled'] != true) return;
 
+      // Get platform-specific Game ID
+      final platform = Platform.isAndroid ? 'android' : 'ios';
+      final gameId = MediationConfig.getPlatformKey('unity_ads', platform);
+
       if (kDebugMode) {
         print('🎮 Initializing Unity Ads...');
+        print('   Platform: $platform');
+        print('   Game ID: $gameId');
         print('   Android Game ID: ${config['game_id_android']}');
         print('   iOS Game ID: ${config['game_id_ios']}');
         print('   Test Mode: ${config['test_mode']}');
+        print('   Initialization Timeout: ${config['initialization_timeout']}s');
+        print('   Load Timeout: ${config['load_timeout']}s');
       }
 
       // Unity Ads configuration is handled by AdMob mediation
       // The actual initialization happens through the mediation adapter
+      final initTimeout = Duration(seconds: config['initialization_timeout'] ?? 10);
       await Future.delayed(Duration(milliseconds: 500)); // Allow time for initialization
 
       if (kDebugMode) {
-        print('✅ Unity Ads mediation configured');
+        print('✅ Unity Ads mediation configured for $platform with Game ID: $gameId');
       }
     } catch (e) {
       if (kDebugMode) {

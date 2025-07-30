@@ -34,8 +34,8 @@ class MediationConfig {
   // Unity Ads Configuration
   static const Map<String, dynamic> unityAdsConfig = {
     'enabled': true,
-    'game_id_android': '5894439', // Real Unity Game ID linked to AdMob
-    'game_id_ios': '5894439', // Same Game ID for both platforms
+    'game_id_android': '5894439', // Android Unity Game ID linked to AdMob
+    'game_id_ios': '5894438', // iOS Unity Game ID linked to AdMob
     'test_mode': kDebugMode,
     'initialization_timeout': 10, // seconds
     'load_timeout': 8, // seconds
@@ -115,11 +115,43 @@ class MediationConfig {
     final config = getNetworkConfig(network);
     if (config == null) return null;
 
-    switch (platform) {
-      case 'android':
-        return config['${network}_android'] as String?;
-      case 'ios':
-        return config['${network}_ios'] as String?;
+    switch (network) {
+      case 'unity_ads':
+        switch (platform) {
+          case 'android':
+            return config['game_id_android'] as String?;
+          case 'ios':
+            return config['game_id_ios'] as String?;
+          default:
+            return null;
+        }
+      case 'facebook_audience_network':
+        switch (platform) {
+          case 'android':
+            return config['app_id_android'] as String?;
+          case 'ios':
+            return config['app_id_ios'] as String?;
+          default:
+            return null;
+        }
+      case 'applovin':
+        switch (platform) {
+          case 'android':
+            return config['sdk_key_android'] as String?;
+          case 'ios':
+            return config['sdk_key_ios'] as String?;
+          default:
+            return null;
+        }
+      case 'iron_source':
+        switch (platform) {
+          case 'android':
+            return config['app_key_android'] as String?;
+          case 'ios':
+            return config['app_key_ios'] as String?;
+          default:
+            return null;
+        }
       default:
         return null;
     }
