@@ -29,40 +29,40 @@ implementation("com.google.ads.mediation:unity:4.15.1.0")
 'native': 'ca-app-pub-3537329799200606/2260507229'   // Native_Contract_Card
 ```
 
-### 4. ✅ Unity Ads Configuration (Mediation-Only Setup)
+### 4. ✅ Unity Ads Configuration (Mediation Binding Setup)
 ```dart
-// Unity Ads Game IDs for AdMob Mediation ONLY:
+// Unity Ads Game IDs for AdMob Mediation Binding ONLY:
 // ⚠️ WARNING: Unity Ads will NOT load directly
-// ⚠️ Unity ads show ONLY through AdMob mediation waterfall
-Android Game ID: 5894439 (for AdMob Console mediation)
-iOS Game ID: 5894438 (for AdMob Console mediation)
+// ⚠️ Unity ads show ONLY through AdMob mediation binding
+Android Game ID: 5894439 (for AdMob Console mediation binding)
+iOS Game ID: 5894438 (for AdMob Console mediation binding)
 ```
 
-## ⚠️ Important: Mediation-Only Implementation
+## ⚠️ Important: Mediation Binding Implementation
 
 ### How It Works:
 1. **App सिर्फ AdMob SDK use करती है** - कोई direct Unity calls नहीं
-2. **AdMob waterfall decides कब Unity ads show करना है**
-3. **Unity Game IDs सिर्फ AdMob Console configuration के लिए हैं**
-4. **Unity Ads automatically load होते हैं जब AdMob उन्हें select करती है**
+2. **AdMob mediation binding के through Unity ads show होते हैं**
+3. **Unity Game IDs सिर्फ AdMob Console binding configuration के लिए हैं**
+4. **Unity Ads automatically load होते हैं AdMob mediation binding के through**
 
 ### Ad Loading Flow:
 ```
-App Request → AdMob SDK → AdMob Waterfall Check → Unity Ads (if selected)
+App Request → AdMob SDK → AdMob Mediation Binding → Unity Ads (bound network)
 ```
 
 ### What This Means:
 - ✅ **Only AdMob ad requests** from app code
-- ✅ **Unity shows automatically** when AdMob chooses it
+- ✅ **Unity shows through binding** with AdMob mediation
 - ✅ **No Unity SDK calls** in Flutter code
-- ✅ **Better fill rates** through mediation
-- ✅ **AdMob handles** all ad network switching
+- ✅ **Better fill rates** through mediation binding
+- ✅ **AdMob handles** all network binding and switching
 
 ## 🚀 Optimizations Applied for Faster Loading
 
 ### Performance Improvements:
-- **Waterfall Timeout:** 30s → 15s (50% faster)
-- **Banner Loading Timeout:** 1.5s → 5s (better for mediation)
+- **Binding Timeout:** 30s → 15s (50% faster)
+- **Banner Loading Timeout:** 1.5s → 5s (better for mediation binding)
 - **Retry Attempts:** 2 → 3 (better success rate)
 - **Retry Delay:** 3s → 2s (faster retry)
 - **Enhanced Preloading:** Parallel loading with timeouts
@@ -106,12 +106,14 @@ App Request → AdMob SDK → AdMob Waterfall Check → Unity Ads (if selected)
    Banner: "Banner_Android" / "Banner_iOS"
    ```
 
-### Step 3: Waterfall Configuration
+### Step 3: Mediation Binding Configuration
 ```
-Priority Order:
-1. AdMob (eCPM: Auto-optimized)
-2. Unity Ads (eCPM: $0.50 - $2.00)
-3. Backup networks (if added)
+Binding Setup:
+1. AdMob Network (Primary)
+2. Unity Ads (Bound Network via Game IDs)
+3. Additional networks (if needed)
+
+Configuration Type: Binding (not waterfall)
 ```
 
 ### Step 4: Testing & Verification
@@ -127,12 +129,12 @@ await AdService().testAdLoading('banner');
 **Before Optimization:**
 - Ad Load Time: 5-15 seconds
 - Success Rate: 60-70%
-- Waterfall Timeout: 30s
+- Binding Timeout: 30s
 
 **After Optimization:**
 - Ad Load Time: 2-8 seconds (60% faster)
-- Success Rate: 80-90% (with Unity Ads)
-- Waterfall Timeout: 15s (50% faster)
+- Success Rate: 80-90% (with Unity Ads binding)
+- Binding Timeout: 15s (50% faster)
 
 ## 🐛 Troubleshooting
 

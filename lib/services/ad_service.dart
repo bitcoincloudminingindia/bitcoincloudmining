@@ -19,7 +19,7 @@ class AdService {
   static const Duration RETRY_DELAY =
       Duration(seconds: 2); // Reduced for faster retry
   static const Duration AD_CACHE_DURATION = Duration(minutes: 30);
-  static const Duration MEDIATION_TIMEOUT = Duration(seconds: 15); // Unity ads timeout
+  static const Duration MEDIATION_BINDING_TIMEOUT = Duration(seconds: 15); // Unity ads binding timeout
 
   // Ad unit IDs - Real AdMob IDs for production with mediation
   final Map<String, Map<String, String>> _adUnitIds = {
@@ -401,9 +401,9 @@ class AdService {
             }
           },
         ),
-        // Timeout after 15 seconds for mediation
-        Future.delayed(MEDIATION_TIMEOUT, () {
-          throw TimeoutException('Rewarded ad loading timeout', MEDIATION_TIMEOUT);
+        // Timeout after 15 seconds for mediation binding
+        Future.delayed(MEDIATION_BINDING_TIMEOUT, () {
+          throw TimeoutException('Rewarded ad loading timeout', MEDIATION_BINDING_TIMEOUT);
         }),
       ]);
     } catch (e) {
@@ -934,26 +934,26 @@ class AdService {
       final platform = Platform.isAndroid ? 'android' : 'ios';
       final gameId = MediationConfig.getPlatformKey('unity_ads', platform);
 
-      if (kDebugMode) {
-        print('🎮 Configuring Unity Ads for AdMob Mediation...');
-        print('   ⚠️  NOTE: Unity Ads will ONLY load through AdMob mediation');
-        print('   ⚠️  NO direct Unity Ads calls are made by this app');
-        print('   Platform: $platform');
-        print('   Game ID for Mediation: $gameId');
-        print('   Android Game ID: ${config['game_id_android']}');
-        print('   iOS Game ID: ${config['game_id_ios']}');
-        print('   Test Mode: ${config['test_mode']}');
-      }
+             if (kDebugMode) {
+         print('🎮 Configuring Unity Ads for AdMob Mediation Binding...');
+         print('   ⚠️  NOTE: Unity Ads will ONLY load through AdMob mediation binding');
+         print('   ⚠️  NO direct Unity Ads calls are made by this app');
+         print('   Platform: $platform');
+         print('   Game ID for Mediation Binding: $gameId');
+         print('   Android Game ID: ${config['game_id_android']}');
+         print('   iOS Game ID: ${config['game_id_ios']}');
+         print('   Test Mode: ${config['test_mode']}');
+       }
 
-      // IMPORTANT: No direct Unity Ads initialization is done here
-      // Unity Ads will be initialized by AdMob mediation adapter when needed
-      // These Game IDs are used by AdMob Console mediation configuration
-      await Future.delayed(Duration(milliseconds: 100)); // Minimal delay for logging
+       // IMPORTANT: No direct Unity Ads initialization is done here
+       // Unity Ads will be initialized by AdMob mediation adapter through binding
+       // These Game IDs are used by AdMob Console mediation binding configuration
+       await Future.delayed(Duration(milliseconds: 100)); // Minimal delay for logging
 
-      if (kDebugMode) {
-        print('✅ Unity Ads mediation configuration ready for AdMob');
-        print('   Unity ads will show ONLY when AdMob decides in waterfall');
-      }
+       if (kDebugMode) {
+         print('✅ Unity Ads mediation binding configuration ready for AdMob');
+         print('   Unity ads will show through AdMob mediation binding (not waterfall)');
+       }
     } catch (e) {
       if (kDebugMode) {
         print('❌ Unity Ads mediation configuration failed: $e');
@@ -1503,7 +1503,7 @@ class AdService {
     if (kDebugMode) {
       print('🧪 Testing $adType ad loading...');
       print('   ⚠️ NOTE: All ads load through AdMob SDK only');
-      print('   ⚠️ Unity Ads may show if AdMob selects them in waterfall');
+      print('   ⚠️ Unity Ads may show through AdMob mediation binding');
     }
 
     final startTime = DateTime.now();
@@ -1555,19 +1555,19 @@ class AdService {
         'android': MediationConfig.getPlatformKey('unity_ads', 'android'),
         'ios': MediationConfig.getPlatformKey('unity_ads', 'ios'),
       },
-      'mediation_flow': 'App → AdMob SDK → AdMob Waterfall → Unity (if selected)',
+             'mediation_flow': 'App → AdMob SDK → AdMob Mediation Binding → Unity (bound network)',
       'setup_status': 'CORRECT - Mediation Only',
     };
 
-    if (kDebugMode) {
-      print('🔍 Mediation-Only Setup Verification:');
-      print('   ✅ App uses ONLY AdMob SDK');
-      print('   ✅ NO direct Unity Ads calls');
-      print('   ✅ Unity Game IDs configured for AdMob Console');
-      print('   ✅ Unity ads will show ONLY through AdMob mediation');
-      print('   Android Game ID: ${verification['unity_game_ids_configured']['android']}');
-      print('   iOS Game ID: ${verification['unity_game_ids_configured']['ios']}');
-    }
+         if (kDebugMode) {
+       print('🔍 Mediation Binding Setup Verification:');
+       print('   ✅ App uses ONLY AdMob SDK');
+       print('   ✅ NO direct Unity Ads calls');
+       print('   ✅ Unity Game IDs configured for AdMob Console binding');
+       print('   ✅ Unity ads will show ONLY through AdMob mediation binding');
+       print('   Android Game ID: ${verification['unity_game_ids_configured']['android']}');
+       print('   iOS Game ID: ${verification['unity_game_ids_configured']['ios']}');
+     }
 
     return verification;
   }

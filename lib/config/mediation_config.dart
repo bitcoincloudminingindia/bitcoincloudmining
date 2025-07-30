@@ -6,8 +6,8 @@ class MediationConfig {
   // Mediation enabled/disabled
   static const bool enabled = true;
 
-  // Waterfall timeout in seconds (reduced for faster loading)
-  static const int waterfallTimeout = 15;
+  // Mediation binding timeout in seconds (reduced for faster loading)
+  static const int bindingTimeout = 15;
 
   // Retry attempts for failed ads
   static const int retryAttempts = 3;
@@ -31,16 +31,16 @@ class MediationConfig {
     'iron_source',
   ];
 
-  // Unity Ads Configuration for AdMob Mediation ONLY
-  // WARNING: These IDs are for AdMob Console mediation setup ONLY
+  // Unity Ads Configuration for AdMob Mediation Binding ONLY
+  // WARNING: These IDs are for AdMob Console mediation binding setup ONLY
   // Unity Ads will NOT be called directly by this app
   static const Map<String, dynamic> unityAdsConfig = {
     'enabled': true,
-    'game_id_android': '5894439', // Android Unity Game ID for AdMob mediation
-    'game_id_ios': '5894438', // iOS Unity Game ID for AdMob mediation
+    'game_id_android': '5894439', // Android Unity Game ID for AdMob mediation binding
+    'game_id_ios': '5894438', // iOS Unity Game ID for AdMob mediation binding
     'test_mode': kDebugMode,
     'initialization_timeout': 10, // seconds (for AdMob mediation adapter)
-    'load_timeout': 8, // seconds (for AdMob mediation waterfall)
+    'load_timeout': 8, // seconds (for AdMob mediation binding)
   };
 
   // Facebook Audience Network Configuration
@@ -70,7 +70,7 @@ class MediationConfig {
   // Get complete mediation configuration
   static Map<String, dynamic> get config => {
         'enabled': enabled,
-        'waterfall_timeout': waterfallTimeout,
+        'binding_timeout': bindingTimeout,
         'retry_attempts': retryAttempts,
         'preload_mediation_ads': preloadMediationAds,
         'mediation_networks': supportedNetworks,
