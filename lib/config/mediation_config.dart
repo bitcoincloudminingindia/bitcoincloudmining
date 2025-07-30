@@ -34,8 +34,8 @@ class MediationConfig {
   // Unity Ads Configuration
   static const Map<String, dynamic> unityAdsConfig = {
     'enabled': true,
-    'game_id_android': '5382470', // Unity Ads Game ID for Android 
-    'game_id_ios': '5382471', // Unity Ads Game ID for iOS
+    'game_id_android': '5894439', // Unity Ads Game ID for Android 
+    'game_id_ios': '5894438', // Unity Ads Game ID for iOS
     'test_mode': kDebugMode,
   };
 
