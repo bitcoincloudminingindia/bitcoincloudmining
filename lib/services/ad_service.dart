@@ -119,8 +119,11 @@ class AdService {
   String _getAdUnitId(String adType) {
     if (kIsWeb) return '';
 
-    // Use test IDs in debug mode for development
-    if (kDebugMode) {
+    // Use test IDs only when explicitly testing (not in normal debug mode)
+    // Set this flag to true only when you need to test ad integration
+    const bool useTestAds = false; // Set to true only for ad integration testing
+    
+    if (useTestAds && kDebugMode) {
       final testIds = {
         'banner': 'ca-app-pub-3940256099942544/6300978111', // Test banner ID
         'rewarded': 'ca-app-pub-3940256099942544/5224354917', // Test rewarded ID
@@ -129,6 +132,7 @@ class AdService {
       return testIds[adType] ?? '';
     }
 
+    // Always use real production ad IDs for actual users
     final platform = Platform.isAndroid ? 'android' : 'ios';
     return _adUnitIds[platform]?[adType] ?? '';
   }

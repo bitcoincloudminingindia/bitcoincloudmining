@@ -7,8 +7,10 @@
 - **Requirement**: Minimum 60s, recommended 120s+
 
 ### 2. Test vs Production Ad IDs
-- **Fixed**: Added automatic test ID usage in debug mode
-- **Test IDs Used**:
+- **Fixed**: Added conditional test ID usage only when explicitly testing
+- **Production**: Real ad IDs are used for all users by default
+- **Testing**: Set `useTestAds = true` only when testing ad integration
+- **Test IDs Available**:
   - Banner: `ca-app-pub-3940256099942544/6300978111`
   - Rewarded: `ca-app-pub-3940256099942544/5224354917`
   - Native: `ca-app-pub-3940256099942544/2247696110`
@@ -55,19 +57,46 @@
 4. **Clear Terms**: Make terms of service easily accessible
 5. **Support System**: Implement responsive user support
 
+## 🔧 Ad Testing Configuration
+
+### For Development Testing:
+```dart
+// In lib/services/ad_service.dart
+const bool useTestAds = true; // Enable only when testing ad integration
+```
+
+### For Production (Users):
+```dart
+// In lib/services/ad_service.dart  
+const bool useTestAds = false; // Always keep false for real users
+```
+
+### Real Ad Units Used:
+- **Android Banner**: `ca-app-pub-3537329799200606/2028008282`
+- **Android Rewarded**: `ca-app-pub-3537329799200606/7827129874`
+- **Android Native**: `ca-app-pub-3537329799200606/2260507229`
+- **iOS**: Same ad units for both platforms
+
 ## 📝 Testing Protocol
 
-1. Test with debug builds using test ad IDs
-2. Verify ad frequency and user experience
-3. Check reward amounts are reasonable
-4. Ensure disclaimers are visible
-5. Test on multiple devices and platforms
+1. **Development Testing**: 
+   - Set `useTestAds = true` 
+   - Test ad loading, display, and callbacks
+   - Verify no crashes or errors
+
+2. **Production Deployment**:
+   - Set `useTestAds = false`
+   - Real ads will show to actual users
+   - Monitor ad performance in AdMob console
 
 ## 🚀 Deployment Checklist
 
-- [ ] Switch to production ad IDs for release
+- [x] Real ad IDs are used by default for users
+- [x] Test ads only enabled when explicitly needed
 - [ ] Verify all disclaimers are in place
-- [ ] Test ad loading and display
+- [ ] Test ad loading and display with real ads
 - [ ] Check reward redemption flow
 - [ ] Validate minimum withdrawal amounts
 - [ ] Ensure privacy policy is accessible
+- [ ] Monitor AdMob console for ad performance
+- [ ] Check app store compliance
