@@ -6,11 +6,11 @@ class MediationConfig {
   // Mediation enabled/disabled
   static const bool enabled = true;
 
-  // Waterfall timeout in seconds
-  static const int waterfallTimeout = 30;
+  // Waterfall timeout in seconds (reduced for faster loading)
+  static const int waterfallTimeout = 15;
 
   // Retry attempts for failed ads
-  static const int retryAttempts = 2;
+  static const int retryAttempts = 3;
 
   // Preload mediation ads
   static const bool preloadMediationAds = true;
@@ -34,9 +34,11 @@ class MediationConfig {
   // Unity Ads Configuration
   static const Map<String, dynamic> unityAdsConfig = {
     'enabled': true,
-    'game_id_android': 'YOUR_UNITY_GAME_ID_ANDROID',
-    'game_id_ios': 'YOUR_UNITY_GAME_ID_IOS',
+    'game_id_android': '5716199', // Bitcoin Mining app ke liye Unity Game ID
+    'game_id_ios': '5716198', // iOS ke liye alag Game ID
     'test_mode': kDebugMode,
+    'initialization_timeout': 10, // seconds
+    'load_timeout': 8, // seconds
   };
 
   // Facebook Audience Network Configuration
