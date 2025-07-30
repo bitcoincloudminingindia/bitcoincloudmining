@@ -403,7 +403,7 @@ class AdService {
 
       // Update mediation metrics for exception
       if (_isMediationEnabled) {
-        _updateMediationMetrics('admob', false, null);
+        _updateMediationMetrics("admob", false, null);
       }
     }
   }
