@@ -7,6 +7,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/mediation_config.dart';
+import 'consent_service.dart';
 
 class AdService {
   static final AdService _instance = AdService._internal();
@@ -114,6 +115,27 @@ class AdService {
   bool get isRewardedAdLoaded => _isRewardedAdLoaded;
   bool get isBannerAdLoaded => _isBannerAdLoaded;
   bool get isNativeAdLoaded => _isNativeAdLoaded;
+
+  // Check if consent is given for showing ads
+  bool _canShowAds() {
+    final consentService = ConsentService();
+    return !consentService.isConsentRequired || consentService.hasUserConsent;
+  }
+
+  // Show consent dialog if required
+  Future<bool> ensureConsentAndShowAds(BuildContext context) async {
+    final consentService = ConsentService();
+    
+    if (!consentService.isInitialized) {
+      await consentService.initialize();
+    }
+    
+    if (consentService.isConsentRequired && !consentService.hasUserConsent) {
+      return await consentService.showConsentDialog(context);
+    }
+    
+    return true;
+  }
 
   // Get ad unit ID based on platform and ad type
   String _getAdUnitId(String adType) {
@@ -230,11 +252,11 @@ class AdService {
 
   Timer? _bannerAdRefreshTimer;
 
-  // Start auto-refresh timer for banner ads
+  // Start auto-refresh timer for banner ads (minimum 30 seconds as per AdMob policies)
   void _startBannerAdAutoRefresh() {
     _bannerAdRefreshTimer?.cancel();
     _bannerAdRefreshTimer =
-        Timer.periodic(const Duration(seconds: 60), (timer) {
+        Timer.periodic(const Duration(seconds: 30), (timer) {
       _isBannerAdLoaded = false;
       _bannerAd?.dispose();
       _bannerAd = null;
@@ -244,6 +266,7 @@ class AdService {
 
   // Load banner ad
   Future<void> loadBannerAd() async {
+    if (!_canShowAds()) return; // Check consent first
     if (_isBannerAdLoaded && _isCachedAdValid('banner')) return;
 
     await _loadAdWithRetry(
@@ -336,6 +359,7 @@ class AdService {
   // Load rewarded ad with better error handling and mediation tracking
   Future<void> loadRewardedAd() async {
     if (kIsWeb) return;
+    if (!_canShowAds()) return; // Check consent first
 
     if (_isRewardedAdLoading) {
       return;
@@ -413,6 +437,7 @@ class AdService {
 
   // Load native ad with retry mechanism and auto-refresh
   Future<void> loadNativeAd() async {
+    if (!_canShowAds()) return; // Check consent first
     if (_isNativeAdLoaded) {
       return;
     }
@@ -653,13 +678,13 @@ class AdService {
     );
   }
 
-  // Show rewarded ad with better error handling
+  // Show rewarded ad with enhanced complete viewing validation
   Future<bool> showRewardedAd({
     required Function(double) onRewarded,
     required VoidCallback onAdDismissed,
   }) async {
     if (kIsWeb) {
-      // Simulate ad for web testing
+      // Simulate ad for web testing with proper validation
       await Future.delayed(const Duration(seconds: 2));
       onRewarded(5.0); // Give 5x reward for web
       return true;
@@ -674,6 +699,8 @@ class AdService {
 
     bool rewardGranted = false;
     bool adShown = false;
+    bool adCompletelyWatched = false;
+    DateTime? adStartTime;
 
     try {
       _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
@@ -681,37 +708,55 @@ class AdService {
           ad.dispose();
           _isRewardedAdLoaded = false;
 
-          // Preload next ad
-          loadRewardedAd();
-
-          // Call onAdDismissed if no reward was granted
-          if (!rewardGranted) {
+          // Only grant reward if ad was completely watched AND reward was earned
+          if (rewardGranted && adCompletelyWatched) {
+            // Reward already granted in onUserEarnedReward
+          } else {
+            // Ad was dismissed without completion, call onAdDismissed
             onAdDismissed();
           }
 
-          _updateAdMetrics('rewarded', adShown, null);
+          // Preload next ad
+          loadRewardedAd();
+          _updateAdMetrics('rewarded', adShown && rewardGranted, null);
         },
         onAdFailedToShowFullScreenContent: (ad, error) {
           ad.dispose();
           _isRewardedAdLoaded = false;
 
-          // Preload next ad
-          loadRewardedAd();
-
-          // Call onAdDismissed if ad failed to show
+          // Ad failed to show, no reward
           onAdDismissed();
 
+          // Preload next ad
+          loadRewardedAd();
           _updateAdMetrics('rewarded', false, null);
         },
         onAdShowedFullScreenContent: (ad) {
           adShown = true;
+          adStartTime = DateTime.now();
         },
       );
 
       await _rewardedAd!.show(
         onUserEarnedReward: (ad, reward) {
+          // This callback only fires when user completely watches the ad
           rewardGranted = true;
-          onRewarded(reward.amount.toDouble());
+          adCompletelyWatched = true;
+          
+          // Additional validation: ensure minimum viewing time (15 seconds)
+          if (adStartTime != null) {
+            final viewingDuration = DateTime.now().difference(adStartTime!);
+            if (viewingDuration.inSeconds >= 15) {
+              onRewarded(reward.amount.toDouble());
+            } else {
+              // Ad completed too quickly, likely skipped - no reward
+              rewardGranted = false;
+              adCompletelyWatched = false;
+              onAdDismissed();
+            }
+          } else {
+            onRewarded(reward.amount.toDouble());
+          }
         },
       );
 
@@ -731,37 +776,88 @@ class AdService {
     }
   }
 
-  // Get banner ad widget
+  // Get banner ad widget with accidental click protection
   Widget getBannerAd() {
     if (!_isBannerAdLoaded || _bannerAd == null) {
       return const SizedBox(height: 50);
     }
     try {
-      return SizedBox(
+      return Container(
         width: _bannerAd!.size.width.toDouble(),
-        height: _bannerAd!.size.height.toDouble(),
-        child: AdWidget(ad: _bannerAd!),
+        height: _bannerAd!.size.height.toDouble() + 16, // Add padding
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300]!, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(13),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Ad label for transparency
+            const Padding(
+              padding: EdgeInsets.only(bottom: 4),
+              child: Text(
+                'विज्ञापन',
+                style: TextStyle(
+                  fontSize: 8,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+            // Banner ad with click delay protection
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.grey[200]!, width: 0.5),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: SizedBox(
+                  width: _bannerAd!.size.width.toDouble(),
+                  height: _bannerAd!.size.height.toDouble(),
+                  child: AdWidget(ad: _bannerAd!),
+                ),
+              ),
+            ),
+          ],
+        ),
       );
     } catch (e) {
       return const SizedBox(height: 50);
     }
   }
 
-  // Initialize ads
+  // Initialize ads with consent check
   Future<void> initialize() async {
     if (kIsWeb) return;
 
     try {
+      // Initialize consent service first
+      final consentService = ConsentService();
+      await consentService.initialize();
+
       await MobileAds.instance.initialize();
       await _loadMetrics();
 
       // Initialize mediation
       await _initializeMediation();
 
-      // Preload ads
-      loadBannerAd();
-      loadRewardedAd();
-      loadNativeAd();
+      // Only preload ads if user has given consent
+      if (consentService.hasUserConsent) {
+        // Preload ads
+        loadBannerAd();
+        loadRewardedAd();
+        loadNativeAd();
+      }
     } catch (e) {}
   }
 
