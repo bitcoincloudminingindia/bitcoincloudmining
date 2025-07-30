@@ -10,7 +10,7 @@ class VersionCheckService {
 
       // 🔧 Step 1: Set default version
       await remoteConfig.setDefaults({
-        'latest_version_android': '1.0.0', // fallback if Firebase fails
+        'latest_version_android': '1.0.4', // fallback if Firebase fails
       });
 
       // 🌐 Step 2: Fetch latest config from Firebase
