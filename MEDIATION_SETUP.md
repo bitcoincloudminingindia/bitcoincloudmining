@@ -31,9 +31,8 @@ implementation("com.google.ads.mediation:unity:4.15.1.0")
 
 ### 4. ✅ Unity Ads Configuration (Now Active)
 ```dart
-// Real Unity Ads Game IDs configured:
-Android Game ID: 5716199
-iOS Game ID: 5716198
+// Real Unity Ads Game ID configured:
+Game ID: 5894439 (linked to AdMob)
 ```
 
 ## 🚀 Optimizations Applied for Faster Loading
@@ -75,8 +74,7 @@ iOS Game ID: 5716198
 2. **Unity Ads** select करें
 3. Unity Ads credentials enter करें:
    ```
-   Android Game ID: 5716199
-   iOS Game ID: 5716198
+   Game ID: 5894439 (both Android & iOS)
    ```
 4. Ad Unit Placement IDs set करें:
    ```
@@ -122,7 +120,7 @@ await AdService().testAdLoading('banner');
 
 2. **Unity Ads not showing?**
    - Check AdMob Console mediation setup
-   - Verify Game IDs: 5716199 (Android), 5716198 (iOS)
+   - Verify Game ID: 5894439 (linked to AdMob)
    - Enable test mode for debugging
 
 3. **Debug ad loading:**

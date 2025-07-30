@@ -34,8 +34,8 @@ class MediationConfig {
   // Unity Ads Configuration
   static const Map<String, dynamic> unityAdsConfig = {
     'enabled': true,
-    'game_id_android': '5716199', // Bitcoin Mining app ke liye Unity Game ID
-    'game_id_ios': '5716198', // iOS ke liye alag Game ID
+    'game_id_android': '5894439', // Real Unity Game ID linked to AdMob
+    'game_id_ios': '5894439', // Same Game ID for both platforms
     'test_mode': kDebugMode,
     'initialization_timeout': 10, // seconds
     'load_timeout': 8, // seconds
