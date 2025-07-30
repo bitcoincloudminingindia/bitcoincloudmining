@@ -740,23 +740,13 @@ class AdService {
       await _rewardedAd!.show(
         onUserEarnedReward: (ad, reward) {
           // This callback only fires when user completely watches the ad
+          // onUserEarnedReward callback से pata chalta hai ki ad pura dekha gaya
           rewardGranted = true;
           adCompletelyWatched = true;
           
-          // Additional validation: ensure minimum viewing time (15 seconds)
-          if (adStartTime != null) {
-            final viewingDuration = DateTime.now().difference(adStartTime!);
-            if (viewingDuration.inSeconds >= 15) {
-              onRewarded(reward.amount.toDouble());
-            } else {
-              // Ad completed too quickly, likely skipped - no reward
-              rewardGranted = false;
-              adCompletelyWatched = false;
-              onAdDismissed();
-            }
-          } else {
-            onRewarded(reward.amount.toDouble());
-          }
+          // Give reward only when ad is completely watched
+          // No minimum time check needed - onUserEarnedReward ensures complete viewing
+          onRewarded(reward.amount.toDouble());
         },
       );
 

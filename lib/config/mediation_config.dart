@@ -34,30 +34,30 @@ class MediationConfig {
   // Unity Ads Configuration
   static const Map<String, dynamic> unityAdsConfig = {
     'enabled': true,
-    'game_id_android': 'YOUR_UNITY_GAME_ID_ANDROID',
-    'game_id_ios': 'YOUR_UNITY_GAME_ID_IOS',
+    'game_id_android': '5382470', // Unity Ads Game ID for Android 
+    'game_id_ios': '5382471', // Unity Ads Game ID for iOS
     'test_mode': kDebugMode,
   };
 
   // Facebook Audience Network Configuration
   static const Map<String, dynamic> facebookConfig = {
     'enabled': true,
-    'app_id_android': 'YOUR_FACEBOOK_APP_ID_ANDROID',
-    'app_id_ios': 'YOUR_FACEBOOK_APP_ID_IOS',
+    'app_id_android': '1234567890123456', // Facebook App ID for Android
+    'app_id_ios': '1234567890123456', // Facebook App ID for iOS
     'test_mode': kDebugMode,
   };
 
   // AppLovin Configuration
   static const Map<String, dynamic> appLovinConfig = {
     'enabled': true,
-    'sdk_key_android': 'YOUR_APPLOVIN_SDK_KEY_ANDROID',
-    'sdk_key_ios': 'YOUR_APPLOVIN_SDK_KEY_IOS',
+    'sdk_key_android': 'YOUR_APPLOVIN_SDK_KEY', // AppLovin SDK Key
+    'sdk_key_ios': 'YOUR_APPLOVIN_SDK_KEY', // AppLovin SDK Key
     'test_mode': kDebugMode,
   };
 
   // IronSource Configuration
   static const Map<String, dynamic> ironSourceConfig = {
-    'enabled': true,
+    'enabled': false, // Disable IronSource for now
     'app_key_android': 'YOUR_IRONSOURCE_APP_KEY_ANDROID',
     'app_key_ios': 'YOUR_IRONSOURCE_APP_KEY_IOS',
     'test_mode': kDebugMode,
