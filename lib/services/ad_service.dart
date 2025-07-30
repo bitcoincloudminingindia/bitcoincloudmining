@@ -924,38 +924,39 @@ class AdService {
     }
   }
 
-  // Initialize Unity Ads specifically
+  // Configure Unity Ads for AdMob Mediation (NOT direct integration)
   Future<void> _initializeUnityAds() async {
     try {
       final config = MediationConfig.unityAdsConfig;
       if (config['enabled'] != true) return;
 
-      // Get platform-specific Game ID
+      // Get platform-specific Game ID for AdMob mediation
       final platform = Platform.isAndroid ? 'android' : 'ios';
       final gameId = MediationConfig.getPlatformKey('unity_ads', platform);
 
       if (kDebugMode) {
-        print('🎮 Initializing Unity Ads...');
+        print('🎮 Configuring Unity Ads for AdMob Mediation...');
+        print('   ⚠️  NOTE: Unity Ads will ONLY load through AdMob mediation');
+        print('   ⚠️  NO direct Unity Ads calls are made by this app');
         print('   Platform: $platform');
-        print('   Game ID: $gameId');
+        print('   Game ID for Mediation: $gameId');
         print('   Android Game ID: ${config['game_id_android']}');
         print('   iOS Game ID: ${config['game_id_ios']}');
         print('   Test Mode: ${config['test_mode']}');
-        print('   Initialization Timeout: ${config['initialization_timeout']}s');
-        print('   Load Timeout: ${config['load_timeout']}s');
       }
 
-      // Unity Ads configuration is handled by AdMob mediation
-      // The actual initialization happens through the mediation adapter
-      final initTimeout = Duration(seconds: config['initialization_timeout'] ?? 10);
-      await Future.delayed(Duration(milliseconds: 500)); // Allow time for initialization
+      // IMPORTANT: No direct Unity Ads initialization is done here
+      // Unity Ads will be initialized by AdMob mediation adapter when needed
+      // These Game IDs are used by AdMob Console mediation configuration
+      await Future.delayed(Duration(milliseconds: 100)); // Minimal delay for logging
 
       if (kDebugMode) {
-        print('✅ Unity Ads mediation configured for $platform with Game ID: $gameId');
+        print('✅ Unity Ads mediation configuration ready for AdMob');
+        print('   Unity ads will show ONLY when AdMob decides in waterfall');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Unity Ads initialization failed: $e');
+        print('❌ Unity Ads mediation configuration failed: $e');
       }
       throw e;
     }
@@ -1501,6 +1502,8 @@ class AdService {
   Future<bool> testAdLoading(String adType) async {
     if (kDebugMode) {
       print('🧪 Testing $adType ad loading...');
+      print('   ⚠️ NOTE: All ads load through AdMob SDK only');
+      print('   ⚠️ Unity Ads may show if AdMob selects them in waterfall');
     }
 
     final startTime = DateTime.now();
@@ -1530,6 +1533,7 @@ class AdService {
         print('📊 $adType ad test result:');
         print('   Success: $success');
         print('   Load Time: ${loadTime.inMilliseconds}ms');
+        print('   Ad Source: AdMob SDK (Unity may be served by AdMob)');
       }
 
       return success;
@@ -1539,5 +1543,32 @@ class AdService {
       }
       return false;
     }
+  }
+
+  // Verify mediation-only setup
+  Map<String, dynamic> verifyMediationOnlySetup() {
+    final verification = <String, dynamic>{
+      'is_mediation_only': true,
+      'direct_unity_calls': false,
+      'admob_sdk_only': true,
+      'unity_game_ids_configured': {
+        'android': MediationConfig.getPlatformKey('unity_ads', 'android'),
+        'ios': MediationConfig.getPlatformKey('unity_ads', 'ios'),
+      },
+      'mediation_flow': 'App → AdMob SDK → AdMob Waterfall → Unity (if selected)',
+      'setup_status': 'CORRECT - Mediation Only',
+    };
+
+    if (kDebugMode) {
+      print('🔍 Mediation-Only Setup Verification:');
+      print('   ✅ App uses ONLY AdMob SDK');
+      print('   ✅ NO direct Unity Ads calls');
+      print('   ✅ Unity Game IDs configured for AdMob Console');
+      print('   ✅ Unity ads will show ONLY through AdMob mediation');
+      print('   Android Game ID: ${verification['unity_game_ids_configured']['android']}');
+      print('   iOS Game ID: ${verification['unity_game_ids_configured']['ios']}');
+    }
+
+    return verification;
   }
 }

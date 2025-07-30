@@ -31,14 +31,16 @@ class MediationConfig {
     'iron_source',
   ];
 
-  // Unity Ads Configuration
+  // Unity Ads Configuration for AdMob Mediation ONLY
+  // WARNING: These IDs are for AdMob Console mediation setup ONLY
+  // Unity Ads will NOT be called directly by this app
   static const Map<String, dynamic> unityAdsConfig = {
     'enabled': true,
-    'game_id_android': '5894439', // Android Unity Game ID linked to AdMob
-    'game_id_ios': '5894438', // iOS Unity Game ID linked to AdMob
+    'game_id_android': '5894439', // Android Unity Game ID for AdMob mediation
+    'game_id_ios': '5894438', // iOS Unity Game ID for AdMob mediation
     'test_mode': kDebugMode,
-    'initialization_timeout': 10, // seconds
-    'load_timeout': 8, // seconds
+    'initialization_timeout': 10, // seconds (for AdMob mediation adapter)
+    'load_timeout': 8, // seconds (for AdMob mediation waterfall)
   };
 
   // Facebook Audience Network Configuration

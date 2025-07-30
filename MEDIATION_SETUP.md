@@ -29,12 +29,34 @@ implementation("com.google.ads.mediation:unity:4.15.1.0")
 'native': 'ca-app-pub-3537329799200606/2260507229'   // Native_Contract_Card
 ```
 
-### 4. ✅ Unity Ads Configuration (Now Active)
+### 4. ✅ Unity Ads Configuration (Mediation-Only Setup)
 ```dart
-// Real Unity Ads Game IDs configured:
-Android Game ID: 5894439 (linked to AdMob)
-iOS Game ID: 5894438 (linked to AdMob)
+// Unity Ads Game IDs for AdMob Mediation ONLY:
+// ⚠️ WARNING: Unity Ads will NOT load directly
+// ⚠️ Unity ads show ONLY through AdMob mediation waterfall
+Android Game ID: 5894439 (for AdMob Console mediation)
+iOS Game ID: 5894438 (for AdMob Console mediation)
 ```
+
+## ⚠️ Important: Mediation-Only Implementation
+
+### How It Works:
+1. **App सिर्फ AdMob SDK use करती है** - कोई direct Unity calls नहीं
+2. **AdMob waterfall decides कब Unity ads show करना है**
+3. **Unity Game IDs सिर्फ AdMob Console configuration के लिए हैं**
+4. **Unity Ads automatically load होते हैं जब AdMob उन्हें select करती है**
+
+### Ad Loading Flow:
+```
+App Request → AdMob SDK → AdMob Waterfall Check → Unity Ads (if selected)
+```
+
+### What This Means:
+- ✅ **Only AdMob ad requests** from app code
+- ✅ **Unity shows automatically** when AdMob chooses it
+- ✅ **No Unity SDK calls** in Flutter code
+- ✅ **Better fill rates** through mediation
+- ✅ **AdMob handles** all ad network switching
 
 ## 🚀 Optimizations Applied for Faster Loading
 
