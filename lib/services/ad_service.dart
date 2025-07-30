@@ -119,6 +119,16 @@ class AdService {
   String _getAdUnitId(String adType) {
     if (kIsWeb) return '';
 
+    // Use test IDs in debug mode for development
+    if (kDebugMode) {
+      final testIds = {
+        'banner': 'ca-app-pub-3940256099942544/6300978111', // Test banner ID
+        'rewarded': 'ca-app-pub-3940256099942544/5224354917', // Test rewarded ID
+        'native': 'ca-app-pub-3940256099942544/2247696110', // Test native ID
+      };
+      return testIds[adType] ?? '';
+    }
+
     final platform = Platform.isAndroid ? 'android' : 'ios';
     return _adUnitIds[platform]?[adType] ?? '';
   }
@@ -234,7 +244,7 @@ class AdService {
   void _startBannerAdAutoRefresh() {
     _bannerAdRefreshTimer?.cancel();
     _bannerAdRefreshTimer =
-        Timer.periodic(const Duration(seconds: 60), (timer) {
+        Timer.periodic(const Duration(seconds: 120), (timer) { // Increased from 60 to 120 seconds for AdMob policy compliance
       _isBannerAdLoaded = false;
       _bannerAd?.dispose();
       _bannerAd = null;
@@ -659,10 +669,9 @@ class AdService {
     required VoidCallback onAdDismissed,
   }) async {
     if (kIsWeb) {
-      // Simulate ad for web testing
-      await Future.delayed(const Duration(seconds: 2));
-      onRewarded(5.0); // Give 5x reward for web
-      return true;
+      // Web platform doesn't support real ads - return false to comply with AdMob policies
+      onAdDismissed();
+      return false;
     }
 
     if (!_isRewardedAdLoaded || _rewardedAd == null) {
