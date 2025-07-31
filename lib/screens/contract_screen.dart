@@ -428,9 +428,7 @@ class _ContractScreenState extends State<ContractScreen>
     }
     _tabController.dispose();
     _saveEarnings();
-    try {
-      _adService.dispose();
-    } catch (e) {}
+    _adService.dispose();
     super.dispose();
   }
 

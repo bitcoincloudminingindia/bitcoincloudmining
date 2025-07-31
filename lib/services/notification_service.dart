@@ -64,7 +64,6 @@ class NotificationService {
 
     // Initialize mining notification
     await _initializeMiningNotification();
-
   }
 
   Future<void> _createNotificationChannels() async {
@@ -229,8 +228,7 @@ class NotificationService {
           'Content-Type': 'application/json',
         },
       );
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   Future<void> markAllAsRead() async {
@@ -245,8 +243,7 @@ class NotificationService {
           'Content-Type': 'application/json',
         },
       );
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   Future<void> sendLoginNotification(
@@ -274,16 +271,13 @@ class NotificationService {
         'timestamp': DateTime.now().toIso8601String(),
       };
 
-
       final response = await ApiService.post(
         '/auth/login-notification',
         data,
       );
 
-      if (!response['success']) {
-      }
-    } catch (e) {
-    }
+      if (!response['success']) {}
+    } catch (e) {}
   }
 
   void dispose() {
@@ -303,9 +297,7 @@ class NotificationService {
       _updateTimer = Timer.periodic(const Duration(seconds: 30), (_) {
         _updateMiningNotification();
       });
-
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   Future<void> _createMiningChannel() async {
@@ -366,9 +358,7 @@ class NotificationService {
         null, // body is handled by BigTextStyleInformation
         notificationDetails,
       );
-
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   Future<void> _updateMiningNotification() async {
@@ -377,8 +367,7 @@ class NotificationService {
     try {
       // Update stats (in real app, these would come from your mining service)
       await _showMiningNotification();
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   Future<void> updateMiningStats({
@@ -431,9 +420,7 @@ class NotificationService {
 
       // Remove the notification
       await _notifications.cancel(_notificationId);
-
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   bool get isActive => _isNotificationActive;

@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:socket_io_client/socket_io_client.dart' as IO;
-import 'package:flutter/foundation.dart';
 
 import '../config/api_config.dart';
 import '../utils/error_handler.dart';
@@ -22,8 +22,10 @@ class ApiService {
     try {
       if (kReleaseMode || kIsWeb) {
         // Warm up the failover manager by getting the active backend
-        final activeBackend = await BackendFailoverManager().getActiveBackendUrl();
-        debugPrint('🚀 Failover system initialized with backend: $activeBackend');
+        final activeBackend =
+            await BackendFailoverManager().getActiveBackendUrl();
+        debugPrint(
+            '🚀 Failover system initialized with backend: $activeBackend');
       } else {
         debugPrint('🧪 Development mode: Using local backend');
       }
@@ -289,24 +291,30 @@ class ApiService {
 
         switch (method.toUpperCase()) {
           case 'GET':
-            response = await http.get(url, headers: finalHeaders).timeout(_timeout);
+            response =
+                await http.get(url, headers: finalHeaders).timeout(_timeout);
             break;
           case 'POST':
-            response = await http.post(
-              url,
-              headers: finalHeaders,
-              body: body != null ? jsonEncode(body) : null,
-            ).timeout(_timeout);
+            response = await http
+                .post(
+                  url,
+                  headers: finalHeaders,
+                  body: body != null ? jsonEncode(body) : null,
+                )
+                .timeout(_timeout);
             break;
           case 'PUT':
-            response = await http.put(
-              url,
-              headers: finalHeaders,
-              body: body != null ? jsonEncode(body) : null,
-            ).timeout(_timeout);
+            response = await http
+                .put(
+                  url,
+                  headers: finalHeaders,
+                  body: body != null ? jsonEncode(body) : null,
+                )
+                .timeout(_timeout);
             break;
           case 'DELETE':
-            response = await http.delete(url, headers: finalHeaders).timeout(_timeout);
+            response =
+                await http.delete(url, headers: finalHeaders).timeout(_timeout);
             break;
           default:
             throw Exception('Unsupported HTTP method: $method');

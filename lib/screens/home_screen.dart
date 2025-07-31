@@ -384,6 +384,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _adService.dispose();
     // Only save mining state, don't add earnings prematurely
     if (_isMining) {
       _saveMiningState();

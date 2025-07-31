@@ -251,7 +251,7 @@ app.get('/', (req, res) => {
   res.status(200).json({
     status: 'ok',
     message: 'Bitcoin Cloud Mining API is running',
-    version: '1.0.4',
+    version: '1.0.5',
     timestamp: new Date().toISOString()
   });
 });
@@ -387,7 +387,7 @@ app.get('/status', (req, res) => {
       status: 'ok',
       uptime: Math.floor(uptime),
       timestamp: new Date().toISOString(),
-      version: '1.0.4'
+      version: '1.0.5'
     });
   } catch (error) {
     res.status(503).json({

@@ -3,11 +3,13 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+
 import '../services/backend_failover_manager.dart';
 
 class ApiConfig {
   // Initialize failover manager
-  static final BackendFailoverManager _failoverManager = BackendFailoverManager();
+  static final BackendFailoverManager _failoverManager =
+      BackendFailoverManager();
 
   /// ✅ Auto-switching base URL with intelligent failover
   static String get baseUrl {
@@ -15,7 +17,8 @@ class ApiConfig {
       // 🎯 For production builds, use cached URL from failover manager
       // This will return the last known working backend without async call
       final cachedUrl = _failoverManager.getCachedBackendUrl();
-      return cachedUrl ?? 'https://bitcoincloudmining-production.up.railway.app'; // Use Railway as fallback since it's working
+      return cachedUrl ??
+          'https://bitcoincloudmining-production.up.railway.app'; // Use Railway as fallback since it's working
     }
 
     // 🧪 Development mode - use local servers

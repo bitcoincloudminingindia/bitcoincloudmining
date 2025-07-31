@@ -10,9 +10,8 @@ import '../config/mediation_config.dart';
 import 'consent_service.dart';
 
 class AdService {
-  static final AdService _instance = AdService._internal();
-  factory AdService() => _instance;
-  AdService._internal();
+  // Singleton hata diya gaya hai, ab har screen par naya instance banega
+  AdService();
 
   // Ad configuration
   static const int MAX_RETRY_ATTEMPTS = 2; // Reduced from 3 to 2
@@ -118,8 +117,17 @@ class AdService {
 
   // Check if consent is given for showing ads
   bool _canShowAds() {
-    final consentService = ConsentService();
-    return !consentService.isConsentRequired || consentService.hasUserConsent;
+    try {
+      final consentService = ConsentService();
+      final canShow =
+          !consentService.isConsentRequired || consentService.hasUserConsent;
+      print(
+          '🔍 Consent check: Required=${consentService.isConsentRequired}, Given=${consentService.hasUserConsent}, CanShow=$canShow');
+      return canShow;
+    } catch (e) {
+      print('❌ Consent check failed: $e');
+      return false; // Default to false if consent check fails
+    }
   }
 
   // Show consent dialog if required
@@ -139,10 +147,30 @@ class AdService {
 
   // Get ad unit ID based on platform and ad type
   String _getAdUnitId(String adType) {
-    if (kIsWeb) return '';
+    try {
+      // Debug platform detection
+      print('🔍 Platform Detection Debug:');
+      print('  - kIsWeb: $kIsWeb');
+      print('  - Platform.isAndroid: ${Platform.isAndroid}');
+      print('  - Platform.isIOS: ${Platform.isIOS}');
+      print('  - Platform.operatingSystem: ${Platform.operatingSystem}');
 
-    final platform = Platform.isAndroid ? 'android' : 'ios';
-    return _adUnitIds[platform]?[adType] ?? '';
+      if (kIsWeb) {
+        print('🌐 Web platform detected, no ad unit ID available');
+        return '';
+      }
+
+      final platform = Platform.isAndroid ? 'android' : 'ios';
+      final adUnitId = _adUnitIds[platform]?[adType] ?? '';
+
+      print(
+          '📱 Platform: $platform, Ad Type: $adType, Ad Unit ID: ${adUnitId.isNotEmpty ? "Set" : "Empty"}');
+
+      return adUnitId;
+    } catch (e) {
+      print('❌ Error getting ad unit ID: $e');
+      return '';
+    }
   }
 
   // Update ad metrics
@@ -359,26 +387,42 @@ class AdService {
   // Load rewarded ad with better error handling and mediation tracking
   Future<void> loadRewardedAd() async {
     if (kIsWeb) return;
-    if (!_canShowAds()) return; // Check consent first
+    if (!_canShowAds()) {
+      print('❌ Cannot show ads: Consent not given');
+      return; // Check consent first
+    }
 
     if (_isRewardedAdLoading) {
+      print('⚠️ Rewarded ad already loading, skipping...');
       return;
     }
 
     _isRewardedAdLoading = true;
 
+    // Add timeout for loading state to prevent stuck state
+    Timer(const Duration(seconds: 15), () {
+      if (_isRewardedAdLoading) {
+        print('⚠️ Rewarded ad loading timeout, resetting state');
+        _isRewardedAdLoading = false;
+      }
+    });
+
     try {
       final adUnitId = _getAdUnitId('rewarded');
       if (adUnitId.isEmpty) {
+        print('❌ Rewarded ad unit ID is empty');
         _isRewardedAdLoading = false;
         return;
       }
+
+      print('🔄 Loading rewarded ad with ID: $adUnitId');
 
       await RewardedAd.load(
         adUnitId: adUnitId,
         request: const AdRequest(),
         rewardedAdLoadCallback: RewardedAdLoadCallback(
           onAdLoaded: (ad) {
+            print('✅ Rewarded ad loaded successfully');
             _rewardedAd = ad;
             _isRewardedAdLoaded = true;
             _isRewardedAdLoading = false;
@@ -392,10 +436,12 @@ class AdService {
             // Set up ad event listeners
             ad.fullScreenContentCallback = FullScreenContentCallback(
               onAdDismissedFullScreenContent: (ad) {
+                print('📱 Rewarded ad dismissed');
                 _isRewardedAdLoaded = false;
                 ad.dispose();
               },
               onAdFailedToShowFullScreenContent: (ad, error) {
+                print('❌ Rewarded ad failed to show: $error');
                 _isRewardedAdLoaded = false;
                 ad.dispose();
 
@@ -405,6 +451,7 @@ class AdService {
                 }
               },
               onAdShowedFullScreenContent: (ad) {
+                print('📺 Rewarded ad showed successfully');
                 // Update mediation metrics for successful show
                 if (_isMediationEnabled) {
                   _updateMediationMetrics('admob', true, null);
@@ -413,6 +460,7 @@ class AdService {
             );
           },
           onAdFailedToLoad: (error) {
+            print('❌ Rewarded ad failed to load: $error');
             _isRewardedAdLoading = false;
 
             // Update mediation metrics for failed load
@@ -423,6 +471,7 @@ class AdService {
         ),
       );
     } catch (e) {
+      print('❌ Rewarded ad load exception: $e');
       _isRewardedAdLoading = false;
 
       // Update mediation metrics for exception
@@ -685,14 +734,25 @@ class AdService {
   }) async {
     if (kIsWeb) {
       // Simulate ad for web testing with proper validation
+      print('🌐 Web platform detected, simulating rewarded ad');
       await Future.delayed(const Duration(seconds: 2));
       onRewarded(5.0); // Give 5x reward for web
       return true;
     }
 
+    // Check consent before showing ad
+    if (!_canShowAds()) {
+      print('❌ Cannot show rewarded ad: Consent not given');
+      onAdDismissed();
+      return false;
+    }
+
     if (!_isRewardedAdLoaded || _rewardedAd == null) {
+      print('🔄 Rewarded ad not loaded, attempting to load...');
       await loadRewardedAd();
       if (!_isRewardedAdLoaded || _rewardedAd == null) {
+        print('❌ Failed to load rewarded ad');
+        onAdDismissed();
         return false;
       }
     }
@@ -702,24 +762,31 @@ class AdService {
     bool adCompletelyWatched = false;
 
     try {
+      print('📺 Showing rewarded ad...');
+
       _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
         onAdDismissedFullScreenContent: (ad) {
+          print('📱 Rewarded ad dismissed by user');
           ad.dispose();
           _isRewardedAdLoaded = false;
 
           // Only grant reward if ad was completely watched AND reward was earned
           if (rewardGranted && adCompletelyWatched) {
+            print('✅ Reward already granted in onUserEarnedReward');
             // Reward already granted in onUserEarnedReward
           } else {
+            print('❌ Ad dismissed without completion, no reward');
             // Ad was dismissed without completion, call onAdDismissed
             onAdDismissed();
           }
 
           // Preload next ad
+          print('🔄 Preloading next rewarded ad');
           loadRewardedAd();
           _updateAdMetrics('rewarded', adShown && rewardGranted, null);
         },
         onAdFailedToShowFullScreenContent: (ad, error) {
+          print('❌ Rewarded ad failed to show: $error');
           ad.dispose();
           _isRewardedAdLoaded = false;
 
@@ -727,10 +794,12 @@ class AdService {
           onAdDismissed();
 
           // Preload next ad
+          print('🔄 Preloading next rewarded ad after failure');
           loadRewardedAd();
           _updateAdMetrics('rewarded', false, null);
         },
         onAdShowedFullScreenContent: (ad) {
+          print('📺 Rewarded ad showed successfully');
           adShown = true;
         },
       );
@@ -739,6 +808,7 @@ class AdService {
         onUserEarnedReward: (ad, reward) {
           // This callback only fires when user completely watches the ad
           // onUserEarnedReward callback से pata chalta hai ki ad pura dekha gaya
+          print('🎉 User earned reward: ${reward.amount}');
           rewardGranted = true;
           adCompletelyWatched = true;
 
@@ -748,12 +818,15 @@ class AdService {
         },
       );
 
+      print('✅ Rewarded ad show completed successfully');
       return true;
     } catch (e) {
+      print('❌ Rewarded ad show exception: $e');
       _isRewardedAdLoaded = false;
       _rewardedAd?.dispose();
 
       // Preload next ad
+      print('🔄 Preloading next rewarded ad after exception');
       loadRewardedAd();
 
       // Call onAdDismissed on error
@@ -793,7 +866,7 @@ class AdService {
             const Padding(
               padding: EdgeInsets.only(bottom: 4),
               child: Text(
-                'विज्ञापन',
+                'Advertisement',
                 style: TextStyle(
                   fontSize: 8,
                   color: Colors.grey,
