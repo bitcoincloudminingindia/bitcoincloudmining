@@ -298,9 +298,17 @@ class AdService {
     });
   }
 
-  // Load banner ad
+  // Load banner ad - TRY IRONSOURCE FIRST, THEN ADMOB
   Future<void> loadBannerAd() async {
     if (!_canShowAds()) return; // Check consent first
+    
+    // Try IronSource banner first if available
+    if (_ironSourceService.isInitialized && _ironSourceService.isBannerAdLoaded) {
+      developer.log('🎯 Using IronSource Banner ad', name: 'AdService');
+      return;
+    }
+
+    // Fallback to AdMob banner
     if (_isBannerAdLoaded && _isCachedAdValid('banner')) return;
 
     await _loadAdWithRetry(
@@ -348,7 +356,16 @@ class AdService {
 
   /// Returns a Future that completes with the banner ad widget when loaded, or a placeholder if not available.
   Future<Widget?> getBannerAdWidget() async {
-    // If already loaded, return immediately
+    // Try IronSource banner first if available
+    if (_ironSourceService.isInitialized && _ironSourceService.isBannerAdLoaded) {
+      developer.log('🎯 Using IronSource Banner ad widget', name: 'AdService');
+      final ironSourceWidget = _ironSourceService.getBannerAdWidget();
+      if (ironSourceWidget != null) {
+        return ironSourceWidget;
+      }
+    }
+
+    // Fallback to AdMob banner
     if (_isBannerAdLoaded && _bannerAd != null) {
       return getBannerAd();
     }
@@ -602,68 +619,10 @@ class AdService {
     await loadNativeAd();
   }
 
-  // Get native ad widget with improved error handling and refresh capability
+  // Get native ad widget - ONLY ADMOB (IronSource removed for native ads)
   Widget getNativeAd() {
-    // Try IronSource native ad first if available
-    if (_ironSourceService.isInitialized &&
-        _ironSourceService.isNativeAdLoaded) {
-      developer.log('Using IronSource Native ad', name: 'AdService');
-      final ironSourceWidget = _ironSourceService.getNativeAdWidget(
-        height: 360,
-        width: 300,
-        templateType: LevelPlayTemplateType.MEDIUM,
-      );
-      if (ironSourceWidget != null) {
-        return Container(
-          height: 360,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey[300]!),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(26),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Stack(
-              children: [
-                // IronSource native ad content
-                Positioned.fill(
-                  child: ironSourceWidget,
-                ),
-                // Close button for better UX
-                Positioned(
-                  top: 4,
-                  right: 4,
-                  child: GestureDetector(
-                    onTap: () {
-                      // Optionally track ad dismissal
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withAlpha(179),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 12,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-    }
+    // Use only AdMob for native ads (IronSource removed)
+    developer.log('Using AdMob Native ad only', name: 'AdService');
 
     // Fallback to AdMob native ad
     if (!_isNativeAdLoaded || _nativeAd == null) {
@@ -815,19 +774,20 @@ class AdService {
       return false;
     }
 
-    // Try IronSource first if available (commented out for now as methods not available)
-    // if (_ironSourceService.isInitialized &&
-    //     _ironSourceService.isRewardedAdLoaded) {
-    //   print('🎯 Trying IronSource Rewarded ad...');
-    //   final success = await _ironSourceService.showRewardedAd(
-    //     onRewarded: onRewarded,
-    //     onAdDismissed: onAdDismissed,
-    //   );
-    //   if (success) {
-    //     print('✅ IronSource Rewarded ad shown successfully');
-    //     return true;
-    //   }
-    // }
+    // Try IronSource first if available
+    if (_ironSourceService.isInitialized && _ironSourceService.isRewardedAdLoaded) {
+      developer.log('🎯 Trying IronSource Rewarded ad...', name: 'AdService');
+      try {
+        final success = await _ironSourceService.showRewardedAd();
+        if (success) {
+          developer.log('✅ IronSource Rewarded ad shown successfully', name: 'AdService');
+          onRewarded(5.0); // Give reward for IronSource ad
+          return true;
+        }
+      } catch (e) {
+        developer.log('❌ IronSource Rewarded ad failed: $e', name: 'AdService');
+      }
+    }
 
     // Fallback to AdMob
     if (!_isRewardedAdLoaded || _rewardedAd == null) {

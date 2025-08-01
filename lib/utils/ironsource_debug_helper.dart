@@ -79,12 +79,11 @@ class IronSourceDebugHelper {
     final results = <String, dynamic>{};
     
     try {
-      // Your current ad unit IDs
+      // Your current ad unit IDs (Native removed, only Banner and Rewarded)
       const adUnitIds = {
         'banner': 'qgvxpwcrq6u2y0vq',
-        'interstitial': 'i5bc3rl0ebvk8xjk',
         'rewarded': 'lcv9s3mjszw657sy',
-        'native': 'lcv9s3mjszw657sy',
+        // Native ad removed - using AdMob for native ads only
       };
       
       for (final entry in adUnitIds.entries) {
@@ -179,12 +178,12 @@ class IronSourceDebugHelper {
     final results = <String, dynamic>{};
     
     try {
-      results['native_supported'] = true;
+      results['native_supported'] = false; // Removed - using AdMob for native
       results['rewarded_supported'] = true;
-      results['interstitial_supported'] = true;
-      results['banner_supported'] = false; // IronSource banner might not be supported
+      results['interstitial_supported'] = false; // Removed
+      results['banner_supported'] = true; // IronSource banner supported
       
-      results['recommendation'] = '✅ Ad loading capabilities appear supported';
+      results['recommendation'] = '✅ Banner and Rewarded ads supported (Native using AdMob)';
       
     } catch (e) {
       results['error'] = e.toString();
