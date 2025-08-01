@@ -86,6 +86,11 @@ dependencies {
     implementation("com.google.android.gms:play-services-ads:24.4.0") // AdMob SDK (latest)
     implementation("com.unity3d.ads:unity-ads:4.15.1") // Unity Ads SDK (latest)
     implementation("com.google.ads.mediation:unity:4.15.1.0") // Unity adapter for AdMob (latest)
+    
+    // IronSource Mediation Dependencies
+    implementation("com.google.android.gms:play-services-ads-identifier:18.2.0")
+    implementation("com.google.android.gms:play-services-appset:16.1.0")
+    
     implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-messaging")

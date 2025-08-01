@@ -72,7 +72,7 @@ dependencies:
   # Uncomment these if you want to add more ad networks
   # facebook_audience_network: ^0.4.0  # Facebook Audience Network
   # applovin_max: ^3.5.0  # AppLovin MAX
-  # ironsource_mediation: ^7.0.0  # IronSource
+  ironsource_mediation: ^3.2.0  # IronSource Mediation
 
 dev_dependencies:
   flutter_test:

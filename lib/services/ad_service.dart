@@ -1,13 +1,16 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:ironsource_mediation/ironsource_mediation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/mediation_config.dart';
 import 'consent_service.dart';
+import 'ironsource_service.dart';
 
 class AdService {
   // Singleton hata diya gaya hai, ab har screen par naya instance banega
@@ -56,6 +59,9 @@ class AdService {
   final bool _isMediationEnabled = MediationConfig.enabled;
   bool _isMediationInitialized = false;
   final Map<String, bool> _mediationNetworkStates = {};
+
+  // IronSource service
+  final IronSourceService _ironSourceService = IronSourceService.instance;
 
   // Ad tracking
   final Map<String, int> _adShowCounts = {};
@@ -598,6 +604,68 @@ class AdService {
 
   // Get native ad widget with improved error handling and refresh capability
   Widget getNativeAd() {
+    // Try IronSource native ad first if available
+    if (_ironSourceService.isInitialized &&
+        _ironSourceService.isNativeAdLoaded) {
+      developer.log('Using IronSource Native ad', name: 'AdService');
+      final ironSourceWidget = _ironSourceService.getNativeAdWidget(
+        height: 360,
+        width: 300,
+        templateType: LevelPlayTemplateType.MEDIUM,
+      );
+      if (ironSourceWidget != null) {
+        return Container(
+          height: 360,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[300]!),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(26),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Stack(
+              children: [
+                // IronSource native ad content
+                Positioned.fill(
+                  child: ironSourceWidget,
+                ),
+                // Close button for better UX
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: GestureDetector(
+                    onTap: () {
+                      // Optionally track ad dismissal
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withAlpha(179),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+
+    // Fallback to AdMob native ad
     if (!_isNativeAdLoaded || _nativeAd == null) {
       return Container(
         height: 360,
@@ -747,6 +815,21 @@ class AdService {
       return false;
     }
 
+    // Try IronSource first if available (commented out for now as methods not available)
+    // if (_ironSourceService.isInitialized &&
+    //     _ironSourceService.isRewardedAdLoaded) {
+    //   print('🎯 Trying IronSource Rewarded ad...');
+    //   final success = await _ironSourceService.showRewardedAd(
+    //     onRewarded: onRewarded,
+    //     onAdDismissed: onAdDismissed,
+    //   );
+    //   if (success) {
+    //     print('✅ IronSource Rewarded ad shown successfully');
+    //     return true;
+    //   }
+    // }
+
+    // Fallback to AdMob
     if (!_isRewardedAdLoaded || _rewardedAd == null) {
       print('🔄 Rewarded ad not loaded, attempting to load...');
       await loadRewardedAd();
@@ -912,6 +995,9 @@ class AdService {
       // Initialize mediation
       await _initializeMediation();
 
+      // Initialize IronSource
+      await _ironSourceService.initialize();
+
       // Only preload ads if user has given consent
       if (consentService.hasUserConsent) {
         // Preload ads
@@ -1008,7 +1094,10 @@ class AdService {
         // AppLovin initialization
         break;
       case 'iron_source':
-        // IronSource initialization
+        // IronSource is initialized separately
+        if (_ironSourceService.isInitialized) {
+          _mediationNetworkStates['iron_source'] = true;
+        }
         break;
       default:
         if (kDebugMode) {
@@ -1028,6 +1117,7 @@ class AdService {
           'ad_failures': _mediationAdFailures,
           'revenue': _mediationRevenue,
         },
+        'ironsource': _ironSourceService.metrics,
       };
 
   // Check if mediation is working properly
@@ -1112,6 +1202,11 @@ class AdService {
       await loadBannerAd();
       await loadNativeAd();
 
+      // Launch IronSource test suite if available
+      if (_ironSourceService.isInitialized) {
+        await _ironSourceService.launchTestSuite();
+      }
+
       if (kDebugMode) {
         print('✅ Mediation test completed');
       }
@@ -1129,6 +1224,9 @@ class AdService {
     _nativeAd?.dispose();
     _nativeAdRefreshTimer?.cancel();
     _bannerAdRefreshTimer?.cancel(); // Dispose banner refresh timer
+
+    // Dispose IronSource service
+    _ironSourceService.dispose();
 
     _isBannerAdLoaded = false;
     _isRewardedAdLoaded = false;

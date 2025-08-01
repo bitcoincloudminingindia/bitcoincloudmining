@@ -34,7 +34,7 @@ class MediationConfig {
   // Unity Ads Configuration
   static const Map<String, dynamic> unityAdsConfig = {
     'enabled': true,
-    'game_id_android': '5894439', // Unity Ads Game ID for Android 
+    'game_id_android': '5894439', // Unity Ads Game ID for Android
     'game_id_ios': '5894438', // Unity Ads Game ID for iOS
     'test_mode': kDebugMode,
   };
@@ -57,9 +57,9 @@ class MediationConfig {
 
   // IronSource Configuration
   static const Map<String, dynamic> ironSourceConfig = {
-    'enabled': false, // Disable IronSource for now
-    'app_key_android': 'YOUR_IRONSOURCE_APP_KEY_ANDROID',
-    'app_key_ios': 'YOUR_IRONSOURCE_APP_KEY_IOS',
+    'enabled': true, // Enable IronSource
+    'app_key_android': '2314651cd',
+    'app_key_ios': '2314651cd',
     'test_mode': kDebugMode,
   };
 
