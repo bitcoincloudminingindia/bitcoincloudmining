@@ -605,66 +605,69 @@ class AdService {
   // Get native ad widget with improved error handling and refresh capability
   Widget getNativeAd() {
     // Try IronSource native ad first if available
-    if (_ironSourceService.isInitialized &&
-        _ironSourceService.isNativeAdLoaded) {
-      developer.log('Using IronSource Native ad', name: 'AdService');
-      final ironSourceWidget = _ironSourceService.getNativeAdWidget(
-        height: 360,
-        width: 300,
-        templateType: LevelPlayTemplateType.MEDIUM,
-      );
-      if (ironSourceWidget != null) {
-        return Container(
+    try {
+      if (_ironSourceService.isInitialized &&
+          _ironSourceService.isNativeAdLoaded) {
+        developer.log('Using IronSource Native ad', name: 'AdService');
+        final ironSourceWidget = _ironSourceService.getNativeAdWidget(
           height: 360,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey[300]!),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(26),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Stack(
-              children: [
-                // IronSource native ad content
-                Positioned.fill(
-                  child: ironSourceWidget,
-                ),
-                // Close button for better UX
-                Positioned(
-                  top: 4,
-                  right: 4,
-                  child: GestureDetector(
-                    onTap: () {
-                      // Optionally track ad dismissal
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withAlpha(179),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 12,
-                      ),
-                    ),
-                  ),
+          width: 300,
+          templateType: LevelPlayTemplateType.MEDIUM,
+        );
+        if (ironSourceWidget != null) {
+          return Container(
+            height: 360,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[300]!),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(26),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
-          ),
-        );
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Stack(
+                children: [
+                  // IronSource native ad content
+                  Positioned.fill(
+                    child: ironSourceWidget,
+                  ),
+                  // Close button for better UX
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () {
+                        // Optionally track ad dismissal
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withAlpha(179),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
       }
+    } catch (e) {
+      // Optionally log the error or handle fallback
     }
-
     // Fallback to AdMob native ad
     if (!_isNativeAdLoaded || _nativeAd == null) {
       return Container(
@@ -716,7 +719,6 @@ class AdService {
         ),
       );
     }
-
     return Container(
       height: 360,
       decoration: BoxDecoration(
@@ -765,28 +767,6 @@ class AdService {
                     );
                   }
                 },
-              ),
-            ),
-            // Close button for better UX
-            Positioned(
-              top: 4,
-              right: 4,
-              child: GestureDetector(
-                onTap: () {
-                  // Optionally track ad dismissal
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withAlpha(179),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 12,
-                  ),
-                ),
               ),
             ),
           ],
@@ -1135,8 +1115,7 @@ class AdService {
   Map<String, dynamic> get mediationPerformance {
     final totalShows =
         _mediationAdShows.values.fold(0, (sum, count) => sum + count);
-    final totalFailures =
-        _mediationAdFailures.values.fold(0, (sum, count) => sum + count);
+    final totalFailures = _mediationAdFailures.values.fold(0, (sum, count) => sum + count);
     final totalRevenue =
         _mediationRevenue.values.fold(0.0, (sum, revenue) => sum + revenue);
 
