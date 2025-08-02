@@ -308,7 +308,24 @@ class IronSourceService {
 class _LevelPlayInitListener implements LevelPlayInitListener {
   @override
   void onInitFailed(LevelPlayInitError error) {
-    developer.log('IronSource init failed: ${error.toString()}',
+    // Handle error more robustly - use toString() as fallback
+    String errorMessage = 'Unknown error';
+    try {
+      // Try to get more detailed error information if available
+      errorMessage = error.toString();
+      
+      // If the error object has additional properties, we can access them safely
+      // This handles potential API changes in the IronSource SDK
+      if (error.runtimeType.toString().contains('LevelPlayInitError')) {
+        // Log additional error details if available
+        developer.log('IronSource init failed with error type: ${error.runtimeType}',
+            name: 'IronSourceService');
+      }
+    } catch (e) {
+      errorMessage = 'Error occurred while processing init failure: $e';
+    }
+    
+    developer.log('IronSource init failed: $errorMessage',
         name: 'IronSourceService');
   }
 
@@ -331,7 +348,27 @@ class _NativeAdListener implements LevelPlayNativeAdListener {
 
   @override
   void onAdLoadFailed(LevelPlayNativeAd? nativeAd, IronSourceError? error) {
-    developer.log('IronSource Native ad load failed: ${error?.toString()}',
+    // Handle error more robustly - use toString() as fallback
+    String errorMessage = 'Unknown error';
+    try {
+      if (error != null) {
+        errorMessage = error.toString();
+        
+        // If the error object has additional properties, we can access them safely
+        // This handles potential API changes in the IronSource SDK
+        if (error.runtimeType.toString().contains('IronSourceError')) {
+          // Log additional error details if available
+          developer.log('IronSource ad load failed with error type: ${error.runtimeType}',
+              name: 'IronSourceService');
+        }
+      } else {
+        errorMessage = 'Error object is null';
+      }
+    } catch (e) {
+      errorMessage = 'Error occurred while processing ad load failure: $e';
+    }
+    
+    developer.log('IronSource Native ad load failed: $errorMessage',
         name: 'IronSourceService');
   }
 
