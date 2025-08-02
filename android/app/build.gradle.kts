@@ -91,6 +91,9 @@ dependencies {
     implementation("com.google.android.gms:play-services-ads-identifier:18.2.0")
     implementation("com.google.android.gms:play-services-appset:16.1.0")
     
+    // IronSource SDK
+    implementation("com.ironsource.sdk:mediationsdk:8.1.0")
+    
     implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-messaging")

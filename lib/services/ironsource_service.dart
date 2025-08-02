@@ -52,7 +52,7 @@ class IronSourceService {
       developer.log('Initializing IronSource SDK...',
           name: 'IronSourceService');
 
-      // Create init request with test suite metadata
+      // Create init request
       final initRequest = LevelPlayInitRequest.builder(_getAppKey())
           .withUserId(_getUserId())
           .build();
