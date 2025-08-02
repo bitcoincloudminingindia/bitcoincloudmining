@@ -298,9 +298,25 @@ class AdService {
     });
   }
 
-  // Load banner ad
+  // Load banner ad with IronSource priority
   Future<void> loadBannerAd() async {
     if (!_canShowAds()) return; // Check consent first
+    
+    // Try IronSource first
+    if (_ironSourceService.isInitialized && !_ironSourceService.isBannerAdLoaded) {
+      try {
+        await _ironSourceService.reloadBannerAd();
+        if (_ironSourceService.isBannerAdLoaded) {
+          print('✅ IronSource Banner ad loaded successfully');
+          _startBannerAdAutoRefresh();
+          return;
+        }
+      } catch (e) {
+        print('❌ IronSource Banner ad load failed: $e');
+      }
+    }
+
+    // Fallback to AdMob if IronSource fails or not available
     if (_isBannerAdLoaded && _isCachedAdValid('banner')) return;
 
     await _loadAdWithRetry(
@@ -348,6 +364,15 @@ class AdService {
 
   /// Returns a Future that completes with the banner ad widget when loaded, or a placeholder if not available.
   Future<Widget?> getBannerAdWidget() async {
+    // Try IronSource first
+    if (_ironSourceService.isInitialized && _ironSourceService.isBannerAdLoaded) {
+      final ironSourceWidget = _ironSourceService.getBannerAdWidget();
+      if (ironSourceWidget != null) {
+        print('🎯 Using IronSource Banner ad');
+        return ironSourceWidget;
+      }
+    }
+
     // If already loaded, return immediately
     if (_isBannerAdLoaded && _bannerAd != null) {
       return getBannerAd();
@@ -390,7 +415,7 @@ class AdService {
     }
   }
 
-  // Load rewarded ad with better error handling and mediation tracking
+  // Load rewarded ad with IronSource priority
   Future<void> loadRewardedAd() async {
     if (kIsWeb) return;
     if (!_canShowAds()) {
@@ -413,6 +438,21 @@ class AdService {
       }
     });
 
+    // Try IronSource first
+    if (_ironSourceService.isInitialized && !_ironSourceService.isRewardedAdLoaded) {
+      try {
+        await _ironSourceService.reloadRewardedAd();
+        if (_ironSourceService.isRewardedAdLoaded) {
+          print('✅ IronSource Rewarded ad loaded successfully');
+          _isRewardedAdLoading = false;
+          return;
+        }
+      } catch (e) {
+        print('❌ IronSource Rewarded ad load failed: $e');
+      }
+    }
+
+    // Fallback to AdMob if IronSource fails or not available
     try {
       final adUnitId = _getAdUnitId('rewarded');
       if (adUnitId.isEmpty) {
@@ -421,14 +461,14 @@ class AdService {
         return;
       }
 
-      print('🔄 Loading rewarded ad with ID: $adUnitId');
+      print('🔄 Loading AdMob rewarded ad with ID: $adUnitId');
 
       await RewardedAd.load(
         adUnitId: adUnitId,
         request: const AdRequest(),
         rewardedAdLoadCallback: RewardedAdLoadCallback(
           onAdLoaded: (ad) {
-            print('✅ Rewarded ad loaded successfully');
+            print('✅ AdMob Rewarded ad loaded successfully');
             _rewardedAd = ad;
             _isRewardedAdLoaded = true;
             _isRewardedAdLoading = false;
@@ -466,7 +506,7 @@ class AdService {
             );
           },
           onAdFailedToLoad: (error) {
-            print('❌ Rewarded ad failed to load: $error');
+            print('❌ AdMob Rewarded ad failed to load: $error');
             _isRewardedAdLoading = false;
 
             // Update mediation metrics for failed load
@@ -602,67 +642,58 @@ class AdService {
     await loadNativeAd();
   }
 
-  // Get native ad widget with improved error handling and refresh capability
+  // Get native ad widget with AdMob only (IronSource native removed)
   Widget getNativeAd() {
-    // Try IronSource native ad first if available
-    if (_ironSourceService.isInitialized &&
-        _ironSourceService.isNativeAdLoaded) {
-      developer.log('Using IronSource Native ad', name: 'AdService');
-      final ironSourceWidget = _ironSourceService.getNativeAdWidget(
+    // Use AdMob native ad only
+    if (!_isNativeAdLoaded || _nativeAd == null) {
+      return Container(
         height: 360,
-        width: 300,
-        templateType: LevelPlayTemplateType.MEDIUM,
-      );
-      if (ironSourceWidget != null) {
-        return Container(
-          height: 360,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey[300]!),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(26),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.ads_click, color: Colors.grey, size: 24),
+            const SizedBox(height: 4),
+            const Text(
+              'Ad Loading...',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
               ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Stack(
-              children: [
-                // IronSource native ad content
-                Positioned.fill(
-                  child: ironSourceWidget,
+            ),
+            const SizedBox(height: 4),
+            // Add refresh button for failed ads
+            GestureDetector(
+              onTap: () {
+                _isNativeAdLoaded = false;
+                _nativeAd?.dispose();
+                _nativeAd = null;
+                loadNativeAd();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withAlpha(51),
+                  borderRadius: BorderRadius.circular(4),
                 ),
-                // Close button for better UX
-                Positioned(
-                  top: 4,
-                  right: 4,
-                  child: GestureDetector(
-                    onTap: () {
-                      // Optionally track ad dismissal
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withAlpha(179),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 12,
-                      ),
-                    ),
+                child: const Text(
+                  'Refresh',
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-        );
-      }
+          ],
+        ),
+      );
     }
 
     // Fallback to AdMob native ad
@@ -795,7 +826,7 @@ class AdService {
     );
   }
 
-  // Show rewarded ad with enhanced complete viewing validation
+  // Show rewarded ad with IronSource priority
   Future<bool> showRewardedAd({
     required Function(double) onRewarded,
     required VoidCallback onAdDismissed,
@@ -815,26 +846,31 @@ class AdService {
       return false;
     }
 
-    // Try IronSource first if available (commented out for now as methods not available)
-    // if (_ironSourceService.isInitialized &&
-    //     _ironSourceService.isRewardedAdLoaded) {
-    //   print('🎯 Trying IronSource Rewarded ad...');
-    //   final success = await _ironSourceService.showRewardedAd(
-    //     onRewarded: onRewarded,
-    //     onAdDismissed: onAdDismissed,
-    //   );
-    //   if (success) {
-    //     print('✅ IronSource Rewarded ad shown successfully');
-    //     return true;
-    //   }
-    // }
+    // Try IronSource first
+    if (_ironSourceService.isInitialized && _ironSourceService.isRewardedAdLoaded) {
+      print('🎯 Trying IronSource Rewarded ad...');
+      try {
+        final success = await _ironSourceService.showRewardedAd(
+          onRewarded: onRewarded,
+          onAdDismissed: onAdDismissed,
+        );
+        if (success) {
+          print('✅ IronSource Rewarded ad shown successfully');
+          // Reload IronSource rewarded ad for next time
+          await _ironSourceService.reloadRewardedAd();
+          return true;
+        }
+      } catch (e) {
+        print('❌ IronSource Rewarded ad show failed: $e');
+      }
+    }
 
     // Fallback to AdMob
     if (!_isRewardedAdLoaded || _rewardedAd == null) {
-      print('🔄 Rewarded ad not loaded, attempting to load...');
+      print('🔄 AdMob Rewarded ad not loaded, attempting to load...');
       await loadRewardedAd();
       if (!_isRewardedAdLoaded || _rewardedAd == null) {
-        print('❌ Failed to load rewarded ad');
+        print('❌ Failed to load AdMob rewarded ad');
         onAdDismissed();
         return false;
       }
