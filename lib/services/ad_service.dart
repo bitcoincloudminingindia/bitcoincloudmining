@@ -604,64 +604,70 @@ class AdService {
 
   // Get native ad widget with improved error handling and refresh capability
   Widget getNativeAd() {
-    // Try IronSource native ad first if available
+    // Try IronSource native ad first if available and properly initialized
     if (_ironSourceService.isInitialized &&
         _ironSourceService.isNativeAdLoaded) {
       developer.log('Using IronSource Native ad', name: 'AdService');
-      final ironSourceWidget = _ironSourceService.getNativeAdWidget(
-        height: 360,
-        width: 300,
-        templateType: LevelPlayTemplateType.MEDIUM,
-      );
-      if (ironSourceWidget != null) {
-        return Container(
+      try {
+        final ironSourceWidget = _ironSourceService.getNativeAdWidget(
           height: 360,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey[300]!),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(26),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Stack(
-              children: [
-                // IronSource native ad content
-                Positioned.fill(
-                  child: ironSourceWidget,
-                ),
-                // Close button for better UX
-                Positioned(
-                  top: 4,
-                  right: 4,
-                  child: GestureDetector(
-                    onTap: () {
-                      // Optionally track ad dismissal
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withAlpha(179),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 12,
-                      ),
-                    ),
-                  ),
+          width: 300,
+          templateType: LevelPlayTemplateType.MEDIUM,
+        );
+        if (ironSourceWidget != null) {
+          return Container(
+            height: 360,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[300]!),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(26),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
-          ),
-        );
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Stack(
+                children: [
+                  // IronSource native ad content
+                  Positioned.fill(
+                    child: ironSourceWidget,
+                  ),
+                  // Close button for better UX
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () {
+                        // Optionally track ad dismissal
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withAlpha(179),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        developer.log('IronSource Native ad widget creation failed: $e', 
+            name: 'AdService', error: e);
+        // Fall back to AdMob
       }
     }
 
@@ -995,8 +1001,14 @@ class AdService {
       // Initialize mediation
       await _initializeMediation();
 
-      // Initialize IronSource
-      await _ironSourceService.initialize();
+      // Initialize IronSource with proper error handling
+      try {
+        await _ironSourceService.initialize();
+        developer.log('IronSource initialized successfully', name: 'AdService');
+      } catch (e) {
+        developer.log('IronSource initialization failed: $e', name: 'AdService', error: e);
+        // Continue with AdMob even if IronSource fails
+      }
 
       // Only preload ads if user has given consent
       if (consentService.hasUserConsent) {
@@ -1005,7 +1017,9 @@ class AdService {
         loadRewardedAd();
         loadNativeAd();
       }
-    } catch (e) {}
+    } catch (e) {
+      developer.log('Ad service initialization failed: $e', name: 'AdService', error: e);
+    }
   }
 
   // Initialize mediation configuration
