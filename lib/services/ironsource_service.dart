@@ -67,10 +67,17 @@ class IronSourceService {
 
       // Preload native ad
       await _loadNativeAd();
-    } catch (e) {
-      developer.log('IronSource initialization failed: $e',
-          name: 'IronSourceService', error: e);
+    } catch (e, stackTrace) {
+      developer.log(
+        'IronSource initialization failed: $e',
+        name: 'IronSourceService',
+        error: e,
+        stackTrace: stackTrace,
+      );
       _isInitialized = false;
+      
+      // You can add additional error handling here if needed
+      // For example, retry logic or fallback initialization
     }
   }
 
@@ -95,10 +102,17 @@ class IronSourceService {
       await _nativeAd?.loadAd();
       _isNativeAdLoaded = true;
       developer.log('IronSource Native ad loaded', name: 'IronSourceService');
-    } catch (e) {
-      developer.log('IronSource Native ad load failed: $e',
-          name: 'IronSourceService', error: e);
+    } catch (e, stackTrace) {
+      developer.log(
+        'IronSource Native ad load failed: $e',
+        name: 'IronSourceService',
+        error: e,
+        stackTrace: stackTrace,
+      );
       _isNativeAdLoaded = false;
+      
+      // You can add additional error handling here if needed
+      // For example, retry logic or fallback ad loading
     }
   }
 
@@ -108,8 +122,10 @@ class IronSourceService {
     LevelPlayTemplateType templateType = LevelPlayTemplateType.MEDIUM,
   }) {
     if (!_isInitialized || !_isNativeAdLoaded || _nativeAd == null) {
-      developer.log('IronSource Native ad not ready',
-          name: 'IronSourceService');
+      developer.log(
+        'IronSource Native ad not ready - Initialized: $_isInitialized, Loaded: $_isNativeAdLoaded, Ad: ${_nativeAd != null}',
+        name: 'IronSourceService',
+      );
       return null;
     }
 
@@ -124,9 +140,13 @@ class IronSourceService {
         },
         templateType: templateType,
       );
-    } catch (e) {
-      developer.log('IronSource Native ad widget creation failed: $e',
-          name: 'IronSourceService', error: e);
+    } catch (e, stackTrace) {
+      developer.log(
+        'IronSource Native ad widget creation failed: $e',
+        name: 'IronSourceService',
+        error: e,
+        stackTrace: stackTrace,
+      );
       return null;
     }
   }
@@ -154,9 +174,13 @@ class IronSourceService {
       developer.log(
           'Test Suite launch is deprecated in newer IronSource versions',
           name: 'IronSourceService');
-    } catch (e) {
-      developer.log('IronSource Test Suite launch failed: $e',
-          name: 'IronSourceService', error: e);
+    } catch (e, stackTrace) {
+      developer.log(
+        'IronSource Test Suite launch failed: $e',
+        name: 'IronSourceService',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -192,35 +216,61 @@ class IronSourceService {
 class _LevelPlayInitListener implements LevelPlayInitListener {
   @override
   void onInitFailed(LevelPlayInitError error) {
-    developer.log('IronSource init failed: ${error.toString()}',
-        name: 'IronSourceService');
+    // Log detailed error information
+    developer.log(
+      'IronSource init failed: ${error.toString()}',
+      name: 'IronSourceService',
+      error: error,
+    );
+    
+    // You can add additional error handling here if needed
+    // For example, retry logic or fallback initialization
   }
 
   @override
   void onInitSuccess(LevelPlayConfiguration configuration) {
-    developer.log('IronSource init success', name: 'IronSourceService');
+    developer.log(
+      'IronSource init success with configuration: ${configuration.toString()}',
+      name: 'IronSourceService',
+    );
   }
 }
 
 class _NativeAdListener implements LevelPlayNativeAdListener {
   @override
   void onAdClicked(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad clicked', name: 'IronSourceService');
+    developer.log(
+      'IronSource Native ad clicked - Ad Info: ${adInfo?.toString() ?? 'No info'}',
+      name: 'IronSourceService',
+    );
   }
 
   @override
   void onAdImpression(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad impression', name: 'IronSourceService');
+    developer.log(
+      'IronSource Native ad impression - Ad Info: ${adInfo?.toString() ?? 'No info'}',
+      name: 'IronSourceService',
+    );
   }
 
   @override
   void onAdLoadFailed(LevelPlayNativeAd? nativeAd, IronSourceError? error) {
-    developer.log('IronSource Native ad load failed: ${error?.toString()}',
-        name: 'IronSourceService');
+    // Log detailed error information
+    developer.log(
+      'IronSource Native ad load failed: ${error?.toString() ?? 'Unknown error'}',
+      name: 'IronSourceService',
+      error: error,
+    );
+    
+    // You can add additional error handling here if needed
+    // For example, retry logic or fallback ad loading
   }
 
   @override
   void onAdLoaded(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad loaded', name: 'IronSourceService');
+    developer.log(
+      'IronSource Native ad loaded successfully - Ad Info: ${adInfo?.toString() ?? 'No info'}',
+      name: 'IronSourceService',
+    );
   }
 }
