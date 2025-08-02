@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:ironsource_mediation/ironsource_mediation.dart';
 import '../services/ironsource_service.dart';
 
 /// Test utility for IronSource functionality
