@@ -52,7 +52,8 @@ class IronSourceService {
           name: 'IronSourceService');
 
       // Create init request with test suite metadata
-      final initRequest = LevelPlayInitRequest.create(_getAppKey())
+      final initRequest = LevelPlayInitRequest()
+          .withAppKey(_getAppKey())
           .withUserId(_getUserId())
           .build();
 
@@ -93,7 +94,7 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _nativeAd = LevelPlayNativeAd.create()
+      _nativeAd = LevelPlayNativeAd()
           .withPlacementName(_adUnitIds['native']!)
           .withListener(_NativeAdListener())
           .build();
@@ -112,7 +113,7 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _interstitialAd = LevelPlayInterstitialAd.create()
+      _interstitialAd = LevelPlayInterstitialAd()
           .withAdUnitId(_adUnitIds['interstitial']!)
           .withListener(_InterstitialAdListener())
           .build();
@@ -131,7 +132,7 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _rewardedAd = LevelPlayRewardedAd.create()
+      _rewardedAd = LevelPlayRewardedAd()
           .withAdUnitId(_adUnitIds['rewarded']!)
           .withListener(_RewardedAdListener())
           .build();
@@ -337,25 +338,25 @@ class _LevelPlayInitListener implements LevelPlayInitListener {
 
 class _NativeAdListener implements LevelPlayNativeAdListener {
   @override
-  void onAdClicked(LevelPlayAdInfo adInfo) {
+  void onAdClicked(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
     developer.log('IronSource Native ad clicked', name: 'IronSourceService');
   }
 
   @override
-  void onAdImpression(LevelPlayAdInfo adInfo) {
+  void onAdImpression(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
     developer.log('IronSource Native ad impression', name: 'IronSourceService');
   }
 
   @override
-  void onAdLoadFailed(LevelPlayAdError error) {
+  void onAdLoadFailed(LevelPlayNativeAd? nativeAd, IronSourceError? error) {
     // Handle error more robustly - use toString() as fallback
     String errorMessage = 'Unknown error';
     try {
-      errorMessage = error.toString();
+      errorMessage = error?.toString() ?? 'Unknown error';
       
       // If the error object has additional properties, we can access them safely
       // This handles potential API changes in the IronSource SDK
-      if (error.runtimeType.toString().contains('LevelPlayAdError')) {
+      if (error?.runtimeType.toString().contains('IronSourceError') == true) {
         // Log additional error details if available
         developer.log('IronSource ad load failed with error type: ${error.runtimeType}',
             name: 'IronSourceService');
@@ -369,7 +370,7 @@ class _NativeAdListener implements LevelPlayNativeAdListener {
   }
 
   @override
-  void onAdLoaded(LevelPlayAdInfo adInfo) {
+  void onAdLoaded(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
     developer.log('IronSource Native ad loaded', name: 'IronSourceService');
   }
 }
@@ -381,18 +382,18 @@ class _InterstitialAdListener implements LevelPlayInterstitialAdListener {
   }
 
   @override
-  void onAdClosed() {
+  void onAdClosed(LevelPlayAdInfo adInfo) {
     developer.log('IronSource Interstitial ad closed', name: 'IronSourceService');
   }
 
   @override
-  void onAdDisplayFailed(LevelPlayAdError error) {
+  void onAdDisplayFailed(LevelPlayAdError error, LevelPlayAdInfo adInfo) {
     developer.log('IronSource Interstitial ad display failed: ${error.toString()}',
         name: 'IronSourceService');
   }
 
   @override
-  void onAdDisplayed() {
+  void onAdDisplayed(LevelPlayAdInfo adInfo) {
     developer.log('IronSource Interstitial ad displayed', name: 'IronSourceService');
   }
 
@@ -425,18 +426,18 @@ class _RewardedAdListener implements LevelPlayRewardedAdListener {
   }
 
   @override
-  void onAdClosed() {
+  void onAdClosed(LevelPlayAdInfo adInfo) {
     developer.log('IronSource Rewarded ad closed', name: 'IronSourceService');
   }
 
   @override
-  void onAdDisplayFailed(LevelPlayAdError error) {
+  void onAdDisplayFailed(LevelPlayAdError error, LevelPlayAdInfo adInfo) {
     developer.log('IronSource Rewarded ad display failed: ${error.toString()}',
         name: 'IronSourceService');
   }
 
   @override
-  void onAdDisplayed() {
+  void onAdDisplayed(LevelPlayAdInfo adInfo) {
     developer.log('IronSource Rewarded ad displayed', name: 'IronSourceService');
   }
 
