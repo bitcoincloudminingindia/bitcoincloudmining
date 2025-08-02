@@ -15,11 +15,6 @@ class IronSourceService {
   static const String _androidAppKey = '2314651cd';
   static const String _iosAppKey = '2314651cd';
 
-  // IronSource Ad Unit IDs (from your dashboard)
-  static const String _nativeAdUnitId = 'lcv9s3mjszw657sy';
-  static const String _interstitialAdUnitId = 'i5bc3rl0ebvk8xjk';
-  static const String _rewardedAdUnitId = 'lcv9s3mjszw657sy';
-
   bool _isInitialized = false;
   bool _isNativeAdLoaded = false;
   bool _isInterstitialAdLoaded = false;
@@ -90,9 +85,7 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _nativeAd = LevelPlayNativeAd(
-        adUnitId: _nativeAdUnitId,
-      );
+      _nativeAd = LevelPlayNativeAd();
 
       await _nativeAd?.loadAd();
       _isNativeAdLoaded = true;
@@ -108,9 +101,7 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _interstitialAd = LevelPlayInterstitialAd(
-        adUnitId: _interstitialAdUnitId,
-      );
+      _interstitialAd = LevelPlayInterstitialAd();
 
       await _interstitialAd?.loadAd();
       _isInterstitialAdLoaded = true;
@@ -126,9 +117,7 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _rewardedAd = LevelPlayRewardedAd(
-        adUnitId: _rewardedAdUnitId,
-      );
+      _rewardedAd = LevelPlayRewardedAd();
 
       await _rewardedAd?.loadAd();
       _isRewardedAdLoaded = true;
