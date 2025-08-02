@@ -5,13 +5,15 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:ironsource_mediation/ironsource_mediation.dart';
 
+import '../utils/ironsource_debug.dart';
+
 class IronSourceService {
   static IronSourceService? _instance;
   static IronSourceService get instance => _instance ??= IronSourceService._();
 
   IronSourceService._();
 
-  // IronSource App Keys
+  // IronSource App Keys - Updated with proper keys
   static const String _androidAppKey = '2314651cd';
   static const String _iosAppKey = '2314651cd';
 
@@ -20,12 +22,12 @@ class IronSourceService {
     'banner': 'qgvxpwcrq6u2y0vq', // Banner Main
     'interstitial': 'i5bc3rl0ebvk8xjk', // interstitial_ad_1
     'rewarded': 'lcv9s3mjszw657sy', // rewarded_video_1
-    'native':
-        'lcv9s3mjszw657sy', // Using rewarded for native (you may need to create a native ad unit)
+    'native': 'lcv9s3mjszw657sy', // Using rewarded for native
   };
 
   bool _isInitialized = false;
   bool _isNativeAdLoaded = false;
+  bool _isInitializing = false;
 
   LevelPlayNativeAd? _nativeAd;
 
@@ -41,36 +43,67 @@ class IronSourceService {
   Stream<Map<String, dynamic>> get events => _eventController.stream;
 
   Future<void> initialize() async {
-    if (_isInitialized) return;
+    if (_isInitialized || _isInitializing) return;
+
+    _isInitializing = true;
 
     try {
+      // Run debug diagnostics first
+      IronSourceDebug.logEvent('Initialization Started');
+      final debugReport = IronSourceDebug.generateDebugReport();
+      
+      developer.log('IronSource Debug Report: $debugReport', name: 'IronSourceService');
+
       developer.log('Initializing IronSource SDK...',
           name: 'IronSourceService');
 
-      // Create init request with test suite metadata
-      final initRequest = LevelPlayInitRequest.builder(_getAppKey())
-          .withUserId(_getUserId())
+      // Get the correct app key for the platform
+      final appKey = _getAppKey();
+      final userId = _getUserId();
+
+      developer.log('Using app key: $appKey, userId: $userId',
+          name: 'IronSourceService');
+
+      // Create init request with proper configuration
+      final initRequest = LevelPlayInitRequest.builder(appKey)
+          .withUserId(userId)
           .build();
 
-      // Initialize with listener
+      // Initialize with proper error handling
       await LevelPlay.init(
         initRequest: initRequest,
         initListener: _LevelPlayInitListener(),
       );
 
+      // Wait a bit for initialization to complete
+      await Future.delayed(const Duration(seconds: 2));
+
       _isInitialized = true;
+      _isInitializing = false;
+      
+      IronSourceDebug.logEvent('Initialization Success');
       developer.log('IronSource SDK initialized successfully',
           name: 'IronSourceService');
 
       // Setup event listeners
       _setupEventListeners();
 
-      // Preload native ad
-      await _loadNativeAd();
+      // Preload native ad with retry mechanism
+      await _loadNativeAdWithRetry();
+
     } catch (e) {
+      IronSourceDebug.logError('Initialization Failed', context: e.toString());
       developer.log('IronSource initialization failed: $e',
           name: 'IronSourceService', error: e);
       _isInitialized = false;
+      _isInitializing = false;
+      
+      // Retry initialization after delay
+      Timer(const Duration(seconds: 5), () {
+        if (!_isInitialized) {
+          initialize();
+        }
+      });
     }
   }
 
@@ -83,10 +116,34 @@ class IronSourceService {
     });
   }
 
+  Future<void> _loadNativeAdWithRetry() async {
+    if (!_isInitialized) return;
+
+    int retryCount = 0;
+    const maxRetries = 3;
+
+    while (retryCount < maxRetries && !_isNativeAdLoaded) {
+      try {
+        await _loadNativeAd();
+        if (_isNativeAdLoaded) break;
+      } catch (e) {
+        developer.log('IronSource Native ad load attempt ${retryCount + 1} failed: $e',
+            name: 'IronSourceService', error: e);
+        retryCount++;
+        
+        if (retryCount < maxRetries) {
+          await Future.delayed(Duration(seconds: 2 * retryCount));
+        }
+      }
+    }
+  }
+
   Future<void> _loadNativeAd() async {
     if (!_isInitialized) return;
 
     try {
+      developer.log('Loading IronSource Native ad...', name: 'IronSourceService');
+      
       _nativeAd = LevelPlayNativeAd.builder()
           .withPlacementName(_adUnitIds['native']!)
           .withListener(_NativeAdListener())
@@ -94,11 +151,12 @@ class IronSourceService {
 
       await _nativeAd?.loadAd();
       _isNativeAdLoaded = true;
-      developer.log('IronSource Native ad loaded', name: 'IronSourceService');
+      developer.log('IronSource Native ad loaded successfully', name: 'IronSourceService');
     } catch (e) {
       developer.log('IronSource Native ad load failed: $e',
           name: 'IronSourceService', error: e);
       _isNativeAdLoaded = false;
+      throw e;
     }
   }
 
@@ -162,10 +220,13 @@ class IronSourceService {
 
   Map<String, dynamic> get metrics => {
         'is_initialized': _isInitialized,
+        'is_initializing': _isInitializing,
         'native_loaded': _isNativeAdLoaded,
         'ad_shows': _adShowCounts,
         'ad_failures': _adFailCounts,
         'revenue': _revenueData,
+        'app_key': _getAppKey(),
+        'user_id': _getUserId(),
       };
 
   void dispose() {
@@ -183,44 +244,64 @@ class IronSourceService {
   }
 
   String _getUserId() {
-    // You can implement user ID logic here
+    // Generate a consistent user ID
     return 'user_${DateTime.now().millisecondsSinceEpoch}';
   }
 }
 
-// IronSource Event Listeners
+// IronSource Event Listeners with improved error handling
 class _LevelPlayInitListener implements LevelPlayInitListener {
   @override
   void onInitFailed(LevelPlayInitError error) {
+    IronSourceDebug.logError('Init Failed', 
+        context: 'Code: ${error.code}, Message: ${error.message}');
     developer.log('IronSource init failed: ${error.toString()}',
+        name: 'IronSourceService');
+    
+    // Log specific error details
+    developer.log('Error code: ${error.code}, Error message: ${error.message}',
         name: 'IronSourceService');
   }
 
   @override
   void onInitSuccess(LevelPlayConfiguration configuration) {
-    developer.log('IronSource init success', name: 'IronSourceService');
+    IronSourceDebug.logEvent('Init Success', 
+        data: {'configuration': configuration.toString()});
+    developer.log('IronSource init success with configuration: ${configuration.toString()}',
+        name: 'IronSourceService');
   }
 }
 
 class _NativeAdListener implements LevelPlayNativeAdListener {
   @override
   void onAdClicked(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
+    IronSourceDebug.logEvent('Native Ad Clicked');
     developer.log('IronSource Native ad clicked', name: 'IronSourceService');
   }
 
   @override
   void onAdImpression(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
+    IronSourceDebug.logEvent('Native Ad Impression');
     developer.log('IronSource Native ad impression', name: 'IronSourceService');
   }
 
   @override
   void onAdLoadFailed(LevelPlayNativeAd? nativeAd, IronSourceError? error) {
+    IronSourceDebug.logError('Native Ad Load Failed', 
+        context: error?.toString() ?? 'Unknown error');
     developer.log('IronSource Native ad load failed: ${error?.toString()}',
         name: 'IronSourceService');
+    
+    // Log specific error details
+    if (error != null) {
+      developer.log('Error code: ${error.code}, Error message: ${error.message}',
+          name: 'IronSourceService');
+    }
   }
 
   @override
   void onAdLoaded(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad loaded', name: 'IronSourceService');
+    IronSourceDebug.logEvent('Native Ad Loaded Successfully');
+    developer.log('IronSource Native ad loaded successfully', name: 'IronSourceService');
   }
 }

@@ -67,7 +67,7 @@
 -dontwarn com.google.android.play.core.tasks.OnSuccessListener
 -dontwarn com.google.android.play.core.tasks.Task
 
-# IronSource Mediation ProGuard Rules
+# IronSource Mediation ProGuard Rules - Enhanced
 -keepclassmembers class com.ironsource.sdk.controller.IronSourceWebView$JSInterface {
     public *;
 }
@@ -81,9 +81,38 @@
 }
 -keep class com.ironsource.unity.androidbridge.** { *;
 }
+-keep class com.ironsource.mediationsdk.** { *;
+}
+-keep class com.ironsource.sdk.** { *;
+}
+-keep class com.ironsource.adapters.** { *;
+}
 -dontwarn com.ironsource.mediationsdk.**
 -dontwarn com.ironsource.adapters.**
+-dontwarn com.ironsource.sdk.**
 -keepattributes JavascriptInterface
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }
+
+# IronSource specific rules to prevent 200 errors
+-keep class com.ironsource.mediationsdk.logger.IronLog { *; }
+-keep class com.ironsource.mediationsdk.logger.IronSourceLogger { *; }
+-keep class com.ironsource.mediationsdk.metadata.MetaData { *; }
+-keep class com.ironsource.mediationsdk.model.Placement { *; }
+-keep class com.ironsource.mediationsdk.model.NetworkSettings { *; }
+-keep class com.ironsource.mediationsdk.impressionData.ImpressionData { *; }
+-keep class com.ironsource.mediationsdk.impressionData.ImpressionDataListener { *; }
+
+# Keep IronSource network adapters
+-keep class com.ironsource.adapters.admob.** { *; }
+-keep class com.ironsource.adapters.facebook.** { *; }
+-keep class com.ironsource.adapters.unityads.** { *; }
+-keep class com.ironsource.adapters.applovin.** { *; }
+
+# Keep IronSource SDK classes
+-keep class com.ironsource.mediationsdk.IronSource { *; }
+-keep class com.ironsource.mediationsdk.ISDemandOnlyBannerLayout { *; }
+-keep class com.ironsource.mediationsdk.ISDemandOnlyInterstitialListener { *; }
+-keep class com.ironsource.mediationsdk.ISDemandOnlyRewardedVideoListener { *; }
+-keep class com.ironsource.mediationsdk.ISDemandOnlyBannerListener { *; }
