@@ -92,9 +92,11 @@ class IronSourceService {
           .withListener(_NativeAdListener())
           .build();
 
-      await _nativeAd?.loadAd();
-      _isNativeAdLoaded = true;
-      developer.log('IronSource Native ad loaded', name: 'IronSourceService');
+      if (_nativeAd != null) {
+        await _nativeAd!.loadAd();
+        _isNativeAdLoaded = true;
+        developer.log('IronSource Native ad loaded', name: 'IronSourceService');
+      }
     } catch (e) {
       developer.log('IronSource Native ad load failed: $e',
           name: 'IronSourceService', error: e);
@@ -114,6 +116,13 @@ class IronSourceService {
     }
 
     try {
+      // Ensure the native ad is still valid
+      if (_nativeAd == null) {
+        developer.log('IronSource Native ad is null',
+            name: 'IronSourceService');
+        return null;
+      }
+
       return LevelPlayNativeAdView(
         height: height,
         width: width,
@@ -133,13 +142,23 @@ class IronSourceService {
 
   Future<void> reloadNativeAd() async {
     if (_nativeAd != null) {
-      await _nativeAd!.loadAd();
+      try {
+        await _nativeAd!.loadAd();
+      } catch (e) {
+        developer.log('IronSource Native ad reload failed: $e',
+            name: 'IronSourceService', error: e);
+      }
     }
   }
 
   Future<void> destroyNativeAd() async {
     if (_nativeAd != null) {
-      await _nativeAd!.destroyAd();
+      try {
+        await _nativeAd!.destroyAd();
+      } catch (e) {
+        developer.log('IronSource Native ad destroy failed: $e',
+            name: 'IronSourceService', error: e);
+      }
       _nativeAd = null;
       _isNativeAdLoaded = false;
     }
@@ -169,7 +188,12 @@ class IronSourceService {
       };
 
   void dispose() {
-    _nativeAd?.destroyAd();
+    try {
+      _nativeAd?.destroyAd();
+    } catch (e) {
+      developer.log('IronSource dispose failed: $e',
+          name: 'IronSourceService', error: e);
+    }
     _eventController.close();
   }
 

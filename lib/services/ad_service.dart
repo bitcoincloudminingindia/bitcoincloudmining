@@ -605,15 +605,16 @@ class AdService {
   // Get native ad widget with improved error handling and refresh capability
   Widget getNativeAd() {
     // Try IronSource native ad first if available
-    if (_ironSourceService.isInitialized &&
-        _ironSourceService.isNativeAdLoaded) {
-      developer.log('Using IronSource Native ad', name: 'AdService');
-      final ironSourceWidget = _ironSourceService.getNativeAdWidget(
-        height: 360,
-        width: 300,
-        templateType: LevelPlayTemplateType.MEDIUM,
-      );
-      if (ironSourceWidget != null) {
+    try {
+      if (_ironSourceService.isInitialized &&
+          _ironSourceService.isNativeAdLoaded) {
+        developer.log('Using IronSource Native ad', name: 'AdService');
+        final ironSourceWidget = _ironSourceService.getNativeAdWidget(
+          height: 360,
+          width: 300,
+          templateType: LevelPlayTemplateType.MEDIUM,
+        );
+        if (ironSourceWidget != null) {
         return Container(
           height: 360,
           decoration: BoxDecoration(
@@ -663,6 +664,10 @@ class AdService {
           ),
         );
       }
+    } catch (e) {
+      developer.log('IronSource Native ad widget creation failed: $e',
+          name: 'AdService', error: e);
+    }
     }
 
     // Fallback to AdMob native ad
@@ -1066,8 +1071,34 @@ class AdService {
 
     for (final network in networks) {
       try {
-        await _initializeMediationNetwork(network);
-        _mediationNetworkStates[network] = true;
+        // Initialize specific mediation network
+        switch (network) {
+          case 'unity_ads':
+            // Unity Ads is already initialized via build.gradle
+            _mediationNetworkStates[network] = true;
+            break;
+          case 'facebook_audience_network':
+            // Facebook Audience Network initialization
+            _mediationNetworkStates[network] = true;
+            break;
+          case 'applovin':
+            // AppLovin initialization
+            _mediationNetworkStates[network] = true;
+            break;
+          case 'iron_source':
+            // IronSource is initialized separately
+            if (_ironSourceService.isInitialized) {
+              _mediationNetworkStates[network] = true;
+            } else {
+              _mediationNetworkStates[network] = false;
+            }
+            break;
+          default:
+            _mediationNetworkStates[network] = false;
+            if (kDebugMode) {
+              print('⚠️ Unknown mediation network: $network');
+            }
+        }
 
         if (kDebugMode) {
           print('✅ $network mediation network initialized');
@@ -1081,30 +1112,7 @@ class AdService {
     }
   }
 
-  // Initialize specific mediation network
-  Future<void> _initializeMediationNetwork(String network) async {
-    switch (network) {
-      case 'unity_ads':
-        // Unity Ads is already initialized via build.gradle
-        break;
-      case 'facebook_audience_network':
-        // Facebook Audience Network initialization
-        break;
-      case 'applovin':
-        // AppLovin initialization
-        break;
-      case 'iron_source':
-        // IronSource is initialized separately
-        if (_ironSourceService.isInitialized) {
-          _mediationNetworkStates['iron_source'] = true;
-        }
-        break;
-      default:
-        if (kDebugMode) {
-          print('⚠️ Unknown mediation network: $network');
-        }
-    }
-  }
+
 
   // Get mediation status
   Map<String, dynamic> get mediationStatus => {
@@ -1127,7 +1135,7 @@ class AdService {
 
     // Check if at least one network is active
     final activeNetworks =
-        _mediationNetworkStates.values.where((state) => state).length;
+        _mediationNetworkStates.values.where((state) => state != null && state).length;
     return activeNetworks > 0;
   }
 
