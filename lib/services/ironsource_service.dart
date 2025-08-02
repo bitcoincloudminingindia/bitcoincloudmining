@@ -56,7 +56,7 @@ class IronSourceService {
         initRequest: LevelPlayInitRequest(
           appKey: _getAppKey(),
           userId: _getUserId(),
-          legacyAdFormats: true, // Add the missing required parameter
+          legacyAdFormats: [AdFormat.INTERSTITIAL, AdFormat.REWARDED_VIDEO, AdFormat.NATIVE],
         ),
         initListener: _LevelPlayInitListener(),
       );
@@ -92,10 +92,10 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _nativeAd = LevelPlayNativeAd.builder()
-          .withPlacementName(_adUnitIds['native']!)
-          .withListener(_NativeAdListener())
-          .build();
+      _nativeAd = LevelPlayNativeAd(
+        placementName: _adUnitIds['native']!,
+        listener: _NativeAdListener(),
+      );
 
       await _nativeAd?.loadAd();
       _isNativeAdLoaded = true;
@@ -111,10 +111,10 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _interstitialAd = LevelPlayInterstitialAd.builder()
-          .withPlacementName(_adUnitIds['interstitial']!)
-          .withListener(_InterstitialAdListener())
-          .build();
+      _interstitialAd = LevelPlayInterstitialAd(
+        placementName: _adUnitIds['interstitial']!,
+        listener: _InterstitialAdListener(),
+      );
 
       await _interstitialAd?.loadAd();
       _isInterstitialAdLoaded = true;
@@ -130,10 +130,10 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _rewardedAd = LevelPlayRewardedAd.builder()
-          .withPlacementName(_adUnitIds['rewarded']!)
-          .withListener(_RewardedAdListener())
-          .build();
+      _rewardedAd = LevelPlayRewardedAd(
+        placementName: _adUnitIds['rewarded']!,
+        listener: _RewardedAdListener(),
+      );
 
       await _rewardedAd?.loadAd();
       _isRewardedAdLoaded = true;
