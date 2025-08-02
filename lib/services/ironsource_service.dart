@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:developer' as developer;
-import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:ironsource_mediation/ironsource_mediation.dart';
@@ -56,6 +55,7 @@ class IronSourceService {
       final initRequest = LevelPlayInitRequest(
         appKey: _appKey,
         userId: _getUserId(),
+        legacyAdFormats: [], // Add required parameter
       );
 
       // Create initialization listener
@@ -85,7 +85,6 @@ class IronSourceService {
 
     try {
       _nativeAd = LevelPlayNativeAd(
-        adUnitId: _adUnitIds['native']!,
         listener: _NativeAdListener(),
       );
 
@@ -103,7 +102,6 @@ class IronSourceService {
 
     try {
       _interstitialAd = LevelPlayInterstitialAd(
-        adUnitId: _adUnitIds['interstitial']!,
         listener: _InterstitialAdListener(),
       );
 
@@ -121,7 +119,6 @@ class IronSourceService {
 
     try {
       _rewardedAd = LevelPlayRewardedAd(
-        adUnitId: _adUnitIds['rewarded']!,
         listener: _RewardedAdListener(),
       );
 
@@ -132,6 +129,19 @@ class IronSourceService {
       _log('IronSource Rewarded ad load request failed: $e', error: e);
       _isRewardedAdLoaded = false;
     }
+  }
+
+  // Reload methods for debug screen
+  Future<void> reloadNativeAd() async {
+    await _loadNativeAd();
+  }
+
+  Future<void> reloadInterstitialAd() async {
+    await _loadInterstitialAd();
+  }
+
+  Future<void> reloadRewardedAd() async {
+    await _loadRewardedAd();
   }
 
   Widget? getNativeAdWidget({
@@ -196,6 +206,16 @@ class IronSourceService {
     }
   }
 
+  // Launch test suite method for debug screen
+  Future<void> launchTestSuite() async {
+    try {
+      await LevelPlay.launchTestSuite();
+      _log('IronSource test suite launched');
+    } catch (e) {
+      _log('Failed to launch IronSource test suite: $e', error: e);
+    }
+  }
+
   Map<String, dynamic> get metrics => {
         'is_initialized': _isInitialized,
         'native_loaded': _isNativeAdLoaded,
@@ -220,7 +240,12 @@ class IronSourceService {
 // IronSource Initialization Listener
 class _InitListener implements LevelPlayInitListener {
   @override
-  void onInitializationComplete() {
+  void onInitFailed(IronSourceError error) {
+    IronSourceService.instance._log('IronSource initialization failed: ${error.toString()}');
+  }
+
+  @override
+  void onInitSuccess() {
     IronSourceService.instance._log('IronSource initialization complete');
   }
 }
@@ -347,7 +372,7 @@ class _RewardedAdListener implements LevelPlayRewardedAdListener {
   @override
   void onAdRewarded(LevelPlayReward reward, LevelPlayAdInfo adInfo) {
     IronSourceService.instance._log(
-      'IronSource Rewarded: user earned reward of ${reward.amount} ${reward.type}'
+      'IronSource Rewarded: user earned reward of ${reward.amount} ${reward.rewardType}'
     );
   }
 }

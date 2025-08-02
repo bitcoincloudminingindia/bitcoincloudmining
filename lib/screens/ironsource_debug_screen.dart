@@ -3,7 +3,7 @@ import '../services/ironsource_service.dart';
 import '../utils/color_constants.dart';
 
 class IronSourceDebugScreen extends StatefulWidget {
-  const IronSourceDebugScreen({Key? key}) : super(key: key);
+  const IronSourceDebugScreen({super.key});
 
   @override
   State<IronSourceDebugScreen> createState() => _IronSourceDebugScreenState();
@@ -13,32 +13,16 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
   final IronSourceService _ironSourceService = IronSourceService.instance;
   bool _isLoading = false;
   Map<String, dynamic> _metrics = {};
-  List<Map<String, dynamic>> _events = [];
 
   @override
   void initState() {
     super.initState();
     _loadMetrics();
-    _setupEventListeners();
   }
 
   void _loadMetrics() {
     setState(() {
       _metrics = _ironSourceService.metrics;
-    });
-  }
-
-  void _setupEventListeners() {
-    _ironSourceService.events.listen((event) {
-      setState(() {
-        _events.insert(0, {
-          ...event,
-          'timestamp': DateTime.now().toString(),
-        });
-        if (_events.length > 50) {
-          _events = _events.take(50).toList();
-        }
-      });
     });
   }
 
@@ -158,6 +142,23 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
     }
   }
 
+  Future<void> _launchTestSuite() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _ironSourceService.launchTestSuite();
+      _showSnackBar('Test suite launched', isError: false);
+    } catch (e) {
+      _showSnackBar('Test suite launch failed: $e', isError: true);
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   void _showSnackBar(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -188,8 +189,6 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
                   _buildControlSection(),
                   const SizedBox(height: 20),
                   _buildMetricsSection(),
-                  const SizedBox(height: 20),
-                  _buildEventsSection(),
                 ],
               ),
             ),
@@ -205,12 +204,9 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
           children: [
             const Text(
               'Status',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             _buildStatusItem('Initialized', _ironSourceService.isInitialized),
             _buildStatusItem('Native Ad Loaded', _ironSourceService.isNativeAdLoaded),
             _buildStatusItem('Interstitial Ad Loaded', _ironSourceService.isInterstitialAdLoaded),
@@ -232,15 +228,7 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
             size: 20,
           ),
           const SizedBox(width: 8),
-          Text(label),
-          const Spacer(),
-          Text(
-            status ? 'Ready' : 'Not Ready',
-            style: TextStyle(
-              color: status ? Colors.green : Colors.red,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text('$label: ${status ? 'Yes' : 'No'}'),
         ],
       ),
     );
@@ -255,38 +243,46 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
           children: [
             const Text(
               'Controls',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                _buildControlButton('Initialize', _initializeIronSource),
-                _buildControlButton('Load Native', _loadNativeAd),
-                _buildControlButton('Load Interstitial', _loadInterstitialAd),
-                _buildControlButton('Load Rewarded', _loadRewardedAd),
-                _buildControlButton('Show Interstitial', _showInterstitialAd),
-                _buildControlButton('Show Rewarded', _showRewardedAd),
+                ElevatedButton(
+                  onPressed: _ironSourceService.isInitialized ? null : _initializeIronSource,
+                  child: const Text('Initialize'),
+                ),
+                ElevatedButton(
+                  onPressed: _ironSourceService.isInitialized ? _loadNativeAd : null,
+                  child: const Text('Load Native'),
+                ),
+                ElevatedButton(
+                  onPressed: _ironSourceService.isInitialized ? _loadInterstitialAd : null,
+                  child: const Text('Load Interstitial'),
+                ),
+                ElevatedButton(
+                  onPressed: _ironSourceService.isInitialized ? _loadRewardedAd : null,
+                  child: const Text('Load Rewarded'),
+                ),
+                ElevatedButton(
+                  onPressed: _ironSourceService.isInterstitialAdLoaded ? _showInterstitialAd : null,
+                  child: const Text('Show Interstitial'),
+                ),
+                ElevatedButton(
+                  onPressed: _ironSourceService.isRewardedAdLoaded ? _showRewardedAd : null,
+                  child: const Text('Show Rewarded'),
+                ),
+                ElevatedButton(
+                  onPressed: _ironSourceService.isInitialized ? _launchTestSuite : null,
+                  child: const Text('Test Suite'),
+                ),
               ],
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildControlButton(String label, VoidCallback onPressed) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: ColorConstants.primaryColor,
-        foregroundColor: Colors.white,
-      ),
-      child: Text(label),
     );
   }
 
@@ -299,106 +295,35 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
           children: [
             const Text(
               'Metrics',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
             _buildMetricsItem('Ad Shows', _metrics['ad_shows'] ?? {}),
+            const SizedBox(height: 8),
             _buildMetricsItem('Ad Failures', _metrics['ad_failures'] ?? {}),
-            _buildMetricsItem('Revenue', _metrics['revenue'] ?? {}),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMetricsItem(String label, Map<String, dynamic> data) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          if (data.isEmpty)
-            const Text('No data available')
-          else
-            ...data.entries.map((entry) => Text('${entry.key}: ${entry.value}')),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEventsSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  'Events',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _events.clear();
-                    });
-                  },
-                  child: const Text('Clear'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 200,
-              child: ListView.builder(
-                itemCount: _events.length,
-                itemBuilder: (context, index) {
-                  final event = _events[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${event['type'] ?? 'Unknown'} - ${event['timestamp'] ?? ''}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          if (event['status'] != null)
-                            Text('Status: ${event['status']}'),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+  Widget _buildMetricsItem(String title, Map<String, dynamic> data) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
-      ),
+        const SizedBox(height: 4),
+        if (data.isEmpty)
+          const Text('No data available', style: TextStyle(color: Colors.grey))
+        else
+          ...data.entries.map((entry) => Padding(
+                padding: const EdgeInsets.only(left: 16, top: 2),
+                child: Text('${entry.key}: ${entry.value}'),
+              )),
+      ],
     );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 }
