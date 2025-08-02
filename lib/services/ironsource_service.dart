@@ -385,6 +385,22 @@ class _InterstitialAdListener implements LevelPlayInterstitialAdListener {
   }
 
   @override
+  void onAdClosed(LevelPlayInterstitialAd? interstitialAd, IronSourceAdInfo? adInfo) {
+    developer.log('IronSource Interstitial ad closed', name: 'IronSourceService');
+  }
+
+  @override
+  void onAdDisplayFailed(LevelPlayInterstitialAd? interstitialAd, IronSourceError? error, IronSourceAdInfo? adInfo) {
+    developer.log('IronSource Interstitial ad display failed: ${error?.toString()}',
+        name: 'IronSourceService');
+  }
+
+  @override
+  void onAdDisplayed(LevelPlayInterstitialAd? interstitialAd, IronSourceAdInfo? adInfo) {
+    developer.log('IronSource Interstitial ad displayed', name: 'IronSourceService');
+  }
+
+  @override
   void onAdImpression(LevelPlayInterstitialAd? interstitialAd, IronSourceAdInfo? adInfo) {
     developer.log('IronSource Interstitial ad impression', name: 'IronSourceService');
   }
@@ -416,6 +432,22 @@ class _RewardedAdListener implements LevelPlayRewardedAdListener {
   @override
   void onAdClicked(LevelPlayRewardedAd? rewardedAd, IronSourceAdInfo? adInfo) {
     developer.log('IronSource Rewarded ad clicked', name: 'IronSourceService');
+  }
+
+  @override
+  void onAdClosed(LevelPlayRewardedAd? rewardedAd, IronSourceAdInfo? adInfo) {
+    developer.log('IronSource Rewarded ad closed', name: 'IronSourceService');
+  }
+
+  @override
+  void onAdDisplayFailed(LevelPlayRewardedAd? rewardedAd, IronSourceError? error, IronSourceAdInfo? adInfo) {
+    developer.log('IronSource Rewarded ad display failed: ${error?.toString()}',
+        name: 'IronSourceService');
+  }
+
+  @override
+  void onAdDisplayed(LevelPlayRewardedAd? rewardedAd, IronSourceAdInfo? adInfo) {
+    developer.log('IronSource Rewarded ad displayed', name: 'IronSourceService');
   }
 
   @override
