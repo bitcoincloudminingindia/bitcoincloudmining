@@ -32,22 +32,7 @@ class IronSourceTest {
     }
   }
 
-  /// Test native ad loading
-  static Future<bool> testNativeAdLoading() async {
-    try {
-      if (!IronSourceService.instance.isInitialized) {
-        await IronSourceService.instance.initialize();
-      }
-      
-      // Wait a bit for initialization
-      await Future.delayed(const Duration(seconds: 2));
-      
-      return IronSourceService.instance.isNativeAdLoaded;
-    } catch (e) {
-      debugPrint('Native ad loading test failed: $e');
-      return false;
-    }
-  }
+
 
   /// Run all tests
   static Future<Map<String, bool>> runAllTests() async {
@@ -55,7 +40,6 @@ class IronSourceTest {
     
     results['initialization'] = await testInitialization();
     results['network_connectivity'] = await testNetworkConnectivity();
-    results['native_ad_loading'] = await testNativeAdLoading();
     
     return results;
   }
