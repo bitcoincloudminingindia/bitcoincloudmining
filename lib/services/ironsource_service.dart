@@ -51,12 +51,11 @@ class IronSourceService {
       developer.log('Initializing IronSource SDK...',
           name: 'IronSourceService');
 
-      // Initialize with listener
+      // Initialize with listener - removed deprecated AdFormat usage
       await LevelPlay.init(
         initRequest: LevelPlayInitRequest(
           appKey: _getAppKey(),
           userId: _getUserId(),
-          legacyAdFormats: [AdFormat.INTERSTITIAL, AdFormat.REWARDED_VIDEO, AdFormat.NATIVE],
         ),
         initListener: _LevelPlayInitListener(),
       );
@@ -93,7 +92,7 @@ class IronSourceService {
 
     try {
       _nativeAd = LevelPlayNativeAd(
-        placementName: _adUnitIds['native']!,
+        adUnitId: _adUnitIds['native']!,
         listener: _NativeAdListener(),
       );
 
@@ -112,7 +111,7 @@ class IronSourceService {
 
     try {
       _interstitialAd = LevelPlayInterstitialAd(
-        placementName: _adUnitIds['interstitial']!,
+        adUnitId: _adUnitIds['interstitial']!,
         listener: _InterstitialAdListener(),
       );
 
@@ -131,7 +130,7 @@ class IronSourceService {
 
     try {
       _rewardedAd = LevelPlayRewardedAd(
-        placementName: _adUnitIds['rewarded']!,
+        adUnitId: _adUnitIds['rewarded']!,
         listener: _RewardedAdListener(),
       );
 
