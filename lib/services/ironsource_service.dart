@@ -147,125 +147,86 @@ class IronSourceService {
   }
 
   Widget? getNativeAdWidget({
-    double height = 350,
+    double height = 360,
     double width = 300,
     LevelPlayTemplateType templateType = LevelPlayTemplateType.MEDIUM,
   }) {
-    if (!_isInitialized || !_isNativeAdLoaded || _nativeAd == null) {
-      developer.log('IronSource Native ad not ready',
-          name: 'IronSourceService');
+    if (!_isNativeAdLoaded || _nativeAd == null) {
       return null;
     }
 
     try {
-      return LevelPlayNativeAdView(
+      return _nativeAd!.getNativeAdWidget(
         height: height,
         width: width,
-        nativeAd: _nativeAd!,
-        onPlatformViewCreated: () {
-          developer.log('IronSource Native ad view created',
-              name: 'IronSourceService');
-        },
         templateType: templateType,
       );
     } catch (e) {
-      developer.log('IronSource Native ad widget creation failed: $e',
+      developer.log('Failed to get native ad widget: $e',
           name: 'IronSourceService', error: e);
       return null;
     }
   }
 
   Future<bool> showInterstitialAd() async {
-    if (!_isInitialized || !_isInterstitialAdLoaded || _interstitialAd == null) {
-      developer.log('IronSource Interstitial ad not ready',
-          name: 'IronSourceService');
+    if (!_isInterstitialAdLoaded || _interstitialAd == null) {
+      developer.log('Interstitial ad not loaded', name: 'IronSourceService');
       return false;
     }
 
     try {
       await _interstitialAd!.showAd();
       _adShowCounts['interstitial'] = (_adShowCounts['interstitial'] ?? 0) + 1;
-      developer.log('IronSource Interstitial ad shown', name: 'IronSourceService');
+      developer.log('Interstitial ad shown successfully', name: 'IronSourceService');
       return true;
     } catch (e) {
-      developer.log('IronSource Interstitial ad show failed: $e',
-          name: 'IronSourceService', error: e);
       _adFailCounts['interstitial'] = (_adFailCounts['interstitial'] ?? 0) + 1;
+      developer.log('Failed to show interstitial ad: $e',
+          name: 'IronSourceService', error: e);
       return false;
     }
   }
 
   Future<bool> showRewardedAd() async {
-    if (!_isInitialized || !_isRewardedAdLoaded || _rewardedAd == null) {
-      developer.log('IronSource Rewarded ad not ready',
-          name: 'IronSourceService');
+    if (!_isRewardedAdLoaded || _rewardedAd == null) {
+      developer.log('Rewarded ad not loaded', name: 'IronSourceService');
       return false;
     }
 
     try {
       await _rewardedAd!.showAd();
       _adShowCounts['rewarded'] = (_adShowCounts['rewarded'] ?? 0) + 1;
-      developer.log('IronSource Rewarded ad shown', name: 'IronSourceService');
+      developer.log('Rewarded ad shown successfully', name: 'IronSourceService');
       return true;
     } catch (e) {
-      developer.log('IronSource Rewarded ad show failed: $e',
-          name: 'IronSourceService', error: e);
       _adFailCounts['rewarded'] = (_adFailCounts['rewarded'] ?? 0) + 1;
+      developer.log('Failed to show rewarded ad: $e',
+          name: 'IronSourceService', error: e);
       return false;
     }
   }
 
-  Future<void> reloadNativeAd() async {
-    if (_nativeAd != null) {
-      await _nativeAd!.loadAd();
-    }
+  Future<void> loadInterstitialAd() async {
+    await _loadInterstitialAd();
   }
 
-  Future<void> reloadInterstitialAd() async {
-    if (_interstitialAd != null) {
-      await _interstitialAd!.loadAd();
-    }
+  Future<void> loadRewardedAd() async {
+    await _loadRewardedAd();
   }
 
-  Future<void> reloadRewardedAd() async {
-    if (_rewardedAd != null) {
-      await _rewardedAd!.loadAd();
-    }
+  Future<void> loadNativeAd() async {
+    await _loadNativeAd();
   }
 
-  Future<void> destroyNativeAd() async {
-    if (_nativeAd != null) {
-      await _nativeAd!.destroy();
-      _nativeAd = null;
-      _isNativeAdLoaded = false;
-    }
+  void trackRevenue(String adType, double revenue) {
+    _revenueData[adType] = (_revenueData[adType] ?? 0) + revenue;
+    developer.log('Revenue tracked: $adType - $revenue', name: 'IronSourceService');
   }
 
-  Future<void> destroyInterstitialAd() async {
-    if (_interstitialAd != null) {
-      await _interstitialAd!.destroy();
-      _interstitialAd = null;
-      _isInterstitialAdLoaded = false;
-    }
-  }
-
-  Future<void> destroyRewardedAd() async {
-    if (_rewardedAd != null) {
-      await _rewardedAd!.destroy();
-      _rewardedAd = null;
-      _isRewardedAdLoaded = false;
-    }
-  }
-
-  Future<void> launchTestSuite() async {
-    if (!_isInitialized) return;
-
+  void launchTestSuite() {
     try {
-      // Note: Test suite launch is deprecated in newer versions
-      // You may need to implement alternative testing methods
-      developer.log(
-          'Test Suite launch is deprecated in newer IronSource versions',
-          name: 'IronSourceService');
+      IronSource.launchTestSuite();
+      developer.log('IronSource Test Suite launched', name: 'IronSourceService');
     } catch (e) {
       developer.log('IronSource Test Suite launch failed: $e',
           name: 'IronSourceService', error: e);
