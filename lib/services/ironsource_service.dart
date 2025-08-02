@@ -56,6 +56,7 @@ class IronSourceService {
         initRequest: LevelPlayInitRequest(
           appKey: _getAppKey(),
           userId: _getUserId(),
+          legacyAdFormats: true, // Add the missing required parameter
         ),
         initListener: _LevelPlayInitListener(),
       );
@@ -91,10 +92,10 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _nativeAd = LevelPlayNativeAd(
-        adUnitId: _adUnitIds['native']!,
-        nativeAdListener: _NativeAdListener(),
-      );
+      _nativeAd = LevelPlayNativeAd.builder()
+          .withPlacementName(_adUnitIds['native']!)
+          .withListener(_NativeAdListener())
+          .build();
 
       await _nativeAd?.loadAd();
       _isNativeAdLoaded = true;
@@ -110,10 +111,10 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _interstitialAd = LevelPlayInterstitialAd(
-        adUnitId: _adUnitIds['interstitial']!,
-        interstitialAdListener: _InterstitialAdListener(),
-      );
+      _interstitialAd = LevelPlayInterstitialAd.builder()
+          .withPlacementName(_adUnitIds['interstitial']!)
+          .withListener(_InterstitialAdListener())
+          .build();
 
       await _interstitialAd?.loadAd();
       _isInterstitialAdLoaded = true;
@@ -129,10 +130,10 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _rewardedAd = LevelPlayRewardedAd(
-        adUnitId: _adUnitIds['rewarded']!,
-        rewardedAdListener: _RewardedAdListener(),
-      );
+      _rewardedAd = LevelPlayRewardedAd.builder()
+          .withPlacementName(_adUnitIds['rewarded']!)
+          .withListener(_RewardedAdListener())
+          .build();
 
       await _rewardedAd?.loadAd();
       _isRewardedAdLoaded = true;
@@ -396,6 +397,7 @@ class _InterstitialAdListener implements LevelPlayInterstitialAdListener {
     developer.log('IronSource Interstitial ad impression', name: 'IronSourceService');
   }
 
+  @override
   void onAdInfoChanged(LevelPlayAdInfo adInfo) {
     developer.log('IronSource Interstitial ad info changed', name: 'IronSourceService');
   }
@@ -439,6 +441,7 @@ class _RewardedAdListener implements LevelPlayRewardedAdListener {
     developer.log('IronSource Rewarded ad impression', name: 'IronSourceService');
   }
 
+  @override
   void onAdInfoChanged(LevelPlayAdInfo adInfo) {
     developer.log('IronSource Rewarded ad info changed', name: 'IronSourceService');
   }
