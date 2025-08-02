@@ -815,19 +815,19 @@ class AdService {
       return false;
     }
 
-    // Try IronSource first if available (commented out for now as methods not available)
-    // if (_ironSourceService.isInitialized &&
-    //     _ironSourceService.isRewardedAdLoaded) {
-    //   print('🎯 Trying IronSource Rewarded ad...');
-    //   final success = await _ironSourceService.showRewardedAd(
-    //     onRewarded: onRewarded,
-    //     onAdDismissed: onAdDismissed,
-    //   );
-    //   if (success) {
-    //     print('✅ IronSource Rewarded ad shown successfully');
-    //     return true;
-    //   }
-    // }
+    // Try IronSource first if available
+    if (_ironSourceService.isInitialized &&
+        _ironSourceService.isRewardedAdLoaded) {
+      print('🎯 Trying IronSource Rewarded ad...');
+      final success = await _ironSourceService.showRewardedAd(
+        onRewarded: onRewarded,
+        onAdDismissed: onAdDismissed,
+      );
+      if (success) {
+        print('✅ IronSource Rewarded ad shown successfully');
+        return true;
+      }
+    }
 
     // Fallback to AdMob
     if (!_isRewardedAdLoaded || _rewardedAd == null) {

@@ -38,6 +38,8 @@ class IronSourceService {
 
   bool get isInitialized => _isInitialized;
   bool get isNativeAdLoaded => _isNativeAdLoaded;
+  // Add missing getter for rewarded ads
+  bool get isRewardedAdLoaded => false; // IronSource doesn't support rewarded ads in this version
   Stream<Map<String, dynamic>> get events => _eventController.stream;
 
   Future<void> initialize() async {
@@ -143,6 +145,17 @@ class IronSourceService {
       _nativeAd = null;
       _isNativeAdLoaded = false;
     }
+  }
+
+  // Placeholder method for rewarded ads (IronSource doesn't support rewarded ads in this version)
+  Future<bool> showRewardedAd({
+    required Function(double) onRewarded,
+    required VoidCallback onAdDismissed,
+  }) async {
+    developer.log('IronSource Rewarded ads not supported in this version',
+        name: 'IronSourceService');
+    onAdDismissed();
+    return false;
   }
 
   Future<void> launchTestSuite() async {
