@@ -50,7 +50,6 @@ class IronSourceService {
         initRequest: LevelPlayInitRequest(
           appKey: _getAppKey(),
           userId: _getUserId(),
-          legacyAdFormats: [], // Add required parameter
         ),
         initListener: _LevelPlayInitListener(),
       );
@@ -86,7 +85,7 @@ class IronSourceService {
 
     try {
       _interstitialAd = LevelPlayInterstitialAd.builder()
-          .withPlacementName(_interstitialAdUnitId)
+          .withAdUnitId(_interstitialAdUnitId)
           .withListener(_InterstitialAdListener())
           .build();
 
@@ -105,7 +104,7 @@ class IronSourceService {
 
     try {
       _rewardedAd = LevelPlayRewardedAd.builder()
-          .withPlacementName(_rewardedAdUnitId)
+          .withAdUnitId(_rewardedAdUnitId)
           .withListener(_RewardedAdListener())
           .build();
 
