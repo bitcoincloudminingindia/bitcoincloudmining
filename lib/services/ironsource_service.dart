@@ -20,14 +20,11 @@ class IronSourceService {
     'banner': 'qgvxpwcrq6u2y0vq', // Banner Main
     'interstitial': 'i5bc3rl0ebvk8xjk', // interstitial_ad_1
     'rewarded': 'lcv9s3mjszw657sy', // rewarded_video_1
-    'native':
-        'lcv9s3mjszw657sy', // Using rewarded for native (you may need to create a native ad unit)
+    'native': 'lcv9s3mjszw657sy', // Using rewarded for native (you may need to create a native ad unit)
   };
 
   bool _isInitialized = false;
   bool _isNativeAdLoaded = false;
-
-  LevelPlayNativeAd? _nativeAd;
 
   final StreamController<Map<String, dynamic>> _eventController =
       StreamController<Map<String, dynamic>>.broadcast();
@@ -65,8 +62,8 @@ class IronSourceService {
       // Setup event listeners
       _setupEventListeners();
 
-      // Preload native ad
-      await _loadNativeAd();
+      // Preload rewarded ad
+      await _loadRewardedAd();
     } catch (e) {
       developer.log('IronSource initialization failed: $e',
           name: 'IronSourceService', error: e);
@@ -83,95 +80,89 @@ class IronSourceService {
     });
   }
 
-  Future<void> _loadNativeAd() async {
+  Future<void> _loadRewardedAd() async {
     if (!_isInitialized) return;
 
     try {
-      _nativeAd = LevelPlayNativeAd.builder()
-          .withPlacementName(_adUnitIds['native']!)
-          .withListener(_NativeAdListener())
-          .build();
-
-      await _nativeAd?.loadAd();
-      _isNativeAdLoaded = true;
-      developer.log('IronSource Native ad loaded', name: 'IronSourceService');
+      await LevelPlayRewardedAd.loadAd();
+      developer.log('IronSource Rewarded ad loaded', name: 'IronSourceService');
     } catch (e) {
-      developer.log('IronSource Native ad load failed: $e',
+      developer.log('IronSource Rewarded ad load failed: $e',
           name: 'IronSourceService', error: e);
-      _isNativeAdLoaded = false;
     }
   }
 
-  Widget? getNativeAdWidget({
-    double height = 350,
-    double width = 300,
-    LevelPlayTemplateType templateType = LevelPlayTemplateType.MEDIUM,
-  }) {
-    if (!_isInitialized || !_isNativeAdLoaded || _nativeAd == null) {
-      developer.log('IronSource Native ad not ready',
-          name: 'IronSourceService');
-      return null;
+  Future<bool> showRewardedAd() async {
+    if (!_isInitialized) {
+      developer.log('IronSource not initialized', name: 'IronSourceService');
+      return false;
     }
 
     try {
-      return LevelPlayNativeAdView(
-        height: height,
-        width: width,
-        nativeAd: _nativeAd!,
-        onPlatformViewCreated: () {
-          developer.log('IronSource Native ad view created',
-              name: 'IronSourceService');
-        },
-        templateType: templateType,
+      final isAdAvailable = await LevelPlayRewardedAd.isAdAvailable();
+      if (!isAdAvailable) {
+        developer.log('IronSource Rewarded ad not available', name: 'IronSourceService');
+        return false;
+      }
+
+      await LevelPlayRewardedAd.showAd();
+      _adShowCounts['rewarded'] = (_adShowCounts['rewarded'] ?? 0) + 1;
+      
+      developer.log('IronSource Rewarded ad shown successfully', name: 'IronSourceService');
+      return true;
+    } catch (e) {
+      _adFailCounts['rewarded'] = (_adFailCounts['rewarded'] ?? 0) + 1;
+      developer.log('IronSource Rewarded ad show failed: $e',
+          name: 'IronSourceService', error: e);
+      return false;
+    }
+  }
+
+  Future<void> loadBannerAd() async {
+    if (!_isInitialized) return;
+
+    try {
+      await LevelPlayBannerAd.loadAd(
+        adUnitId: _adUnitIds['banner']!,
+        adSize: LevelPlayBannerAdSize.BANNER,
+        listener: _BannerAdListener(),
+      );
+      developer.log('IronSource Banner ad loaded', name: 'IronSourceService');
+    } catch (e) {
+      developer.log('IronSource Banner ad load failed: $e',
+          name: 'IronSourceService', error: e);
+    }
+  }
+
+  Widget getBannerAd() {
+    if (!_isInitialized) {
+      return const SizedBox(height: 50);
+    }
+
+    try {
+      return LevelPlayBannerAd(
+        adUnitId: _adUnitIds['banner']!,
+        adSize: LevelPlayBannerAdSize.BANNER,
+        listener: _BannerAdListener(),
       );
     } catch (e) {
-      developer.log('IronSource Native ad widget creation failed: $e',
+      developer.log('IronSource Banner ad widget creation failed: $e',
           name: 'IronSourceService', error: e);
-      return null;
+      return const SizedBox(height: 50);
     }
   }
 
-  Future<void> reloadNativeAd() async {
-    if (_nativeAd != null) {
-      await _nativeAd!.loadAd();
-    }
-  }
-
-  Future<void> destroyNativeAd() async {
-    if (_nativeAd != null) {
-      await _nativeAd!.destroyAd();
-      _nativeAd = null;
-      _isNativeAdLoaded = false;
-    }
-  }
-
-  Future<void> launchTestSuite() async {
-    if (!_isInitialized) return;
-
-    try {
-      // Note: Test suite launch is deprecated in newer versions
-      // You may need to implement alternative testing methods
-      developer.log(
-          'Test Suite launch is deprecated in newer IronSource versions',
-          name: 'IronSourceService');
-    } catch (e) {
-      developer.log('IronSource Test Suite launch failed: $e',
-          name: 'IronSourceService', error: e);
-    }
+  void dispose() {
+    _eventController.close();
+    developer.log('IronSource service disposed', name: 'IronSourceService');
   }
 
   Map<String, dynamic> get metrics => {
-        'is_initialized': _isInitialized,
-        'native_loaded': _isNativeAdLoaded,
         'ad_shows': _adShowCounts,
         'ad_failures': _adFailCounts,
         'revenue': _revenueData,
+        'is_initialized': _isInitialized,
       };
-
-  void dispose() {
-    _nativeAd?.destroyAd();
-    _eventController.close();
-  }
 
   String _getAppKey() {
     if (Platform.isAndroid) {
@@ -179,48 +170,51 @@ class IronSourceService {
     } else if (Platform.isIOS) {
       return _iosAppKey;
     }
-    return _androidAppKey; // Default fallback
+    return _androidAppKey; // Default to Android
   }
 
   String _getUserId() {
-    // You can implement user ID logic here
+    // Generate a unique user ID or use existing one
     return 'user_${DateTime.now().millisecondsSinceEpoch}';
   }
 }
 
-// IronSource Event Listeners
 class _LevelPlayInitListener implements LevelPlayInitListener {
   @override
-  void onInitFailed(LevelPlayInitError error) {
-    developer.log('IronSource init failed: ${error.toString()}',
-        name: 'IronSourceService');
-  }
-
-  @override
-  void onInitSuccess(LevelPlayConfiguration configuration) {
-    developer.log('IronSource init success', name: 'IronSourceService');
+  void onInitializationComplete() {
+    developer.log('IronSource initialization completed', name: 'IronSourceService');
   }
 }
 
-class _NativeAdListener implements LevelPlayNativeAdListener {
+class _BannerAdListener implements LevelPlayBannerAdListener {
   @override
-  void onAdClicked(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad clicked', name: 'IronSourceService');
+  void onAdLoaded(LevelPlayBannerAd ad) {
+    developer.log('IronSource Banner ad loaded', name: 'IronSourceService');
   }
 
   @override
-  void onAdImpression(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad impression', name: 'IronSourceService');
-  }
-
-  @override
-  void onAdLoadFailed(LevelPlayNativeAd? nativeAd, IronSourceError? error) {
-    developer.log('IronSource Native ad load failed: ${error?.toString()}',
+  void onAdLoadFailed(LevelPlayBannerAd ad, LevelPlayAdError error) {
+    developer.log('IronSource Banner ad load failed: ${error.description}', 
         name: 'IronSourceService');
   }
 
   @override
-  void onAdLoaded(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad loaded', name: 'IronSourceService');
+  void onAdClicked(LevelPlayBannerAd ad) {
+    developer.log('IronSource Banner ad clicked', name: 'IronSourceService');
+  }
+
+  @override
+  void onAdScreenPresented(LevelPlayBannerAd ad) {
+    developer.log('IronSource Banner ad screen presented', name: 'IronSourceService');
+  }
+
+  @override
+  void onAdScreenDismissed(LevelPlayBannerAd ad) {
+    developer.log('IronSource Banner ad screen dismissed', name: 'IronSourceService');
+  }
+
+  @override
+  void onAdLeftApplication(LevelPlayBannerAd ad) {
+    developer.log('IronSource Banner ad left application', name: 'IronSourceService');
   }
 }
