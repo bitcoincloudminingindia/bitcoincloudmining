@@ -5,7 +5,7 @@ class IronSourceNativeAdWidget extends StatefulWidget {
   final double height;
   final double width;
   final LevelPlayTemplateType templateType;
-  final String placementName;
+  final String adUnitId;
   final VoidCallback? onAdLoaded;
   final VoidCallback? onAdFailed;
   final VoidCallback? onAdClicked;
@@ -15,7 +15,7 @@ class IronSourceNativeAdWidget extends StatefulWidget {
     this.height = 350,
     this.width = 300,
     this.templateType = LevelPlayTemplateType.MEDIUM,
-    this.placementName = 'DefaultNativePlacement',
+    this.adUnitId = 'lcv9s3mjszw657sy', // Default ad unit ID
     this.onAdLoaded,
     this.onAdFailed,
     this.onAdClicked,
@@ -44,10 +44,12 @@ class _IronSourceNativeAdWidgetState extends State<IronSourceNativeAdWidget>
         _isLoading = true;
       });
 
-      _nativeAd = LevelPlayNativeAd.builder()
-          .withPlacementName(widget.placementName)
-          .withListener(this)
-          .build();
+      _nativeAd = LevelPlayNativeAd.create(
+        adUnitId: widget.adUnitId,
+      );
+      
+      // Set listener after creation
+      _nativeAd?.setListener(this);
 
       await _nativeAd?.loadAd();
     } catch (e) {
@@ -105,19 +107,19 @@ class _IronSourceNativeAdWidgetState extends State<IronSourceNativeAdWidget>
   }
 
   @override
-  void onAdClicked(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
+  void onAdClicked(LevelPlayAdInfo adInfo) {
     print('🎯 IronSource Native ad clicked');
     widget.onAdClicked?.call();
   }
 
   @override
-  void onAdImpression(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
+  void onAdImpression(LevelPlayAdInfo adInfo) {
     print('👁️ IronSource Native ad impression');
   }
 
   @override
-  void onAdLoadFailed(LevelPlayNativeAd? nativeAd, IronSourceError? error) {
-    print('❌ IronSource Native ad load failed: ${error?.toString()}');
+  void onAdLoadFailed(LevelPlayAdError error) {
+    print('❌ IronSource Native ad load failed: ${error.toString()}');
     setState(() {
       _isLoading = false;
       _isAdLoaded = false;
@@ -126,7 +128,7 @@ class _IronSourceNativeAdWidgetState extends State<IronSourceNativeAdWidget>
   }
 
   @override
-  void onAdLoaded(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
+  void onAdLoaded(LevelPlayAdInfo adInfo) {
     print('✅ IronSource Native ad loaded');
     setState(() {
       _isLoading = false;
@@ -137,21 +139,21 @@ class _IronSourceNativeAdWidgetState extends State<IronSourceNativeAdWidget>
 
   @override
   void dispose() {
-    _nativeAd?.destroyAd();
+    _nativeAd = null;
     super.dispose();
   }
 }
 
 // Small Native Ad Widget
 class IronSourceSmallNativeAdWidget extends StatelessWidget {
-  final String placementName;
+  final String adUnitId;
   final VoidCallback? onAdLoaded;
   final VoidCallback? onAdFailed;
   final VoidCallback? onAdClicked;
 
   const IronSourceSmallNativeAdWidget({
     super.key,
-    this.placementName = 'DefaultNativePlacement',
+    this.adUnitId = 'lcv9s3mjszw657sy', // Default ad unit ID
     this.onAdLoaded,
     this.onAdFailed,
     this.onAdClicked,
@@ -163,7 +165,7 @@ class IronSourceSmallNativeAdWidget extends StatelessWidget {
       height: 175,
       width: 300,
       templateType: LevelPlayTemplateType.SMALL,
-      placementName: placementName,
+      adUnitId: adUnitId,
       onAdLoaded: onAdLoaded,
       onAdFailed: onAdFailed,
       onAdClicked: onAdClicked,
@@ -173,14 +175,14 @@ class IronSourceSmallNativeAdWidget extends StatelessWidget {
 
 // Medium Native Ad Widget
 class IronSourceMediumNativeAdWidget extends StatelessWidget {
-  final String placementName;
+  final String adUnitId;
   final VoidCallback? onAdLoaded;
   final VoidCallback? onAdFailed;
   final VoidCallback? onAdClicked;
 
   const IronSourceMediumNativeAdWidget({
     super.key,
-    this.placementName = 'DefaultNativePlacement',
+    this.adUnitId = 'lcv9s3mjszw657sy', // Default ad unit ID
     this.onAdLoaded,
     this.onAdFailed,
     this.onAdClicked,
@@ -192,7 +194,7 @@ class IronSourceMediumNativeAdWidget extends StatelessWidget {
       height: 350,
       width: 300,
       templateType: LevelPlayTemplateType.MEDIUM,
-      placementName: placementName,
+      adUnitId: adUnitId,
       onAdLoaded: onAdLoaded,
       onAdFailed: onAdFailed,
       onAdClicked: onAdClicked,
