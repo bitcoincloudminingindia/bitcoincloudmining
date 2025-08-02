@@ -16,11 +16,9 @@ class IronSourceService {
   static const String _iosAppKey = '2314651cd';
 
   // IronSource Ad Unit IDs (from your dashboard)
-  static const Map<String, String> _adUnitIds = {
-    'interstitial': 'i5bc3rl0ebvk8xjk', // interstitial_ad_1
-    'rewarded': 'lcv9s3mjszw657sy', // rewarded_video_1
-    'native': 'lcv9s3mjszw657sy', // Using rewarded for native (you may need to create a native ad unit)
-  };
+  static const String _nativeAdUnitId = 'lcv9s3mjszw657sy';
+  static const String _interstitialAdUnitId = 'i5bc3rl0ebvk8xjk';
+  static const String _rewardedAdUnitId = 'lcv9s3mjszw657sy';
 
   bool _isInitialized = false;
   bool _isNativeAdLoaded = false;
@@ -93,7 +91,7 @@ class IronSourceService {
 
     try {
       _nativeAd = LevelPlayNativeAd(
-        // Remove listener parameter as it's not supported in current API
+        adUnitId: _nativeAdUnitId,
       );
 
       await _nativeAd?.loadAd();
@@ -111,7 +109,7 @@ class IronSourceService {
 
     try {
       _interstitialAd = LevelPlayInterstitialAd(
-        // Remove listener parameter as it's not supported in current API
+        adUnitId: _interstitialAdUnitId,
       );
 
       await _interstitialAd?.loadAd();
@@ -129,7 +127,7 @@ class IronSourceService {
 
     try {
       _rewardedAd = LevelPlayRewardedAd(
-        // Remove listener parameter as it's not supported in current API
+        adUnitId: _rewardedAdUnitId,
       );
 
       await _rewardedAd?.loadAd();
@@ -325,135 +323,5 @@ class _LevelPlayInitListener implements LevelPlayInitListener {
   @override
   void onInitSuccess(LevelPlayConfiguration configuration) {
     developer.log('IronSource init success', name: 'IronSourceService');
-  }
-}
-
-class _NativeAdListener implements LevelPlayNativeAdListener {
-  @override
-  void onAdClicked(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad clicked', name: 'IronSourceService');
-  }
-
-  @override
-  void onAdImpression(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad impression', name: 'IronSourceService');
-  }
-
-  @override
-  void onAdLoadFailed(LevelPlayNativeAd? nativeAd, IronSourceError? error) {
-    // Handle error more robustly - use toString() as fallback
-    String errorMessage = 'Unknown error';
-    try {
-      errorMessage = error?.toString() ?? 'Unknown error';
-      
-      // If the error object has additional properties, we can access them safely
-      // This handles potential API changes in the IronSource SDK
-      if (error?.runtimeType.toString().contains('IronSourceError') == true) {
-        // Log additional error details if available
-        developer.log('IronSource ad load failed with error type: ${error.runtimeType}',
-            name: 'IronSourceService');
-      }
-    } catch (e) {
-      errorMessage = 'Error occurred while processing ad load failure: $e';
-    }
-    
-    developer.log('IronSource Native ad load failed: $errorMessage',
-        name: 'IronSourceService');
-  }
-
-  @override
-  void onAdLoaded(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad loaded', name: 'IronSourceService');
-  }
-}
-
-class _InterstitialAdListener implements LevelPlayInterstitialAdListener {
-  @override
-  void onAdClicked(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Interstitial ad clicked', name: 'IronSourceService');
-  }
-
-  @override
-  void onAdClosed(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Interstitial ad closed', name: 'IronSourceService');
-  }
-
-  @override
-  void onAdDisplayFailed(LevelPlayAdError error, LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Interstitial ad display failed: ${error.toString()}',
-        name: 'IronSourceService');
-  }
-
-  @override
-  void onAdDisplayed(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Interstitial ad displayed', name: 'IronSourceService');
-  }
-
-  @override
-  void onAdImpression(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Interstitial ad impression', name: 'IronSourceService');
-  }
-
-  void onAdInfoChanged(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Interstitial ad info changed', name: 'IronSourceService');
-  }
-
-  @override
-  void onAdLoadFailed(LevelPlayAdError error) {
-    developer.log('IronSource Interstitial ad load failed: ${error.toString()}',
-        name: 'IronSourceService');
-  }
-
-  @override
-  void onAdLoaded(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Interstitial ad loaded', name: 'IronSourceService');
-  }
-}
-
-class _RewardedAdListener implements LevelPlayRewardedAdListener {
-  @override
-  void onAdClicked(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad clicked', name: 'IronSourceService');
-  }
-
-  @override
-  void onAdClosed(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad closed', name: 'IronSourceService');
-  }
-
-  @override
-  void onAdDisplayFailed(LevelPlayAdError error, LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad display failed: ${error.toString()}',
-        name: 'IronSourceService');
-  }
-
-  @override
-  void onAdDisplayed(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad displayed', name: 'IronSourceService');
-  }
-
-  @override
-  void onAdImpression(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad impression', name: 'IronSourceService');
-  }
-
-  void onAdInfoChanged(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad info changed', name: 'IronSourceService');
-  }
-
-  @override
-  void onAdLoadFailed(LevelPlayAdError error) {
-    developer.log('IronSource Rewarded ad load failed: ${error.toString()}',
-        name: 'IronSourceService');
-  }
-
-  @override
-  void onAdLoaded(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad loaded', name: 'IronSourceService');
-  }
-
-  @override
-  void onAdRewarded(LevelPlayReward reward, LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad rewarded', name: 'IronSourceService');
   }
 }
