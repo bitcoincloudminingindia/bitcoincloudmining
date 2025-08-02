@@ -52,7 +52,8 @@ class IronSourceService {
           name: 'IronSourceService');
 
       // Create init request with test suite metadata
-      final initRequest = LevelPlayInitRequest.create(_getAppKey())
+      final initRequest = LevelPlayInitRequest()
+          .withAppKey(_getAppKey())
           .withUserId(_getUserId())
           .build();
 
@@ -93,7 +94,7 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _nativeAd = LevelPlayNativeAd.create()
+      _nativeAd = LevelPlayNativeAd()
           .withPlacementName(_adUnitIds['native']!)
           .withListener(_NativeAdListener())
           .build();
@@ -112,7 +113,7 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _interstitialAd = LevelPlayInterstitialAd.create()
+      _interstitialAd = LevelPlayInterstitialAd()
           .withAdUnitId(_adUnitIds['interstitial']!)
           .withListener(_InterstitialAdListener())
           .build();
@@ -131,7 +132,7 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _rewardedAd = LevelPlayRewardedAd.create()
+      _rewardedAd = LevelPlayRewardedAd()
           .withAdUnitId(_adUnitIds['rewarded']!)
           .withListener(_RewardedAdListener())
           .build();
@@ -235,7 +236,6 @@ class IronSourceService {
 
   Future<void> destroyNativeAd() async {
     if (_nativeAd != null) {
-      await _nativeAd!.destroy();
       _nativeAd = null;
       _isNativeAdLoaded = false;
     }
@@ -243,7 +243,6 @@ class IronSourceService {
 
   Future<void> destroyInterstitialAd() async {
     if (_interstitialAd != null) {
-      await _interstitialAd!.destroy();
       _interstitialAd = null;
       _isInterstitialAdLoaded = false;
     }
@@ -251,7 +250,6 @@ class IronSourceService {
 
   Future<void> destroyRewardedAd() async {
     if (_rewardedAd != null) {
-      await _rewardedAd!.destroy();
       _rewardedAd = null;
       _isRewardedAdLoaded = false;
     }
@@ -283,9 +281,9 @@ class IronSourceService {
       };
 
   void dispose() {
-    _nativeAd?.destroy();
-    _interstitialAd?.destroy();
-    _rewardedAd?.destroy();
+    _nativeAd = null;
+    _interstitialAd = null;
+    _rewardedAd = null;
     _eventController.close();
   }
 
@@ -337,27 +335,27 @@ class _LevelPlayInitListener implements LevelPlayInitListener {
 
 class _NativeAdListener implements LevelPlayNativeAdListener {
   @override
-  void onAdClicked(LevelPlayAdInfo adInfo) {
+  void onAdClicked(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
     developer.log('IronSource Native ad clicked', name: 'IronSourceService');
   }
 
   @override
-  void onAdImpression(LevelPlayAdInfo adInfo) {
+  void onAdImpression(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
     developer.log('IronSource Native ad impression', name: 'IronSourceService');
   }
 
   @override
-  void onAdLoadFailed(LevelPlayAdError error) {
+  void onAdLoadFailed(LevelPlayNativeAd? nativeAd, IronSourceError? error) {
     // Handle error more robustly - use toString() as fallback
     String errorMessage = 'Unknown error';
     try {
-      errorMessage = error.toString();
+      errorMessage = error?.toString() ?? 'Unknown error';
       
       // If the error object has additional properties, we can access them safely
       // This handles potential API changes in the IronSource SDK
-      if (error.runtimeType.toString().contains('LevelPlayAdError')) {
+      if (error?.runtimeType.toString().contains('IronSourceError') == true) {
         // Log additional error details if available
-        developer.log('IronSource ad load failed with error type: ${error.runtimeType}',
+        developer.log('IronSource ad load failed with error type: ${error?.runtimeType}',
             name: 'IronSourceService');
       }
     } catch (e) {
@@ -369,7 +367,7 @@ class _NativeAdListener implements LevelPlayNativeAdListener {
   }
 
   @override
-  void onAdLoaded(LevelPlayAdInfo adInfo) {
+  void onAdLoaded(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
     developer.log('IronSource Native ad loaded', name: 'IronSourceService');
   }
 }
