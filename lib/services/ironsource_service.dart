@@ -51,10 +51,11 @@ class IronSourceService {
       developer.log('Initializing IronSource SDK...',
           name: 'IronSourceService');
 
-      // Create init request with test suite metadata
-      final initRequest = LevelPlayInitRequest.create(_getAppKey())
-          .withUserId(_getUserId())
-          .build();
+      // Create init request with required parameters
+      final initRequest = LevelPlayInitRequest.create(
+        appKey: _getAppKey(),
+        legacyAdFormats: [], // Empty list for no legacy formats
+      );
 
       // Initialize with listener
       await LevelPlay.init(
@@ -93,10 +94,12 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _nativeAd = LevelPlayNativeAd.create()
-          .withPlacementName(_adUnitIds['native']!)
-          .withListener(_NativeAdListener())
-          .build();
+      _nativeAd = LevelPlayNativeAd.create(
+        adUnitId: _adUnitIds['native']!,
+      );
+      
+      // Set listener after creation
+      _nativeAd?.setListener(_NativeAdListener());
 
       await _nativeAd?.loadAd();
       _isNativeAdLoaded = true;
@@ -112,10 +115,12 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _interstitialAd = LevelPlayInterstitialAd.create()
-          .withAdUnitId(_adUnitIds['interstitial']!)
-          .withListener(_InterstitialAdListener())
-          .build();
+      _interstitialAd = LevelPlayInterstitialAd.create(
+        adUnitId: _adUnitIds['interstitial']!,
+      );
+      
+      // Set listener after creation
+      _interstitialAd?.setListener(_InterstitialAdListener());
 
       await _interstitialAd?.loadAd();
       _isInterstitialAdLoaded = true;
@@ -131,10 +136,12 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _rewardedAd = LevelPlayRewardedAd.create()
-          .withAdUnitId(_adUnitIds['rewarded']!)
-          .withListener(_RewardedAdListener())
-          .build();
+      _rewardedAd = LevelPlayRewardedAd.create(
+        adUnitId: _adUnitIds['rewarded']!,
+      );
+      
+      // Set listener after creation
+      _rewardedAd?.setListener(_RewardedAdListener());
 
       await _rewardedAd?.loadAd();
       _isRewardedAdLoaded = true;
@@ -235,7 +242,6 @@ class IronSourceService {
 
   Future<void> destroyNativeAd() async {
     if (_nativeAd != null) {
-      await _nativeAd!.destroy();
       _nativeAd = null;
       _isNativeAdLoaded = false;
     }
@@ -243,7 +249,6 @@ class IronSourceService {
 
   Future<void> destroyInterstitialAd() async {
     if (_interstitialAd != null) {
-      await _interstitialAd!.destroy();
       _interstitialAd = null;
       _isInterstitialAdLoaded = false;
     }
@@ -251,7 +256,6 @@ class IronSourceService {
 
   Future<void> destroyRewardedAd() async {
     if (_rewardedAd != null) {
-      await _rewardedAd!.destroy();
       _rewardedAd = null;
       _isRewardedAdLoaded = false;
     }
@@ -283,9 +287,9 @@ class IronSourceService {
       };
 
   void dispose() {
-    _nativeAd?.destroy();
-    _interstitialAd?.destroy();
-    _rewardedAd?.destroy();
+    _nativeAd = null;
+    _interstitialAd = null;
+    _rewardedAd = null;
     _eventController.close();
   }
 
