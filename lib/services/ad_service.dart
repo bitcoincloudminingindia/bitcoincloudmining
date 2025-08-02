@@ -301,6 +301,25 @@ class AdService {
   // Load banner ad
   Future<void> loadBannerAd() async {
     if (!_canShowAds()) return; // Check consent first
+    
+    // Try IronSource first (PRIMARY)
+    if (_ironSourceService.isInitialized) {
+      print('🎯 Loading IronSource Banner ad (PRIMARY)...');
+      try {
+        await _ironSourceService.reloadBannerAd();
+        if (_ironSourceService.isBannerAdLoaded) {
+          print('✅ IronSource Banner ad loaded successfully');
+          _updateAdMetrics('ironsource_banner', true, null);
+          return;
+        }
+      } catch (e) {
+        print('❌ IronSource Banner ad load failed: $e');
+        _updateAdMetrics('ironsource_banner', false, null);
+      }
+    }
+
+    // Fallback to AdMob (SECONDARY)
+    print('🔄 Falling back to AdMob Banner ad...');
     if (_isBannerAdLoaded && _isCachedAdValid('banner')) return;
 
     await _loadAdWithRetry(
@@ -348,6 +367,63 @@ class AdService {
 
   /// Returns a Future that completes with the banner ad widget when loaded, or a placeholder if not available.
   Future<Widget?> getBannerAdWidget() async {
+    // Try IronSource first (PRIMARY)
+    if (_ironSourceService.isInitialized && _ironSourceService.isBannerAdLoaded) {
+      print('🎯 Using IronSource Banner ad (PRIMARY)');
+      final ironSourceWidget = _ironSourceService.getBannerAdWidget();
+      if (ironSourceWidget != null) {
+        return Container(
+          width: double.infinity,
+          height: 70,
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[300]!, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(13),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Ad label for transparency
+              const Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Text(
+                  'Advertisement',
+                  style: TextStyle(
+                    fontSize: 8,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+              // IronSource banner ad
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.grey[200]!, width: 0.5),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: ironSourceWidget,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+
+    // Fallback to AdMob (SECONDARY)
+    print('🔄 Falling back to AdMob Banner ad...');
     // If already loaded, return immediately
     if (_isBannerAdLoaded && _bannerAd != null) {
       return getBannerAd();
@@ -795,21 +871,29 @@ class AdService {
       return false;
     }
 
-    // Try IronSource first if available (commented out for now as methods not available)
-    // if (_ironSourceService.isInitialized &&
-    //     _ironSourceService.isRewardedAdLoaded) {
-    //   print('🎯 Trying IronSource Rewarded ad...');
-    //   final success = await _ironSourceService.showRewardedAd(
-    //     onRewarded: onRewarded,
-    //     onAdDismissed: onAdDismissed,
-    //   );
-    //   if (success) {
-    //     print('✅ IronSource Rewarded ad shown successfully');
-    //     return true;
-    //   }
-    // }
+    // Try IronSource first (PRIMARY)
+    if (_ironSourceService.isInitialized && _ironSourceService.isRewardedAdLoaded) {
+      print('🎯 Trying IronSource Rewarded ad (PRIMARY)...');
+      try {
+        final success = await _ironSourceService.showRewardedAd(
+          onRewarded: onRewarded,
+          onAdDismissed: onAdDismissed,
+        );
+        if (success) {
+          print('✅ IronSource Rewarded ad shown successfully');
+          _updateAdMetrics('ironsource_rewarded', true, null);
+          // Preload next IronSource ad
+          await _ironSourceService.reloadRewardedAd();
+          return true;
+        }
+      } catch (e) {
+        print('❌ IronSource Rewarded ad failed: $e');
+        _updateAdMetrics('ironsource_rewarded', false, null);
+      }
+    }
 
-    // Fallback to AdMob
+    // Fallback to AdMob (SECONDARY)
+    print('🔄 Falling back to AdMob Rewarded ad...');
     if (!_isRewardedAdLoaded || _rewardedAd == null) {
       print('🔄 Rewarded ad not loaded, attempting to load...');
       await loadRewardedAd();
@@ -825,7 +909,7 @@ class AdService {
     bool adCompletelyWatched = false;
 
     try {
-      print('📺 Showing rewarded ad...');
+      print('📺 Showing AdMob rewarded ad...');
 
       _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
         onAdDismissedFullScreenContent: (ad) {
@@ -846,7 +930,7 @@ class AdService {
           // Preload next ad
           print('🔄 Preloading next rewarded ad');
           loadRewardedAd();
-          _updateAdMetrics('rewarded', adShown && rewardGranted, null);
+          _updateAdMetrics('admob_rewarded', adShown && rewardGranted, null);
         },
         onAdFailedToShowFullScreenContent: (ad, error) {
           print('❌ Rewarded ad failed to show: $error');
@@ -859,7 +943,7 @@ class AdService {
           // Preload next ad
           print('🔄 Preloading next rewarded ad after failure');
           loadRewardedAd();
-          _updateAdMetrics('rewarded', false, null);
+          _updateAdMetrics('admob_rewarded', false, null);
         },
         onAdShowedFullScreenContent: (ad) {
           print('📺 Rewarded ad showed successfully');
@@ -881,7 +965,7 @@ class AdService {
         },
       );
 
-      print('✅ Rewarded ad show completed successfully');
+      print('✅ AdMob Rewarded ad show completed successfully');
       return true;
     } catch (e) {
       print('❌ Rewarded ad show exception: $e');
@@ -895,7 +979,7 @@ class AdService {
       // Call onAdDismissed on error
       onAdDismissed();
 
-      _updateAdMetrics('rewarded', false, null);
+      _updateAdMetrics('admob_rewarded', false, null);
       return false;
     }
   }
