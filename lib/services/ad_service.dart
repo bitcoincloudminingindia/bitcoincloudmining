@@ -1007,9 +1007,7 @@ class AdService {
         break;
       case 'iron_source':
         // IronSource is initialized separately
-        if (_ironSourceService.isInitialized) {
-          _mediationNetworkStates['iron_source'] = true;
-        }
+        _mediationNetworkStates['iron_source'] = true;
         break;
       default:
         if (kDebugMode) {

@@ -11,8 +11,9 @@ class IronSourceTest {
   /// Test IronSource initialization
   static Future<bool> testInitialization() async {
     try {
-      await IronSourceService.instance.initialize();
-      return IronSourceService.instance.isInitialized;
+      final ironSourceService = IronSourceService();
+      await ironSourceService.initIronSource('2314651cd');
+      return true;
     } catch (e) {
       debugPrint('IronSource initialization test failed: $e');
       return false;
@@ -32,19 +33,35 @@ class IronSourceTest {
     }
   }
 
-  /// Test native ad loading
-  static Future<bool> testNativeAdLoading() async {
+  /// Test interstitial ad loading
+  static Future<bool> testInterstitialAdLoading() async {
     try {
-      if (!IronSourceService.instance.isInitialized) {
-        await IronSourceService.instance.initialize();
-      }
+      final ironSourceService = IronSourceService();
+      await ironSourceService.initIronSource('2314651cd');
+      await ironSourceService.loadInterstitialAd();
+      
+      // Wait a bit for loading
+      await Future.delayed(const Duration(seconds: 2));
+      
+      return await ironSourceService.isInterstitialAdLoaded;
+    } catch (e) {
+      debugPrint('Interstitial ad loading test failed: $e');
+      return false;
+    }
+  }
+
+  /// Test rewarded ad availability
+  static Future<bool> testRewardedAdAvailability() async {
+    try {
+      final ironSourceService = IronSourceService();
+      await ironSourceService.initIronSource('2314651cd');
       
       // Wait a bit for initialization
       await Future.delayed(const Duration(seconds: 2));
       
-      return IronSourceService.instance.isNativeAdLoaded;
+      return await ironSourceService.isRewardedAdLoaded;
     } catch (e) {
-      debugPrint('Native ad loading test failed: $e');
+      debugPrint('Rewarded ad availability test failed: $e');
       return false;
     }
   }
@@ -55,7 +72,8 @@ class IronSourceTest {
     
     results['initialization'] = await testInitialization();
     results['network_connectivity'] = await testNetworkConnectivity();
-    results['native_ad_loading'] = await testNativeAdLoading();
+    results['interstitial_ad_loading'] = await testInterstitialAdLoading();
+    results['rewarded_ad_availability'] = await testRewardedAdAvailability();
     
     return results;
   }
