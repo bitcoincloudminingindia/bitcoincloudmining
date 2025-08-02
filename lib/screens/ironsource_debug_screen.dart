@@ -10,36 +10,33 @@ class IronSourceDebugScreen extends StatefulWidget {
 }
 
 class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
-  final IronSourceService _ironSourceService = IronSourceService.instance;
+  final IronSourceService _ironSourceService = IronSourceService();
   bool _isLoading = false;
-  Map<String, dynamic> _metrics = {};
-  List<Map<String, dynamic>> _events = [];
+  bool _isInitialized = false;
+  bool _isInterstitialReady = false;
+  bool _isRewardedReady = false;
 
   @override
   void initState() {
     super.initState();
-    _loadMetrics();
-    _setupEventListeners();
+    _checkStatus();
   }
 
-  void _loadMetrics() {
+  Future<void> _checkStatus() async {
     setState(() {
-      _metrics = _ironSourceService.metrics;
+      _isLoading = true;
     });
-  }
 
-  void _setupEventListeners() {
-    _ironSourceService.events.listen((event) {
+    try {
+      _isInterstitialReady = await _ironSourceService.isInterstitialAdLoaded;
+      _isRewardedReady = await _ironSourceService.isRewardedAdLoaded;
+    } catch (e) {
+      // Handle error
+    } finally {
       setState(() {
-        _events.insert(0, {
-          ...event,
-          'timestamp': DateTime.now().toString(),
-        });
-        if (_events.length > 50) {
-          _events = _events.take(50).toList();
-        }
+        _isLoading = false;
       });
-    });
+    }
   }
 
   Future<void> _initializeIronSource() async {
@@ -48,29 +45,12 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
     });
 
     try {
-      await _ironSourceService.initialize();
-      _loadMetrics();
+      await _ironSourceService.initIronSource('2314651cd');
+      _isInitialized = true;
+      await _checkStatus();
       _showSnackBar('IronSource initialized successfully', isError: false);
     } catch (e) {
       _showSnackBar('IronSource initialization failed: $e', isError: true);
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _loadNativeAd() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await _ironSourceService.reloadNativeAd();
-      _loadMetrics();
-      _showSnackBar('Native ad reloaded', isError: false);
-    } catch (e) {
-      _showSnackBar('Native ad reload failed: $e', isError: true);
     } finally {
       setState(() {
         _isLoading = false;
@@ -84,29 +64,11 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
     });
 
     try {
-      await _ironSourceService.reloadInterstitialAd();
-      _loadMetrics();
-      _showSnackBar('Interstitial ad reloaded', isError: false);
+      await _ironSourceService.loadInterstitialAd();
+      await _checkStatus();
+      _showSnackBar('Interstitial ad loaded', isError: false);
     } catch (e) {
-      _showSnackBar('Interstitial ad reload failed: $e', isError: true);
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _loadRewardedAd() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await _ironSourceService.reloadRewardedAd();
-      _loadMetrics();
-      _showSnackBar('Rewarded ad reloaded', isError: false);
-    } catch (e) {
-      _showSnackBar('Rewarded ad reload failed: $e', isError: true);
+      _showSnackBar('Interstitial ad load failed: $e', isError: true);
     } finally {
       setState(() {
         _isLoading = false;
@@ -120,13 +82,9 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
     });
 
     try {
-      final success = await _ironSourceService.showInterstitialAd();
-      if (success) {
-        _showSnackBar('Interstitial ad shown successfully', isError: false);
-      } else {
-        _showSnackBar('Interstitial ad show failed', isError: true);
-      }
-      _loadMetrics();
+      await _ironSourceService.showInterstitialAd();
+      _showSnackBar('Interstitial ad shown successfully', isError: false);
+      await _checkStatus();
     } catch (e) {
       _showSnackBar('Interstitial ad show error: $e', isError: true);
     } finally {
@@ -142,13 +100,9 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
     });
 
     try {
-      final success = await _ironSourceService.showRewardedAd();
-      if (success) {
-        _showSnackBar('Rewarded ad shown successfully', isError: false);
-      } else {
-        _showSnackBar('Rewarded ad show failed', isError: true);
-      }
-      _loadMetrics();
+      await _ironSourceService.showRewardedAd();
+      _showSnackBar('Rewarded ad shown successfully', isError: false);
+      await _checkStatus();
     } catch (e) {
       _showSnackBar('Rewarded ad show error: $e', isError: true);
     } finally {
@@ -186,10 +140,6 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
                   _buildStatusSection(),
                   const SizedBox(height: 20),
                   _buildControlSection(),
-                  const SizedBox(height: 20),
-                  _buildMetricsSection(),
-                  const SizedBox(height: 20),
-                  _buildEventsSection(),
                 ],
               ),
             ),
@@ -211,10 +161,9 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            _buildStatusItem('Initialized', _ironSourceService.isInitialized),
-            _buildStatusItem('Native Ad Loaded', _ironSourceService.isNativeAdLoaded),
-            _buildStatusItem('Interstitial Ad Loaded', _ironSourceService.isInterstitialAdLoaded),
-            _buildStatusItem('Rewarded Ad Loaded', _ironSourceService.isRewardedAdLoaded),
+            _buildStatusItem('Initialized', _isInitialized),
+            _buildStatusItem('Interstitial Ad Ready', _isInterstitialReady),
+            _buildStatusItem('Rewarded Ad Ready', _isRewardedReady),
           ],
         ),
       ),
@@ -266,9 +215,7 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
               runSpacing: 8,
               children: [
                 _buildControlButton('Initialize', _initializeIronSource),
-                _buildControlButton('Load Native', _loadNativeAd),
                 _buildControlButton('Load Interstitial', _loadInterstitialAd),
-                _buildControlButton('Load Rewarded', _loadRewardedAd),
                 _buildControlButton('Show Interstitial', _showInterstitialAd),
                 _buildControlButton('Show Rewarded', _showRewardedAd),
               ],
@@ -287,113 +234,6 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
         foregroundColor: Colors.white,
       ),
       child: Text(label),
-    );
-  }
-
-  Widget _buildMetricsSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Metrics',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-            _buildMetricsItem('Ad Shows', _metrics['ad_shows'] ?? {}),
-            _buildMetricsItem('Ad Failures', _metrics['ad_failures'] ?? {}),
-            _buildMetricsItem('Revenue', _metrics['revenue'] ?? {}),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMetricsItem(String label, Map<String, dynamic> data) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          if (data.isEmpty)
-            const Text('No data available')
-          else
-            ...data.entries.map((entry) => Text('${entry.key}: ${entry.value}')),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEventsSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  'Events',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _events.clear();
-                    });
-                  },
-                  child: const Text('Clear'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 200,
-              child: ListView.builder(
-                itemCount: _events.length,
-                itemBuilder: (context, index) {
-                  final event = _events[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${event['type'] ?? 'Unknown'} - ${event['timestamp'] ?? ''}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          if (event['status'] != null)
-                            Text('Status: ${event['status']}'),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
