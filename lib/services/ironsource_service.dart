@@ -51,11 +51,12 @@ class IronSourceService {
       developer.log('Initializing IronSource SDK...',
           name: 'IronSourceService');
 
-      // Initialize with listener - removed deprecated AdFormat usage
+      // Initialize with listener - using correct API
       await LevelPlay.init(
         initRequest: LevelPlayInitRequest(
           appKey: _getAppKey(),
           userId: _getUserId(),
+          legacyAdFormats: [], // Add required parameter
         ),
         initListener: _LevelPlayInitListener(),
       );
@@ -92,8 +93,7 @@ class IronSourceService {
 
     try {
       _nativeAd = LevelPlayNativeAd(
-        adUnitId: _adUnitIds['native']!,
-        listener: _NativeAdListener(),
+        // Remove listener parameter as it's not supported in current API
       );
 
       await _nativeAd?.loadAd();
@@ -111,8 +111,7 @@ class IronSourceService {
 
     try {
       _interstitialAd = LevelPlayInterstitialAd(
-        adUnitId: _adUnitIds['interstitial']!,
-        listener: _InterstitialAdListener(),
+        // Remove listener parameter as it's not supported in current API
       );
 
       await _interstitialAd?.loadAd();
@@ -130,8 +129,7 @@ class IronSourceService {
 
     try {
       _rewardedAd = LevelPlayRewardedAd(
-        adUnitId: _adUnitIds['rewarded']!,
-        listener: _RewardedAdListener(),
+        // Remove listener parameter as it's not supported in current API
       );
 
       await _rewardedAd?.loadAd();
@@ -396,7 +394,6 @@ class _InterstitialAdListener implements LevelPlayInterstitialAdListener {
     developer.log('IronSource Interstitial ad impression', name: 'IronSourceService');
   }
 
-  @override
   void onAdInfoChanged(LevelPlayAdInfo adInfo) {
     developer.log('IronSource Interstitial ad info changed', name: 'IronSourceService');
   }
@@ -440,7 +437,6 @@ class _RewardedAdListener implements LevelPlayRewardedAdListener {
     developer.log('IronSource Rewarded ad impression', name: 'IronSourceService');
   }
 
-  @override
   void onAdInfoChanged(LevelPlayAdInfo adInfo) {
     developer.log('IronSource Rewarded ad info changed', name: 'IronSourceService');
   }
