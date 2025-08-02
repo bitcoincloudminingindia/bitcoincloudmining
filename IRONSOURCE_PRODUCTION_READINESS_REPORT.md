@@ -47,7 +47,7 @@
 ### 🎯 **AD LOADING PRIORITY (PRODUCTION READY)**
 
 #### Native Ads:
-1. **IronSource Native Ad** (Primary)
+1. **AdMob Native Ad** (Primary)
 2. **AdMob Native Ad** (Fallback)
 3. **Loading UI** (Error state)
 

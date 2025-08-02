@@ -60,23 +60,7 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
     }
   }
 
-  Future<void> _loadNativeAd() async {
-    setState(() {
-      _isLoading = true;
-    });
 
-    try {
-      await _ironSourceService.reloadNativeAd();
-      _loadMetrics();
-      _showSnackBar('Native ad reloaded', isError: false);
-    } catch (e) {
-      _showSnackBar('Native ad reload failed: $e', isError: true);
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
 
   Future<void> _loadInterstitialAd() async {
     setState(() {
@@ -212,7 +196,7 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
             ),
             const SizedBox(height: 10),
             _buildStatusItem('Initialized', _ironSourceService.isInitialized),
-            _buildStatusItem('Native Ad Loaded', _ironSourceService.isNativeAdLoaded),
+    
             _buildStatusItem('Interstitial Ad Loaded', _ironSourceService.isInterstitialAdLoaded),
             _buildStatusItem('Rewarded Ad Loaded', _ironSourceService.isRewardedAdLoaded),
           ],
@@ -266,7 +250,7 @@ class _IronSourceDebugScreenState extends State<IronSourceDebugScreen> {
               runSpacing: 8,
               children: [
                 _buildControlButton('Initialize', _initializeIronSource),
-                _buildControlButton('Load Native', _loadNativeAd),
+    
                 _buildControlButton('Load Interstitial', _loadInterstitialAd),
                 _buildControlButton('Load Rewarded', _loadRewardedAd),
                 _buildControlButton('Show Interstitial', _showInterstitialAd),

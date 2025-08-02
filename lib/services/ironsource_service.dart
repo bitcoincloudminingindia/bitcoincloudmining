@@ -16,16 +16,13 @@ class IronSourceService {
   static const String _iosAppKey = '2314651cd';
 
   // IronSource Ad Unit IDs (from your dashboard)
-  static const String _nativeAdUnitId = 'lcv9s3mjszw657sy';
   static const String _interstitialAdUnitId = 'i5bc3rl0ebvk8xjk';
   static const String _rewardedAdUnitId = 'lcv9s3mjszw657sy';
 
   bool _isInitialized = false;
-  bool _isNativeAdLoaded = false;
   bool _isInterstitialAdLoaded = false;
   bool _isRewardedAdLoaded = false;
 
-  LevelPlayNativeAd? _nativeAd;
   LevelPlayInterstitialAd? _interstitialAd;
   LevelPlayRewardedAd? _rewardedAd;
 
@@ -37,7 +34,6 @@ class IronSourceService {
   final Map<String, double> _revenueData = {};
 
   bool get isInitialized => _isInitialized;
-  bool get isNativeAdLoaded => _isNativeAdLoaded;
   bool get isInterstitialAdLoaded => _isInterstitialAdLoaded;
   bool get isRewardedAdLoaded => _isRewardedAdLoaded;
   Stream<Map<String, dynamic>> get events => _eventController.stream;
@@ -67,7 +63,6 @@ class IronSourceService {
       _setupEventListeners();
 
       // Preload ads
-      await _loadNativeAd();
       await _loadInterstitialAd();
       await _loadRewardedAd();
     } catch (e) {
@@ -84,25 +79,6 @@ class IronSourceService {
       'status': 'success',
       'timestamp': DateTime.now().toIso8601String(),
     });
-  }
-
-  Future<void> _loadNativeAd() async {
-    if (!_isInitialized) return;
-
-    try {
-      _nativeAd = LevelPlayNativeAd.builder()
-          .withPlacementName(_nativeAdUnitId)
-          .withListener(_NativeAdListener())
-          .build();
-
-      await _nativeAd?.loadAd();
-      _isNativeAdLoaded = true;
-      developer.log('IronSource Native ad loaded', name: 'IronSourceService');
-    } catch (e) {
-      developer.log('IronSource Native ad load failed: $e',
-          name: 'IronSourceService', error: e);
-      _isNativeAdLoaded = false;
-    }
   }
 
   Future<void> _loadInterstitialAd() async {
@@ -140,35 +116,6 @@ class IronSourceService {
       developer.log('IronSource Rewarded ad load failed: $e',
           name: 'IronSourceService', error: e);
       _isRewardedAdLoaded = false;
-    }
-  }
-
-  Widget? getNativeAdWidget({
-    double height = 350,
-    double width = 300,
-    LevelPlayTemplateType templateType = LevelPlayTemplateType.MEDIUM,
-  }) {
-    if (!_isInitialized || !_isNativeAdLoaded || _nativeAd == null) {
-      developer.log('IronSource Native ad not ready',
-          name: 'IronSourceService');
-      return null;
-    }
-
-    try {
-      return LevelPlayNativeAdView(
-        height: height,
-        width: width,
-        nativeAd: _nativeAd!,
-        onPlatformViewCreated: () {
-          developer.log('IronSource Native ad view created',
-              name: 'IronSourceService');
-        },
-        templateType: templateType,
-      );
-    } catch (e) {
-      developer.log('IronSource Native ad widget creation failed: $e',
-          name: 'IronSourceService', error: e);
-      return null;
     }
   }
 
@@ -212,12 +159,6 @@ class IronSourceService {
     }
   }
 
-  Future<void> reloadNativeAd() async {
-    if (_nativeAd != null) {
-      await _nativeAd!.loadAd();
-    }
-  }
-
   Future<void> reloadInterstitialAd() async {
     if (_interstitialAd != null) {
       await _interstitialAd!.loadAd();
@@ -227,13 +168,6 @@ class IronSourceService {
   Future<void> reloadRewardedAd() async {
     if (_rewardedAd != null) {
       await _rewardedAd!.loadAd();
-    }
-  }
-
-  Future<void> destroyNativeAd() async {
-    if (_nativeAd != null) {
-      _nativeAd = null;
-      _isNativeAdLoaded = false;
     }
   }
 
@@ -268,7 +202,6 @@ class IronSourceService {
 
   Map<String, dynamic> get metrics => {
         'is_initialized': _isInitialized,
-        'native_loaded': _isNativeAdLoaded,
         'interstitial_loaded': _isInterstitialAdLoaded,
         'rewarded_loaded': _isRewardedAdLoaded,
         'ad_shows': _adShowCounts,
@@ -277,7 +210,6 @@ class IronSourceService {
       };
 
   void dispose() {
-    _nativeAd = null;
     _interstitialAd = null;
     _rewardedAd = null;
     _eventController.close();
@@ -326,29 +258,6 @@ class _LevelPlayInitListener implements LevelPlayInitListener {
   @override
   void onInitSuccess(LevelPlayConfiguration configuration) {
     developer.log('IronSource init success', name: 'IronSourceService');
-  }
-}
-
-class _NativeAdListener implements LevelPlayNativeAdListener {
-  @override
-  void onAdClicked(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad clicked', name: 'IronSourceService');
-  }
-
-  @override
-  void onAdImpression(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad impression', name: 'IronSourceService');
-  }
-
-  @override
-  void onAdLoadFailed(LevelPlayNativeAd? nativeAd, IronSourceError? error) {
-    developer.log('IronSource Native ad load failed: ${error?.toString()}', 
-        name: 'IronSourceService');
-  }
-
-  @override
-  void onAdLoaded(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad loaded', name: 'IronSourceService');
   }
 }
 

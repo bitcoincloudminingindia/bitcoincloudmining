@@ -38,7 +38,7 @@ static const String _iosAppKey = '2314651cd';
 ```
 
 ### 6. **Service Implementation** ✅
-- ✅ `IronSourceService` class created with native ad functionality
+- ✅ `IronSourceService` class created with interstitial and rewarded ad functionality
 - ✅ Integration with existing `AdService`
 - ✅ Fallback mechanism (IronSource → AdMob)
 - ✅ Event tracking and error handling
@@ -50,9 +50,8 @@ static const String _iosAppKey = '2314651cd';
 
 ## 🚀 **AD LOADING PRIORITY**
 
-### Native Ads Priority:
-1. **IronSource Native Ad** (if available and loaded)
-2. **AdMob Native Ad** (fallback)
+### Native Ads:
+- **AdMob Native Ad** (primary)
 3. **Placeholder/Error UI** (if both fail)
 
 ### Rewarded Ads Priority:
