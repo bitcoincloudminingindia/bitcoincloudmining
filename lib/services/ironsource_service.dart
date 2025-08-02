@@ -33,17 +33,24 @@ class IronSourceService {
   final Map<String, int> _adShowCounts = {};
   final Map<String, int> _adFailCounts = {};
 
+  // Getters
   bool get isInitialized => _isInitialized;
   bool get isNativeAdLoaded => _isNativeAdLoaded;
   bool get isInterstitialAdLoaded => _isInterstitialAdLoaded;
   bool get isRewardedAdLoaded => _isRewardedAdLoaded;
+  Map<String, int> get adShowCounts => Map.unmodifiable(_adShowCounts);
+  Map<String, int> get adFailCounts => Map.unmodifiable(_adFailCounts);
+
+  // Logging utility for consistency
+  void _log(String message, {Object? error}) {
+    developer.log(message, name: 'IronSourceService', error: error);
+  }
 
   Future<void> initialize() async {
     if (_isInitialized) return;
 
     try {
-      developer.log('Initializing IronSource SDK...',
-          name: 'IronSourceService');
+      _log('Initializing IronSource SDK...');
 
       // Create initialization request
       final initRequest = LevelPlayInitRequest(
@@ -61,16 +68,14 @@ class IronSourceService {
       );
 
       _isInitialized = true;
-      developer.log('IronSource SDK initialized successfully',
-          name: 'IronSourceService');
+      _log('IronSource SDK initialized successfully');
 
       // Preload ads
       await _loadNativeAd();
       await _loadInterstitialAd();
       await _loadRewardedAd();
     } catch (e) {
-      developer.log('IronSource initialization failed: $e',
-          name: 'IronSourceService', error: e);
+      _log('IronSource initialization failed: $e', error: e);
       _isInitialized = false;
     }
   }
@@ -85,11 +90,10 @@ class IronSourceService {
       );
 
       await _nativeAd?.loadAd();
-      _isNativeAdLoaded = true;
-      developer.log('IronSource Native ad loaded', name: 'IronSourceService');
+      // Note: _isNativeAdLoaded will be set in the listener callbacks
+      _log('IronSource Native ad load request sent');
     } catch (e) {
-      developer.log('IronSource Native ad load failed: $e',
-          name: 'IronSourceService', error: e);
+      _log('IronSource Native ad load request failed: $e', error: e);
       _isNativeAdLoaded = false;
     }
   }
@@ -104,11 +108,10 @@ class IronSourceService {
       );
 
       await _interstitialAd?.loadAd();
-      _isInterstitialAdLoaded = true;
-      developer.log('IronSource Interstitial ad loaded', name: 'IronSourceService');
+      // Note: _isInterstitialAdLoaded will be set in the listener callbacks
+      _log('IronSource Interstitial ad load request sent');
     } catch (e) {
-      developer.log('IronSource Interstitial ad load failed: $e',
-          name: 'IronSourceService', error: e);
+      _log('IronSource Interstitial ad load request failed: $e', error: e);
       _isInterstitialAdLoaded = false;
     }
   }
@@ -123,11 +126,10 @@ class IronSourceService {
       );
 
       await _rewardedAd?.loadAd();
-      _isRewardedAdLoaded = true;
-      developer.log('IronSource Rewarded ad loaded', name: 'IronSourceService');
+      // Note: _isRewardedAdLoaded will be set in the listener callbacks
+      _log('IronSource Rewarded ad load request sent');
     } catch (e) {
-      developer.log('IronSource Rewarded ad load failed: $e',
-          name: 'IronSourceService', error: e);
+      _log('IronSource Rewarded ad load request failed: $e', error: e);
       _isRewardedAdLoaded = false;
     }
   }
@@ -138,8 +140,7 @@ class IronSourceService {
     LevelPlayTemplateType templateType = LevelPlayTemplateType.MEDIUM,
   }) {
     if (!_isInitialized || !_isNativeAdLoaded || _nativeAd == null) {
-      developer.log('IronSource Native ad not ready',
-          name: 'IronSourceService');
+      _log('IronSource Native ad not ready');
       return null;
     }
 
@@ -149,33 +150,29 @@ class IronSourceService {
         width: width,
         nativeAd: _nativeAd!,
         onPlatformViewCreated: () {
-          developer.log('IronSource Native ad view created',
-              name: 'IronSourceService');
+          _log('IronSource Native ad view created');
         },
         templateType: templateType,
       );
     } catch (e) {
-      developer.log('IronSource Native ad widget creation failed: $e',
-          name: 'IronSourceService', error: e);
+      _log('IronSource Native ad widget creation failed: $e', error: e);
       return null;
     }
   }
 
   Future<bool> showInterstitialAd() async {
     if (!_isInitialized || !_isInterstitialAdLoaded || _interstitialAd == null) {
-      developer.log('IronSource Interstitial ad not ready',
-          name: 'IronSourceService');
+      _log('IronSource Interstitial ad not ready');
       return false;
     }
 
     try {
       await _interstitialAd!.showAd();
       _adShowCounts['interstitial'] = (_adShowCounts['interstitial'] ?? 0) + 1;
-      developer.log('IronSource Interstitial ad shown', name: 'IronSourceService');
+      _log('IronSource Interstitial ad shown');
       return true;
     } catch (e) {
-      developer.log('IronSource Interstitial ad show failed: $e',
-          name: 'IronSourceService', error: e);
+      _log('IronSource Interstitial ad show failed: $e', error: e);
       _adFailCounts['interstitial'] = (_adFailCounts['interstitial'] ?? 0) + 1;
       return false;
     }
@@ -183,19 +180,17 @@ class IronSourceService {
 
   Future<bool> showRewardedAd() async {
     if (!_isInitialized || !_isRewardedAdLoaded || _rewardedAd == null) {
-      developer.log('IronSource Rewarded ad not ready',
-          name: 'IronSourceService');
+      _log('IronSource Rewarded ad not ready');
       return false;
     }
 
     try {
       await _rewardedAd!.showAd();
       _adShowCounts['rewarded'] = (_adShowCounts['rewarded'] ?? 0) + 1;
-      developer.log('IronSource Rewarded ad shown', name: 'IronSourceService');
+      _log('IronSource Rewarded ad shown');
       return true;
     } catch (e) {
-      developer.log('IronSource Rewarded ad show failed: $e',
-          name: 'IronSourceService', error: e);
+      _log('IronSource Rewarded ad show failed: $e', error: e);
       _adFailCounts['rewarded'] = (_adFailCounts['rewarded'] ?? 0) + 1;
       return false;
     }
@@ -226,7 +221,7 @@ class IronSourceService {
 class _InitListener implements LevelPlayInitListener {
   @override
   void onInitializationComplete() {
-    developer.log('IronSource initialization complete', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource initialization complete');
   }
 }
 
@@ -234,12 +229,12 @@ class _InitListener implements LevelPlayInitListener {
 class _NativeAdListener implements LevelPlayNativeAdListener {
   @override
   void onAdClicked(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad clicked', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Native ad clicked');
   }
 
   @override
   void onAdImpression(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad impression', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Native ad impression');
   }
 
   @override
@@ -251,105 +246,108 @@ class _NativeAdListener implements LevelPlayNativeAdListener {
       errorMessage = 'Error occurred while processing ad load failure: $e';
     }
     
-    developer.log('IronSource Native ad load failed: $errorMessage',
-        name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Native ad load failed: $errorMessage');
+    IronSourceService.instance._isNativeAdLoaded = false;
   }
 
   @override
   void onAdLoaded(LevelPlayNativeAd? nativeAd, IronSourceAdInfo? adInfo) {
-    developer.log('IronSource Native ad loaded', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Native ad loaded');
+    IronSourceService.instance._isNativeAdLoaded = true;
   }
 }
 
 class _InterstitialAdListener implements LevelPlayInterstitialAdListener {
   @override
   void onAdClicked(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Interstitial ad clicked', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Interstitial ad clicked');
   }
 
   @override
   void onAdClosed(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Interstitial ad closed', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Interstitial ad closed');
   }
 
   @override
   void onAdDisplayFailed(LevelPlayAdError error, LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Interstitial ad display failed: ${error.toString()}',
-        name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Interstitial ad display failed: ${error.toString()}');
   }
 
   @override
   void onAdDisplayed(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Interstitial ad displayed', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Interstitial ad displayed');
   }
 
   @override
   void onAdImpression(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Interstitial ad impression', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Interstitial ad impression');
   }
 
   @override
   void onAdInfoChanged(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Interstitial ad info changed', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Interstitial ad info changed');
   }
 
   @override
   void onAdLoadFailed(LevelPlayAdError error) {
-    developer.log('IronSource Interstitial ad load failed: ${error.toString()}',
-        name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Interstitial ad load failed: ${error.toString()}');
+    IronSourceService.instance._isInterstitialAdLoaded = false;
   }
 
   @override
   void onAdLoaded(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Interstitial ad loaded', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Interstitial ad loaded');
+    IronSourceService.instance._isInterstitialAdLoaded = true;
   }
 }
 
 class _RewardedAdListener implements LevelPlayRewardedAdListener {
   @override
   void onAdClicked(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad clicked', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Rewarded ad clicked');
   }
 
   @override
   void onAdClosed(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad closed', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Rewarded ad closed');
   }
 
   @override
   void onAdDisplayFailed(LevelPlayAdError error, LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad display failed: ${error.toString()}',
-        name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Rewarded ad display failed: ${error.toString()}');
   }
 
   @override
   void onAdDisplayed(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad displayed', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Rewarded ad displayed');
   }
 
   @override
   void onAdImpression(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad impression', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Rewarded ad impression');
   }
 
   @override
   void onAdInfoChanged(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad info changed', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Rewarded ad info changed');
   }
 
   @override
   void onAdLoadFailed(LevelPlayAdError error) {
-    developer.log('IronSource Rewarded ad load failed: ${error.toString()}',
-        name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Rewarded ad load failed: ${error.toString()}');
+    IronSourceService.instance._isRewardedAdLoaded = false;
   }
 
   @override
   void onAdLoaded(LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad loaded', name: 'IronSourceService');
+    IronSourceService.instance._log('IronSource Rewarded ad loaded');
+    IronSourceService.instance._isRewardedAdLoaded = true;
   }
 
   @override
   void onAdRewarded(LevelPlayReward reward, LevelPlayAdInfo adInfo) {
-    developer.log('IronSource Rewarded ad rewarded', name: 'IronSourceService');
+    IronSourceService.instance._log(
+      'IronSource Rewarded: user earned reward of ${reward.amount} ${reward.type}'
+    );
   }
 }
