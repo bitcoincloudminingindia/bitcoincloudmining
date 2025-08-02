@@ -51,7 +51,7 @@ class IronSourceService {
       developer.log('Initializing IronSource SDK...',
           name: 'IronSourceService');
 
-      // Create init request with test suite metadata
+      // Create init request with app key and user ID
       final initRequest = LevelPlayInitRequest.create(_getAppKey())
           .withUserId(_getUserId())
           .build();
@@ -113,7 +113,7 @@ class IronSourceService {
 
     try {
       _interstitialAd = LevelPlayInterstitialAd.create()
-          .withAdUnitId(_adUnitIds['interstitial']!)
+          .withPlacementName(_adUnitIds['interstitial']!)
           .withListener(_InterstitialAdListener())
           .build();
 
@@ -132,7 +132,7 @@ class IronSourceService {
 
     try {
       _rewardedAd = LevelPlayRewardedAd.create()
-          .withAdUnitId(_adUnitIds['rewarded']!)
+          .withPlacementName(_adUnitIds['rewarded']!)
           .withListener(_RewardedAdListener())
           .build();
 
