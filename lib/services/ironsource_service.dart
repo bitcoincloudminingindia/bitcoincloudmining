@@ -11,9 +11,8 @@ class IronSourceService {
 
   IronSourceService._();
 
-  // IronSource App Keys
-  static const String _androidAppKey = '2314651cd';
-  static const String _iosAppKey = '2314651cd';
+  // IronSource App Key (same for both platforms)
+  static const String _appKey = '2314651cd';
 
   // IronSource Ad Unit IDs (from your dashboard)
   static const Map<String, String> _adUnitIds = {
@@ -31,18 +30,13 @@ class IronSourceService {
   LevelPlayInterstitialAd? _interstitialAd;
   LevelPlayRewardedAd? _rewardedAd;
 
-  final StreamController<Map<String, dynamic>> _eventController =
-      StreamController<Map<String, dynamic>>.broadcast();
-
   final Map<String, int> _adShowCounts = {};
   final Map<String, int> _adFailCounts = {};
-  final Map<String, double> _revenueData = {};
 
   bool get isInitialized => _isInitialized;
   bool get isNativeAdLoaded => _isNativeAdLoaded;
   bool get isInterstitialAdLoaded => _isInterstitialAdLoaded;
   bool get isRewardedAdLoaded => _isRewardedAdLoaded;
-  Stream<Map<String, dynamic>> get events => _eventController.stream;
 
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -53,7 +47,7 @@ class IronSourceService {
 
       // Create initialization request
       final initRequest = LevelPlayInitRequest(
-        appKey: _getAppKey(),
+        appKey: _appKey,
         userId: _getUserId(),
       );
 
@@ -70,9 +64,6 @@ class IronSourceService {
       developer.log('IronSource SDK initialized successfully',
           name: 'IronSourceService');
 
-      // Setup event listeners
-      _setupEventListeners();
-
       // Preload ads
       await _loadNativeAd();
       await _loadInterstitialAd();
@@ -82,15 +73,6 @@ class IronSourceService {
           name: 'IronSourceService', error: e);
       _isInitialized = false;
     }
-  }
-
-  void _setupEventListeners() {
-    // Listen to IronSource events
-    _eventController.add({
-      'type': 'initialization',
-      'status': 'success',
-      'timestamp': DateTime.now().toIso8601String(),
-    });
   }
 
   Future<void> _loadNativeAd() async {
@@ -219,60 +201,6 @@ class IronSourceService {
     }
   }
 
-  Future<void> reloadNativeAd() async {
-    if (_nativeAd != null) {
-      await _nativeAd!.loadAd();
-    }
-  }
-
-  Future<void> reloadInterstitialAd() async {
-    if (_interstitialAd != null) {
-      await _interstitialAd!.loadAd();
-    }
-  }
-
-  Future<void> reloadRewardedAd() async {
-    if (_rewardedAd != null) {
-      await _rewardedAd!.loadAd();
-    }
-  }
-
-  Future<void> destroyNativeAd() async {
-    if (_nativeAd != null) {
-      _nativeAd = null;
-      _isNativeAdLoaded = false;
-    }
-  }
-
-  Future<void> destroyInterstitialAd() async {
-    if (_interstitialAd != null) {
-      _interstitialAd = null;
-      _isInterstitialAdLoaded = false;
-    }
-  }
-
-  Future<void> destroyRewardedAd() async {
-    if (_rewardedAd != null) {
-      _rewardedAd = null;
-      _isRewardedAdLoaded = false;
-    }
-  }
-
-  Future<void> launchTestSuite() async {
-    if (!_isInitialized) return;
-
-    try {
-      // Note: Test suite launch is deprecated in newer versions
-      // You may need to implement alternative testing methods
-      developer.log(
-          'Test Suite launch is deprecated in newer IronSource versions',
-          name: 'IronSourceService');
-    } catch (e) {
-      developer.log('IronSource Test Suite launch failed: $e',
-          name: 'IronSourceService', error: e);
-    }
-  }
-
   Map<String, dynamic> get metrics => {
         'is_initialized': _isInitialized,
         'native_loaded': _isNativeAdLoaded,
@@ -280,23 +208,12 @@ class IronSourceService {
         'rewarded_loaded': _isRewardedAdLoaded,
         'ad_shows': _adShowCounts,
         'ad_failures': _adFailCounts,
-        'revenue': _revenueData,
       };
 
   void dispose() {
     _nativeAd = null;
     _interstitialAd = null;
     _rewardedAd = null;
-    _eventController.close();
-  }
-
-  String _getAppKey() {
-    if (Platform.isAndroid) {
-      return _androidAppKey;
-    } else if (Platform.isIOS) {
-      return _iosAppKey;
-    }
-    return _androidAppKey; // Default fallback
   }
 
   String _getUserId() {
