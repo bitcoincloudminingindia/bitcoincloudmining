@@ -51,10 +51,11 @@ class IronSourceService {
       developer.log('Initializing IronSource SDK...',
           name: 'IronSourceService');
 
-      // Create init request with test suite metadata
-      final initRequest = LevelPlayInitRequest.create(_getAppKey())
-          .withUserId(_getUserId())
-          .build();
+      // Create init request with required parameters
+      final initRequest = LevelPlayInitRequest.create(
+        appKey: _getAppKey(),
+        legacyAdFormats: [LevelPlayAdFormat.INTERSTITIAL, LevelPlayAdFormat.REWARDED_VIDEO],
+      );
 
       // Initialize with listener
       await LevelPlay.init(
@@ -93,10 +94,12 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _nativeAd = LevelPlayNativeAd.create()
-          .withPlacementName(_adUnitIds['native']!)
-          .withListener(_NativeAdListener())
-          .build();
+      _nativeAd = LevelPlayNativeAd.create(
+        adUnitId: _adUnitIds['native']!,
+      );
+      
+      // Set the listener
+      _nativeAd?.setListener(_NativeAdListener());
 
       await _nativeAd?.loadAd();
       _isNativeAdLoaded = true;
@@ -112,10 +115,12 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _interstitialAd = LevelPlayInterstitialAd.create()
-          .withAdUnitId(_adUnitIds['interstitial']!)
-          .withListener(_InterstitialAdListener())
-          .build();
+      _interstitialAd = LevelPlayInterstitialAd.create(
+        adUnitId: _adUnitIds['interstitial']!,
+      );
+      
+      // Set the listener
+      _interstitialAd?.setListener(_InterstitialAdListener());
 
       await _interstitialAd?.loadAd();
       _isInterstitialAdLoaded = true;
@@ -131,10 +136,12 @@ class IronSourceService {
     if (!_isInitialized) return;
 
     try {
-      _rewardedAd = LevelPlayRewardedAd.create()
-          .withAdUnitId(_adUnitIds['rewarded']!)
-          .withListener(_RewardedAdListener())
-          .build();
+      _rewardedAd = LevelPlayRewardedAd.create(
+        adUnitId: _adUnitIds['rewarded']!,
+      );
+      
+      // Set the listener
+      _rewardedAd?.setListener(_RewardedAdListener());
 
       await _rewardedAd?.loadAd();
       _isRewardedAdLoaded = true;
@@ -381,18 +388,18 @@ class _InterstitialAdListener implements LevelPlayInterstitialAdListener {
   }
 
   @override
-  void onAdClosed() {
+  void onAdClosed(LevelPlayAdInfo adInfo) {
     developer.log('IronSource Interstitial ad closed', name: 'IronSourceService');
   }
 
   @override
-  void onAdDisplayFailed(LevelPlayAdError error) {
+  void onAdDisplayFailed(LevelPlayAdError error, LevelPlayAdInfo adInfo) {
     developer.log('IronSource Interstitial ad display failed: ${error.toString()}',
         name: 'IronSourceService');
   }
 
   @override
-  void onAdDisplayed() {
+  void onAdDisplayed(LevelPlayAdInfo adInfo) {
     developer.log('IronSource Interstitial ad displayed', name: 'IronSourceService');
   }
 
@@ -425,18 +432,18 @@ class _RewardedAdListener implements LevelPlayRewardedAdListener {
   }
 
   @override
-  void onAdClosed() {
+  void onAdClosed(LevelPlayAdInfo adInfo) {
     developer.log('IronSource Rewarded ad closed', name: 'IronSourceService');
   }
 
   @override
-  void onAdDisplayFailed(LevelPlayAdError error) {
+  void onAdDisplayFailed(LevelPlayAdError error, LevelPlayAdInfo adInfo) {
     developer.log('IronSource Rewarded ad display failed: ${error.toString()}',
         name: 'IronSourceService');
   }
 
   @override
-  void onAdDisplayed() {
+  void onAdDisplayed(LevelPlayAdInfo adInfo) {
     developer.log('IronSource Rewarded ad displayed', name: 'IronSourceService');
   }
 
