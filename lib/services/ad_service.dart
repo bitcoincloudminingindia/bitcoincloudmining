@@ -612,7 +612,6 @@ class AdService {
         final ironSourceWidget = _ironSourceService.getNativeAdWidget(
           height: 360,
           width: 300,
-          templateType: LevelPlayTemplateType.MEDIUM,
         );
         if (ironSourceWidget != null) {
           return Container(
