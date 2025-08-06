@@ -635,22 +635,16 @@ class _ContractScreenState extends State<ContractScreen>
   Widget _buildFreeContractsView() {
     return StatefulBuilder(
       builder: (context, setState) {
-        // Periodic UI update hata diya
-        // Future.delayed(const Duration(seconds: 1), () {
-        //   if (mounted) {
-        //     setState(() {});
-        //   }
-        // });
-
         // 1 native ad position: after 1st contract
-        final nativeAdPositions = <int>{1};
+        final nativeAdPositions = <int>{}; // Removing fixed position since we'll handle it manually
         // 1 banner ad position: top
         final bannerAdPositions = <int>{};
 
+        // +1 for top banner ad, +1 for swipeable ad after first contract
         final totalItems = contracts.length +
             nativeAdPositions.length +
             bannerAdPositions.length +
-            1; // +1 for top banner ad
+            2;
 
         return ListView.builder(
           padding: const EdgeInsets.all(16.0),
@@ -670,11 +664,31 @@ class _ContractScreenState extends State<ContractScreen>
               );
             }
 
-            // Adjust contract index for ads
-            final int adjustedIndex = index - 1; // Because index 0 is the ad
+            // Adjust contract index for ads and handle swipeable ad after first contract
+            int adjustedIndex = index - 1; // Because index 0 is the top banner ad
+            
+            // Check if we need to show the swipeable ad after the first contract
+            if (adjustedIndex == 1) {
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                child: SwipeableAdCarousel(
+                  adService: _adService,
+                  screenId: 'contract_screen',
+                  nativeAdRefreshInterval: const Duration(seconds: 60),
+                  autoSwipeInterval: const Duration(seconds: 10),
+                ),
+              );
+            }
+            
+            // Adjust index for the swipeable ad we just added
+            if (adjustedIndex > 1) {
+              adjustedIndex--; // Decrement by 1 to account for the swipeable ad
+            }
+            
             if (adjustedIndex >= contracts.length) {
               return const SizedBox.shrink();
             }
+            
             final contract = contracts[adjustedIndex];
             final bool isCompleted = contract['isCompleted'] ?? false;
             final bool canWatchAd = _canWatchAd() && _isAdInitialized;
