@@ -650,25 +650,11 @@ class _ContractScreenState extends State<ContractScreen>
           padding: const EdgeInsets.all(16.0),
           itemCount: totalItems,
           itemBuilder: (context, index) {
-            // Sabse upar banner ad
-            if (index == 0) {
-              // Place SwipeableAdCarousel at the top of the contract list
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                child: SwipeableAdCarousel(
-                  adService: _adService,
-                  screenId: 'contract_screen',
-                  nativeAdRefreshInterval: const Duration(seconds: 60),
-                  autoSwipeInterval: const Duration(seconds: 10),
-                ),
-              );
-            }
-
-            // Adjust contract index for ads and handle swipeable ad after first contract
-            int adjustedIndex = index - 1; // Because index 0 is the top banner ad
+            // Adjust contract index since we removed the top banner ad
+            int adjustedIndex = index;
             
-            // Check if we need to show the swipeable ad after the first contract
-            if (adjustedIndex == 1) {
+            // Show swipeable ad after the first contract (index 0)
+            if (index == 1) {
               return Container(
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 child: SwipeableAdCarousel(

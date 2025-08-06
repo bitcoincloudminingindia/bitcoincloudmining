@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -60,6 +61,13 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
   bool _isAdLoading = false;
   bool _isInterstitialAdLoaded = false;
   String? _adError;
+  
+  // AdMob banner ad
+  BannerAd? _bannerAd;
+  bool _isBannerAdLoaded = false;
+  
+  // Banner ad size - will be set adaptively
+  AdSize? _bannerSize;
 
   // Add loading state
   bool _isCollecting = false;
@@ -159,10 +167,11 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
     _spinController.dispose();
     _winAnimationController.dispose();
     _confettiController.dispose();
+    _audioPlayer.dispose();
+    _bannerAd?.dispose();
     _adService.dispose();
     _cooldownTimer?.cancel();
     super.dispose();
@@ -175,6 +184,95 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
     } catch (e) {}
   }
 
+  // Load banner ad with adaptive sizing
+  Future<void> _loadBannerAd() async {
+    if (_bannerAd != null) {
+      _bannerAd!.dispose();
+    }
+
+    setState(() {
+      _isBannerAdLoaded = false;
+    });
+
+    try {
+      // Get the screen width to determine the best ad size
+      final screenWidth = MediaQuery.of(context).size.width.toInt();
+      
+      // Try to get the adaptive banner size for the current orientation
+      _bannerSize = AdSize.getCurrentOrientationInlineAdaptiveBannerAdSize(screenWidth);
+      
+      // If adaptive size is not available, use a standard banner size
+      _bannerSize ??= const AdSize(width: 320, height: 100);
+      
+      _bannerAd = BannerAd(
+        adUnitId: 'ca-app-pub-3537329799200606/2028008282',
+        size: _bannerSize!,
+        request: const AdRequest(),
+        listener: BannerAdListener(
+          onAdLoaded: (ad) async {
+            debugPrint('🎯 Miner Madness: Adaptive Banner ad loaded');
+            // Get the actual platform ad size after loading
+            final platformAdSize = await (ad as BannerAd).getPlatformAdSize();
+            debugPrint('📏 Miner Madness: Ad size: ${platformAdSize?.width}x${platformAdSize?.height}');
+            
+            if (mounted) {
+              setState(() {
+                _isBannerAdLoaded = true;
+              });
+              // Schedule the next ad refresh after 30 seconds
+              Future.delayed(const Duration(seconds: 30), () {
+                if (mounted) _loadBannerAd();
+              });
+            }
+          },
+          onAdFailedToLoad: (ad, error) {
+            debugPrint('❌ Miner Madness: Failed to load adaptive banner ad: $error');
+            ad.dispose();
+            // Retry with fallback size after a delay
+            Future.delayed(const Duration(seconds: 5), () {
+              if (mounted) _loadFallbackBannerAd();
+            });
+          },
+        ),
+      );
+
+      await _bannerAd!.load();
+    } catch (e) {
+      debugPrint('❌ Error initializing banner ad: $e');
+      // Fallback to a standard banner ad if adaptive loading fails
+      await _loadFallbackBannerAd();
+    }
+  }
+
+  // Fallback method to load a standard banner ad when adaptive loading fails
+  Future<void> _loadFallbackBannerAd() async {
+    try {
+      _bannerAd = BannerAd(
+        adUnitId: 'ca-app-pub-3537329799200606/2028008282',
+        size: const AdSize(width: 320, height: 50), // Standard banner size as fallback
+        request: const AdRequest(),
+        listener: BannerAdListener(
+          onAdLoaded: (ad) {
+            debugPrint('✅ Fallback Banner ad loaded');
+            if (mounted) {
+              setState(() {
+                _isBannerAdLoaded = true;
+              });
+            }
+          },
+          onAdFailedToLoad: (ad, error) {
+            debugPrint('❌ Fallback Banner ad failed to load: $error');
+            ad.dispose();
+            // Don't retry again to avoid infinite loop
+          },
+        ),
+      );
+      await _bannerAd!.load();
+    } catch (e) {
+      debugPrint('❌ Error loading fallback banner ad: $e');
+    }
+  }
+
   Future<void> _initializeAds() async {
     setState(() {
       _isAdLoading = true;
@@ -182,15 +280,13 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
     });
 
     try {
-      debugPrint('🎯 Miner Madness: Initializing ads...');
-      
-      // Load banner ad
-      await _adService.loadBannerAd();
-      debugPrint('🎯 Miner Madness: Banner ad loaded: ${_adService.isBannerAdLoaded}');
-      
+      await _adService.initialize();
       // Load rewarded ad
       await _adService.loadRewardedAd();
       debugPrint('🎯 Miner Madness: Rewarded ad loaded: ${_adService.isRewardedAdLoaded}');
+      
+      // Load banner ad
+      await _loadBannerAd();
       
       // Load interstitial ad for exit
       await _loadInterstitialAd();
@@ -392,14 +488,22 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
 
   // Add this method to load saved spin count
   Future<void> _loadSpinCount() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _spinCount = prefs.getInt('wheelSpinCount') ?? 0;
-    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() {
+          _spinCount = prefs.getInt('wheelSpinCount') ?? 0;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading spin count: $e');
+    }
   }
 
   // Add method to award base bonus
   Future<void> _awardBaseBonus() async {
+    if (!mounted) return;
+    
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
     try {
       await walletProvider.addEarning(widget.baseWinAmount,
@@ -410,17 +514,21 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
 
       // Show bonus notification
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Achievement Unlocked! 1000 Spins Completed - Bonus ${widget.baseWinAmount.toStringAsFixed(18)} BTC Added!',
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Achievement Unlocked! 1000 Spins Completed - Bonus ${widget.baseWinAmount.toStringAsFixed(18)} BTC Added!',
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 5),
             ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 5),
-          ),
-        );
+          );
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('Error awarding base bonus: $e');
+    }
   }
 
   @override
@@ -492,14 +600,19 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
                   ),
                 ),
               ),
-              if (_isAdLoaded)
+              // Banner Ad at the bottom of the screen (320x100)
+              if (_isBannerAdLoaded && _bannerAd != null)
                 Positioned(
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  child: SizedBox(
-                    height: 90,
-                    child: _adService.getBannerAd(),
+                  child: Container(
+                    color: Colors.transparent,
+                    width: 320,
+                    height: 100,
+                    alignment: Alignment.center,
+                    margin: const EdgeInsets.only(bottom: 4),
+                    child: AdWidget(ad: _bannerAd!),
                   ),
                 ),
               if (_isAdLoading)
@@ -609,6 +722,25 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
     final size = MediaQuery.of(context).size;
     final wheelSize = size.width * 0.8;
     const maxWheelSize = 300.0;
+
+    // Create a 320x100 banner ad
+    _bannerAd = BannerAd(
+      adUnitId: 'ca-app-pub-3537329799200606/2028008282',
+      size: AdSize.largeBanner, // This is 320x100
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          setState(() {
+            _isBannerAdLoaded = true;
+          });
+        },
+        onAdFailedToLoad: (ad, error) {
+          debugPrint('Failed to load banner ad: $error');
+          ad.dispose();
+          _bannerAd = null;
+        },
+      ),
+    )..load();
 
     return Stack(
       alignment: Alignment.center,

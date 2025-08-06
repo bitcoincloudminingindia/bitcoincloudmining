@@ -2,6 +2,7 @@ import 'dart:async'; // For Timer
 import 'dart:io' show exit, Platform;
 
 import 'package:audioplayers/audioplayers.dart'; // For AudioPlayer
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:bitcoin_cloud_mining/providers/auth_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/network_provider.dart';
 import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
@@ -97,79 +98,165 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Timer? _adUiUpdateTimer;
   Timer? _nativeAdAutoRefreshTimer;
 
-  Future<Widget?>? _middleBannerAdFuture;
+  // AdMob Banner Ad
+  BannerAd? _bannerAd;
+  bool _isBannerAdLoaded = false;
+  late Future<Widget?> _middleBannerAdFuture;
 
-  // Bottom section ad load functions
+  // Initialize and load the Adaptive Banner ad
+  Future<void> _initializeBannerAd() async {
+    if (_bannerAd != null) {
+      _bannerAd!.dispose();
+    }
 
-  // Enhanced middle banner ad loading
-  Future<Widget?> _getMiddleBannerAdWidget() async {
+    setState(() {
+      _isBannerAdLoaded = false;
+    });
+
     try {
-      // Load banner ad with shorter timeout
-      await _adService.loadBannerAd().timeout(
-        const Duration(seconds: 5), // Reduced from 8 to 5 seconds
-        onTimeout: () {
-          throw Exception('Middle banner ad loading timeout');
-        },
+      // Get the screen width to determine the best ad size
+      final screenWidth = MediaQuery.of(context).size.width.toInt();
+      
+      // Try to get the adaptive banner size for the current orientation
+      AdSize? adSize;
+      try {
+        adSize = AdSize.getCurrentOrientationInlineAdaptiveBannerAdSize(screenWidth);
+      } catch (e) {
+        debugPrint('⚠️ Could not get adaptive ad size: $e');
+      }
+      
+      // Use the adaptive size if available, otherwise fall back to a standard banner
+      final targetAdSize = adSize ?? const AdSize(width: 320, height: 50);
+      
+      // Create the banner ad with the determined size
+      _bannerAd = BannerAd(
+        adUnitId: 'ca-app-pub-3537329799200606/2028008282',
+        size: targetAdSize,
+        request: const AdRequest(),
+        listener: BannerAdListener(
+          onAdLoaded: (ad) async {
+            debugPrint('✅ Adaptive Banner ad loaded');
+            // Get the actual platform ad size after loading
+            final platformAdSize = await (ad as BannerAd).getPlatformAdSize();
+            debugPrint('📏 Ad size: ${platformAdSize?.width}x${platformAdSize?.height}');
+            
+            if (mounted) {
+              setState(() {
+                _isBannerAdLoaded = true;
+              });
+              // Schedule the next ad refresh after 30 seconds
+              Future.delayed(const Duration(seconds: 30), () {
+                if (mounted) _reloadBannerAd();
+              });
+            }
+          },
+          onAdFailedToLoad: (ad, error) {
+            debugPrint('❌ Adaptive Banner ad failed to load: $error');
+            ad.dispose();
+            // Retry loading the ad after a delay
+            Future.delayed(const Duration(seconds: 5), () {
+              if (mounted) _reloadBannerAd();
+            });
+          },
+          onAdImpression: (ad) {
+            debugPrint('👁️ Banner ad impression');
+          },
+        ),
       );
 
-      if (_adService.isBannerAdLoaded) {
-        return _adService.getBannerAd();
-      } else {
-        return Container(
-          height: 50,
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: const Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
-                  ),
-                ),
-                SizedBox(width: 8),
-                Text(
-                  'Loading Middle Banner...',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
+      await _bannerAd!.load();
     } catch (e) {
-      return Container(
-        height: 50,
-        decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: Colors.grey[200]!),
-        ),
-        child: const Center(
-          child: Text(
-            'Ad',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+      debugPrint('❌ Error initializing banner ad: $e');
+      // Fallback to a standard banner ad if adaptive loading fails
+      _loadFallbackBannerAd();
+    }
+  }
+  
+  // Fallback method to load a standard banner ad
+  Future<void> _loadFallbackBannerAd() async {
+    try {
+      _bannerAd = BannerAd(
+        adUnitId: 'ca-app-pub-3537329799200606/2028008282',
+        size: const AdSize(width: 320, height: 50), // Standard banner size
+        request: const AdRequest(),
+        listener: BannerAdListener(
+          onAdLoaded: (ad) {
+            debugPrint('✅ Fallback Banner ad loaded');
+            if (mounted) {
+              setState(() {
+                _isBannerAdLoaded = true;
+              });
+            }
+          },
+          onAdFailedToLoad: (ad, error) {
+            debugPrint('❌ Fallback Banner ad failed to load: $error');
+            ad.dispose();
+          },
         ),
       );
+      await _bannerAd!.load();
+    } catch (e) {
+      debugPrint('❌ Error loading fallback banner ad: $e');
     }
   }
 
+  // Reload the banner ad
+  Future<void> _reloadBannerAd() async {
+    if (mounted) {
+      await _initializeBannerAd();
+    }
+  }
+
+  Future<Widget?> _getMiddleBannerAdWidget() async {
+    return Container(
+      width: 330, // Fixed width for better ad display
+      height: 120, // Fixed height for better ad display
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: _isBannerAdLoaded && _bannerAd != null
+          ? SizedBox(
+              width: 330, // Fixed width for better ad display
+              height: 120, // Fixed height for better ad display
+              child: AdWidget(ad: _bannerAd!),
+            )
+          : Container(
+              width: 330, // Fixed width for better ad display
+              height: 120, // Fixed height for better ad display
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Loading Ad...',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
 
   @override
   void initState() {
@@ -178,6 +265,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     _audioPlayer = AudioPlayer();
     _adService = AdService();
+    
+    // Initialize banner ad
+    _initializeBannerAd();
+    _middleBannerAdFuture = _getMiddleBannerAdWidget();
+    
     Future.microtask(() async {
       await _adService.initialize();
       // हर बार ads reload करें
@@ -286,9 +378,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _audioPlayer.dispose();
     _scrollController.dispose();
-    try {
-      _adService.dispose();
-    } catch (e) {}
+    _adService.dispose();
+    _bannerAd?.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
