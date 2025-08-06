@@ -31,6 +31,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
   bool shieldActive = false;
   bool doubleBTCActive = false;
   bool gameStarted = false;
+  bool _isExiting = false;
   bool isAdLoaded = false;
   bool isAdLoading = false;
   bool isDialogOpen = false; // Track if a dialog is open
@@ -39,6 +40,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
   Timer? gameTimer;
   Timer? itemTimer;
   Timer? animationTimer;
+  Timer? _interstitialTimer;
   double fallingSpeed = 3.5;
   final AudioPlayer _audioPlayer = AudioPlayer();
   final AdService _adService = AdService();
@@ -67,6 +69,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
     gameTimer?.cancel();
     itemTimer?.cancel();
     animationTimer?.cancel();
+    _interstitialTimer?.cancel();
     _disposeBannerAd();
     _adService.dispose();
     exitGame();
@@ -260,6 +263,7 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
     itemTimer?.cancel();
     animationTimer?.cancel();
     adBubbleTimer?.cancel();
+    _interstitialTimer?.cancel();
   }
 
   void resumeGame() {
@@ -284,11 +288,19 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
         updateItemPositions();
       });
 
-      // हर 20 सेकंड में ad bubble दिखाने के लिए
+      // Show rewarded ad bubble every 20 seconds
       adBubbleTimer?.cancel();
       adBubbleTimer = Timer.periodic(const Duration(seconds: 20), (timer) {
         if (!showAdBubble && !gameOver && gameStarted && mounted) {
           showRewardedAdBubble();
+        }
+      });
+
+      // Show interstitial ad every 1 minute
+      _interstitialTimer?.cancel();
+      _interstitialTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+        if (!gameOver && gameStarted && mounted) {
+          _showInterstitialAd();
         }
       });
     }
@@ -464,26 +476,149 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
       gameOver = true;
       gameStarted = false;
       adBubbleTimer?.cancel();
+      _interstitialTimer?.cancel();
     });
   }
 
-  void exitGame() {
-    pauseGame();
-    resetGame();
+  Future<void> _exitAfterAd() async {
+    if (_isExiting) return;
+    _isExiting = true;
 
-    // Transfer game earnings to main wallet before exiting
-    if (gameEarnings > 0) {
-      Provider.of<WalletProvider>(context, listen: false).addEarning(
-        gameEarnings,
-        type: 'game',
-        description: 'Bitcoin Blast - Game Earnings',
-      );
+    if (mounted) {
+      setState(() {
+        isAdLoading = true;
+      });
 
-      // Play earning sound for game completion
-      SoundNotificationService.playEarningSound();
+      try {
+        // Show interstitial ad before exiting
+        await _showInterstitialAd();
+
+        if (mounted) {
+          // Add earnings to wallet if any
+          if (gameEarnings > 0) {
+            await Provider.of<WalletProvider>(context, listen: false)
+                .addEarning(
+              gameEarnings,
+              type: 'game',
+              description: '${widget.gameTitle} - Game Earnings',
+            );
+
+            // Play earning sound
+            await SoundNotificationService.playEarningSound();
+
+            // Show success message
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    '🎉 ${gameEarnings.toStringAsFixed(18)} BTC added to wallet!',
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                  backgroundColor: Colors.green,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            }
+          }
+
+          // Add a small delay to ensure message is shown
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Navigate back
+          if (mounted) {
+            Navigator.of(context).pop(gameEarnings);
+          }
+        }
+      } catch (e) {
+        debugPrint('Error in exit flow: $e');
+        if (mounted) {
+          Navigator.of(context).pop(gameEarnings);
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            isAdLoading = false;
+          });
+        }
+      }
+    }
+  }
+
+  Future<void> exitGame() async {
+    if (gameOver) return;
+
+    // Show exit confirmation
+    final shouldExit = await showExitConfirmation();
+    if (!shouldExit) return;
+
+    if (mounted) {
+      setState(() {
+        isAdLoading = true;
+      });
     }
 
-    Navigator.pop(context, gameEarnings);
+    try {
+      // Stop all timers
+      gameTimer?.cancel();
+      itemTimer?.cancel();
+      animationTimer?.cancel();
+      _interstitialTimer?.cancel();
+
+      // Stop audio
+      try {
+        await _audioPlayer.stop();
+      } catch (e) {}
+
+      // Proceed with exit flow
+      await _exitAfterAd();
+    } catch (e) {
+      debugPrint('Error during exit: $e');
+      if (mounted) {
+        Navigator.of(context).pop(gameEarnings);
+      }
+    }
+  }
+
+  Future<bool> showExitConfirmation() async {
+    if (isDialogOpen) return false;
+
+    isDialogOpen = true;
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.exit_to_app, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Exit Game'),
+          ],
+        ),
+        content: Text(
+          gameEarnings > 0
+              ? 'You have ${gameEarnings.toStringAsFixed(18)} BTC earnings!\n\nDo you want to save and exit?'
+              : 'Are you sure you want to exit the game?',
+          style: const TextStyle(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Exit'),
+          ),
+        ],
+      ),
+    );
+
+    isDialogOpen = false;
+    return shouldExit ?? false;
   }
 
   void spawnItem() {
@@ -545,6 +680,50 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
       await _audioPlayer.play(AssetSource('audio/collect.mp3'));
     } catch (e) {
       // Continue without sound
+    }
+  }
+
+  Future<bool> _showInterstitialAd() async {
+    try {
+      if (!_adService.isInterstitialAdLoaded) {
+        await _adService.loadInterstitialAd();
+      }
+
+      if (_adService.isInterstitialAdLoaded) {
+        final completer = Completer<bool>();
+        bool adCompleted = false;
+
+        final adShown = await _adService.showInterstitialAd(
+          onAdDismissed: () {
+            if (!adCompleted) {
+              adCompleted = true;
+              if (!completer.isCompleted) {
+                completer.complete(true);
+              }
+            }
+          },
+        );
+
+        if (!adShown) {
+          return false;
+        }
+
+        // Set a timeout for ad completion (30 seconds)
+        Future.delayed(const Duration(seconds: 30), () {
+          if (!adCompleted) {
+            adCompleted = true;
+            if (!completer.isCompleted) {
+              completer.complete(false);
+            }
+          }
+        });
+
+        return await completer.future;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error showing interstitial ad: $e');
+      return false;
     }
   }
 
@@ -686,15 +865,19 @@ class _BitcoinBlastGameScreenState extends State<BitcoinBlastGameScreen> {
   Widget build(BuildContext context) {
     return PopScope<Object?>(
       canPop: false,
-      onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (!didPop) {
-          exitGame();
+      onPopInvokedWithResult: (bool didPop, Object? result) async {
+        if (!didPop && mounted) {
+          await exitGame();
         }
       },
       child: Stack(
         children: [
           Scaffold(
             appBar: AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: exitGame,
+              ),
               title: Text(widget.gameTitle,
                   style: GoogleFonts.roboto(
                       fontSize: 22, fontWeight: FontWeight.bold)),

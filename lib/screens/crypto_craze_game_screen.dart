@@ -48,6 +48,8 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     super.initState();
     _loadGameData();
     _adService.loadBannerAd();
+    _adService.loadInterstitialAd(); // Load interstitial ad on init
+    
     // Pending ad level load karo
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final prefs = await SharedPreferences.getInstance();
@@ -295,46 +297,7 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     });
   }
 
-  Future<void> _saveEarningsAndExit() async {
-    // Show confirmation dialog if there are earnings
-    if (_sessionEarnings > 0) {
-      final shouldExit = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.exit_to_app, color: Colors.orange),
-              SizedBox(width: 8),
-              Text('Exit Game'),
-            ],
-          ),
-          content: Text(
-            'You have ${_sessionEarnings.toStringAsFixed(18)} BTC earnings!\n\nDo you want to save and exit?',
-            style: const TextStyle(fontSize: 16),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Save & Exit'),
-            ),
-          ],
-        ),
-      );
-
-      if (shouldExit != true) {
-        return; // User cancelled
-      }
-    }
-
+  Future<void> _exitAfterAd() async {
     // Save earnings to wallet
     if (_sessionEarnings > 0) {
       try {
@@ -381,6 +344,64 @@ class _CryptoCrazeGameScreenState extends State<CryptoCrazeGameScreen> {
     // Navigate back
     if (mounted) {
       Navigator.pop(context);
+    }
+  }
+
+  Future<void> _saveEarningsAndExit() async {
+    // Show confirmation dialog if there are earnings
+    if (_sessionEarnings > 0) {
+      final shouldExit = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.exit_to_app, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Exit Game'),
+            ],
+          ),
+          content: Text(
+            'You have ${_sessionEarnings.toStringAsFixed(18)} BTC earnings!\n\nDo you want to save and exit?',
+            style: const TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Save & Exit'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldExit != true) {
+        return; // User cancelled
+      }
+    }
+
+    // Show interstitial ad before exiting
+    try {
+      final adShown = await _adService.showInterstitialAd(
+        onAdDismissed: _exitAfterAd,
+      );
+      
+      // If ad wasn't shown (not loaded or error), exit immediately
+      if (!adShown && mounted) {
+        _exitAfterAd();
+      }
+    } catch (e) {
+      // If there's an error showing the ad, just exit
+      if (mounted) {
+        _exitAfterAd();
+      }
     }
   }
 

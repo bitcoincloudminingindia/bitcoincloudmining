@@ -31,6 +31,7 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
   int spinCount = 0;
   bool isRewardedAdRequired = false;
   bool isAdLoading = false;
+  bool _isInterstitialAdLoaded = false;
   int totalSpins = 0;
   final int maxSpins = 50;
   final Random random = Random();
@@ -48,6 +49,7 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
     super.initState();
     _initializeReels();
     _loadAds();
+    _loadInterstitialAd();
     _bannerAdFuture = _adService.getBannerAdWidget();
     _loadAdRequiredState();
   }
@@ -404,6 +406,67 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
     }
   }
 
+  Future<void> _loadInterstitialAd() async {
+    await _adService.loadInterstitialAd();
+    if (mounted) {
+      setState(() {
+        _isInterstitialAdLoaded = true;
+      });
+    }
+  }
+
+  Future<void> _showExitConfirmation() async {
+    if (gameWalletBalance <= 0) {
+      _exitAfterAd();
+      return;
+    }
+
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.blue.shade900,
+        title: const Text('Exit Game?', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'You have ${gameWalletBalance.toStringAsFixed(18)} BTC in your game wallet. Do you want to transfer it to your main wallet before exiting?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('CANCEL', style: TextStyle(color: Colors.white)),
+          ),
+          TextButton(
+            onPressed: () {
+              _transferToMainWallet();
+              Navigator.of(context).pop(true);
+            },
+            child: const Text('TRANSFER & EXIT', style: TextStyle(color: Colors.greenAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldExit == true) {
+      _exitAfterAd();
+    }
+  }
+
+  Future<void> _exitAfterAd() async {
+    if (_isInterstitialAdLoaded) {
+      await _adService.showInterstitialAd(
+        onAdDismissed: () {
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        },
+      );
+    } else {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
+  }
+
   @override
   void dispose() {
     spinTimer?.cancel();
@@ -415,307 +478,262 @@ class _BitcoinMachineScreenState extends State<BitcoinMachineScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Bitcoin Machine'),
-        backgroundColor: Colors.blue.shade900,
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () async {
-            // Show loading dialog
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (BuildContext context) {
-                return PopScope(
-                  canPop: false,
-                  child: Dialog(
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade900.withAlpha(200),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.greenAccent),
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Transferring to Main Wallet...',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            );
-
-            // Transfer balance and pop
-            _transferToMainWallet();
-            await Future.delayed(const Duration(
-                seconds: 1)); // Show loading for at least 1 second
-            if (mounted) {
-              Navigator.pop(context); // Close loading dialog
-              Navigator.pop(context); // Go back
-            }
-          },
-        ),
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.blue.shade900,
-              Colors.black,
-            ],
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) async {
+        if (!didPop && mounted) {
+          await _showExitConfirmation();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Bitcoin Machine'),
+          backgroundColor: Colors.blue.shade900,
+          foregroundColor: Colors.white,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: _showExitConfirmation,
           ),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(26),
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(
-                            color: Colors.black.withAlpha(51),
-                            width: 1,
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.blue.shade900,
+                Colors.black,
+              ],
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withAlpha(26),
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(
+                              color: Colors.black.withAlpha(51),
+                              width: 1,
+                            ),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.account_balance_wallet,
-                                color: Colors.greenAccent),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'BTC Machine Wallet: ${gameWalletBalance.toStringAsFixed(18)} BTC',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.greenAccent,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
+                          child: Row(
+                            children: [
+                              const Icon(Icons.account_balance_wallet,
+                                  color: Colors.greenAccent),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'BTC Machine Wallet: ${gameWalletBalance.toStringAsFixed(18)} BTC',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.greenAccent,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      Expanded(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Slot Machine centered
-                            Expanded(
-                              child: Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      height: 340, // Decreased from 380
-                                      width: 270, // Decreased from 320
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withAlpha(26),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color: Colors.black.withAlpha(51),
-                                          width: 1,
+                        const SizedBox(height: 20),
+                        Expanded(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        height: 340,
+                                        width: 270,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withAlpha(26),
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(
+                                            color: Colors.black.withAlpha(51),
+                                            width: 1,
+                                          ),
                                         ),
-                                      ),
-                                      child: Stack(
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: List.generate(3, (index) {
-                                              return Container(
-                                                width: 80, // Decreased from 100
-                                                margin:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal:
-                                                            4), // Less spacing
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white
-                                                      .withAlpha(26),
-                                                  borderRadius:
-                                                      BorderRadius.circular(15),
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color: Colors.black
-                                                          .withAlpha(51),
-                                                      blurRadius: 10,
-                                                      spreadRadius: 2,
-                                                    ),
-                                                  ],
-                                                ),
-                                                child: Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  children: List.generate(5,
-                                                      (symbolIndex) {
-                                                    return Container(
-                                                      margin: const EdgeInsets
-                                                          .symmetric(
-                                                          vertical:
-                                                              4.0), // Less vertical space
-                                                      padding: const EdgeInsets
-                                                          .all(
-                                                          3), // Less padding
-                                                      decoration: BoxDecoration(
-                                                        color: symbolColors[
-                                                                        index][
-                                                                    symbolIndex] ==
-                                                                Colors
-                                                                    .greenAccent
-                                                            ? Colors.greenAccent
-                                                                .withAlpha(51)
-                                                            : Colors
-                                                                .transparent,
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(10),
+                                        child: Stack(
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: List.generate(3, (index) {
+                                                return Container(
+                                                  width: 80,
+                                                  margin:
+                                                      const EdgeInsets.symmetric(
+                                                          horizontal: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white
+                                                        .withAlpha(26),
+                                                    borderRadius:
+                                                        BorderRadius.circular(15),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.black
+                                                            .withAlpha(51),
+                                                        blurRadius: 10,
+                                                        spreadRadius: 2,
                                                       ),
-                                                      child: Text(
-                                                        reels[index]
-                                                            [symbolIndex],
-                                                        style: TextStyle(
-                                                          fontSize: 30,
+                                                    ],
+                                                  ),
+                                                  child: Column(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment.center,
+                                                    children: List.generate(5,
+                                                        (symbolIndex) {
+                                                      return Container(
+                                                        margin: const EdgeInsets
+                                                            .symmetric(
+                                                            vertical: 4.0),
+                                                        padding: const EdgeInsets
+                                                            .all(3),
+                                                        decoration: BoxDecoration(
                                                           color: symbolColors[
-                                                                  index]
-                                                              [symbolIndex],
-                                                          fontWeight: symbolColors[
-                                                                          index]
-                                                                      [
+                                                                          index][
                                                                       symbolIndex] ==
                                                                   Colors
                                                                       .greenAccent
-                                                              ? FontWeight.bold
-                                                              : FontWeight
-                                                                  .normal,
+                                                              ? Colors.greenAccent
+                                                                  .withAlpha(51)
+                                                              : Colors
+                                                                  .transparent,
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(10),
                                                         ),
-                                                      ),
-                                                    );
-                                                  }),
-                                                ),
-                                              );
-                                            }),
-                                          ),
-                                          Positioned.fill(
-                                            child: Center(
-                                              child: Container(
-                                                height: 55, // Decreased from 70
-                                                width:
-                                                    210, // Decreased from 300
-                                                decoration: BoxDecoration(
-                                                  border: Border.all(
-                                                    color: Colors.yellowAccent
-                                                        .withAlpha(128),
-                                                    width: 2.5, // Thinner
+                                                        child: Text(
+                                                          reels[index]
+                                                              [symbolIndex],
+                                                          style: TextStyle(
+                                                            fontSize: 30,
+                                                            color: symbolColors[
+                                                                    index]
+                                                                [symbolIndex],
+                                                            fontWeight: symbolColors[
+                                                                            index]
+                                                                        [
+                                                                        symbolIndex] ==
+                                                                    Colors
+                                                                        .greenAccent
+                                                                ? FontWeight.bold
+                                                                : FontWeight
+                                                                    .normal,
+                                                          ),
+                                                        ),
+                                                      );
+                                                    }),
                                                   ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(14),
-                                                  color: Colors.yellowAccent
-                                                      .withAlpha(26),
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color: Colors.grey
-                                                          .withAlpha(40),
-                                                      blurRadius: 20,
-                                                      spreadRadius: 1,
-                                                      offset:
-                                                          const Offset(0, 2),
+                                                );
+                                              }),
+                                            ),
+                                            Positioned.fill(
+                                              child: Center(
+                                                child: Container(
+                                                  height: 55,
+                                                  width: 210,
+                                                  decoration: BoxDecoration(
+                                                    border: Border.all(
+                                                      color: Colors.yellowAccent
+                                                          .withAlpha(128),
+                                                      width: 2.5,
                                                     ),
-                                                  ],
+                                                    borderRadius:
+                                                        BorderRadius.circular(14),
+                                                    color: Colors.yellowAccent
+                                                        .withAlpha(26),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.grey
+                                                            .withAlpha(40),
+                                                        blurRadius: 20,
+                                                        spreadRadius: 1,
+                                                        offset:
+                                                            const Offset(0, 2),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
                                             ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      ElevatedButton(
+                                        onPressed: (isSpinning ||
+                                                isRewardedAdRequired ||
+                                                isAdLoading)
+                                            ? null
+                                            : _spin,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.yellowAccent,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 40,
+                                            vertical: 12,
                                           ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    ElevatedButton(
-                                      onPressed: (isSpinning ||
-                                              isRewardedAdRequired ||
-                                              isAdLoading)
-                                          ? null
-                                          : _spin,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.yellowAccent,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 40,
-                                          vertical: 12,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(25),
+                                          ),
+                                          elevation: 5,
+                                          shadowColor:
+                                              Colors.yellowAccent.withAlpha(100),
                                         ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(25),
+                                        child: Text(
+                                          isSpinning ? '...' : 'START',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black,
+                                          ),
                                         ),
-                                        elevation: 5,
-                                        shadowColor:
-                                            Colors.yellowAccent.withAlpha(100),
                                       ),
-                                      child: Text(
-                                        isSpinning ? '...' : 'START',
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'Good luck!',
                                         style: GoogleFonts.poppins(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.white,
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'Good luck!',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              // Banner Ad at the bottom
-              FutureBuilder<Widget?>(
-                future: _bannerAdFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.done &&
-                      snapshot.data != null) {
-                    return snapshot.data!;
-                  } else {
-                    return const SizedBox(height: 0);
-                  }
-                },
-              ),
-            ],
+                // Banner Ad at the bottom
+                FutureBuilder<Widget?>(
+                  future: _bannerAdFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.done &&
+                        snapshot.data != null) {
+                      return snapshot.data!;
+                    } else {
+                      return const SizedBox(height: 0);
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

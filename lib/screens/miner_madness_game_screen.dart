@@ -58,6 +58,7 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
   final AdService _adService = AdService();
   bool _isAdLoaded = false;
   bool _isAdLoading = false;
+  bool _isInterstitialAdLoaded = false;
   String? _adError;
 
   // Add loading state
@@ -93,6 +94,69 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
     _setupAnimationListeners();
   }
 
+  Future<void> _loadInterstitialAd() async {
+    await _adService.loadInterstitialAd();
+    if (mounted) {
+      setState(() {
+        _isInterstitialAdLoaded = true;
+      });
+    }
+  }
+
+  Future<void> _showExitConfirmation() async {
+    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+    final hasEarnings = walletProvider.balance > 0;
+
+    if (!hasEarnings) {
+      _exitAfterAd();
+      return;
+    }
+
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.blue.shade900,
+        title: const Text('Exit Game?', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'You have ${walletProvider.balance.toStringAsFixed(18)} BTC in your game wallet. Do you want to continue?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('CANCEL', style: TextStyle(color: Colors.white)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(true);
+            },
+            child: const Text('EXIT', style: TextStyle(color: Colors.greenAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldExit == true) {
+      _exitAfterAd();
+    }
+  }
+
+  Future<void> _exitAfterAd() async {
+    if (_isInterstitialAdLoaded) {
+      await _adService.showInterstitialAd(
+        onAdDismissed: () {
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        },
+      );
+    } else {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
+  }
+
   @override
   void dispose() {
     _audioPlayer.dispose();
@@ -118,22 +182,37 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
     });
 
     try {
-      _adService.loadBannerAd(); // No await, as this is a void method
+      debugPrint('🎯 Miner Madness: Initializing ads...');
+      
+      // Load banner ad
+      await _adService.loadBannerAd();
+      debugPrint('🎯 Miner Madness: Banner ad loaded: ${_adService.isBannerAdLoaded}');
+      
+      // Load rewarded ad
       await _adService.loadRewardedAd();
+      debugPrint('🎯 Miner Madness: Rewarded ad loaded: ${_adService.isRewardedAdLoaded}');
+      
+      // Load interstitial ad for exit
+      await _loadInterstitialAd();
+      debugPrint('🎯 Miner Madness: Interstitial ad loaded: $_isInterstitialAdLoaded');
 
       if (mounted) {
         setState(() {
-          _isAdLoaded = _adService.isBannerAdLoaded;
+          _isAdLoaded = _adService.isBannerAdLoaded || 
+                      _adService.isRewardedAdLoaded || 
+                      _isInterstitialAdLoaded;
           _isAdLoading = false;
         });
+        
+        debugPrint('🎯 Miner Madness: All ads initialized. Status: $_isAdLoaded');
       }
     } catch (e) {
+      debugPrint('❌ Miner Madness: Ad initialization failed: $e');
       if (mounted) {
         setState(() {
           _isAdLoaded = false;
           _isAdLoading = false;
-          _adError =
-              'Failed to load ads. Please check your internet connection.';
+          _adError = 'Failed to load ads. Please check your internet connection.';
         });
       }
     }
@@ -346,30 +425,41 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.blue.shade900,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.blue.shade900,
-              Colors.blue.shade900,
-            ],
+    return PopScope(
+      canPop: false, // Prevent default back behavior
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop) {
+          debugPrint('👆 Miner Madness: Android back button pressed');
+          _showExitConfirmation();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.blue.shade900,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+            onPressed: () {
+              debugPrint('👆 Miner Madness: AppBar back button pressed');
+              _showExitConfirmation();
+            },
           ),
         ),
-        child: SafeArea(
-          child: Stack(
-            children: [
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.blue.shade900,
+                Colors.blue.shade900,
+              ],
+            ),
+          ),
+          child: SafeArea(
+            child: Stack(
+              children: [
               SingleChildScrollView(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
@@ -408,7 +498,7 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
                   left: 0,
                   right: 0,
                   child: SizedBox(
-                    height: 50,
+                    height: 90,
                     child: _adService.getBannerAd(),
                   ),
                 ),
@@ -471,11 +561,12 @@ class _MinerMadnessGameScreenState extends State<MinerMadnessGameScreen>
                     ),
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      ), // Close Scaffold
+    ); // Close PopScope
   }
 
   Widget _buildGameInstructions() {

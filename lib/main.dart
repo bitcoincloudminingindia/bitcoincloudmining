@@ -26,6 +26,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:unity_ads_plugin/unity_ads_plugin.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
@@ -78,6 +79,32 @@ void main() async {
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
   } catch (e) {
     // App initialization failed, ignore for now
+  }
+
+  // Initialize Unity Ads in main() - CRITICAL for proper initialization
+  try {
+    if (!kIsWeb) {
+      final gameId = Platform.isAndroid ? '5916099' : '5916098';
+      final testMode = false; // Disable test mode for production
+      
+      print('=== UNITY ADS INITIALIZATION IN MAIN() ===');
+      print('🎮 Game ID: $gameId');
+      print('🧪 Test Mode: $testMode');
+      print('🚀 Starting Unity Ads initialization...');
+      
+      await UnityAds.init(
+        gameId: gameId,
+        testMode: testMode,
+        onComplete: () {
+          print('✅ Unity Ads initialized successfully in main()!');
+        },
+        onFailed: (error, message) {
+          print('❌ Unity Ads initialization failed in main(): $error - $message');
+        },
+      );
+    }
+  } catch (e) {
+    print('❌ Unity Ads initialization exception in main(): $e');
   }
 
   // Only initialize window_manager on desktop platforms

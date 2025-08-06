@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -46,9 +47,48 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
   Future<Widget?>? _bannerAdFuture;
   final AdService _adService = AdService();
   bool _isAdLoading = false;
+  bool _isInterstitialAdLoaded = false;
   int _headsTapCount = 0;
   int _tailsTapCount = 0;
   bool _isRewardedAdRequired = false;
+  BannerAd? _bannerAd;
+  bool _isBannerAdLoaded = false;
+
+  // Load banner ad
+  void _loadBannerAd() {
+    // Dispose the existing banner ad if it exists
+    _bannerAd?.dispose();
+    
+    _bannerAd = BannerAd(
+      adUnitId: 'ca-app-pub-3537329799200606/2028008282', // Same as hash rush screen
+      size: AdSize.mediumRectangle, // 300x250 banner ad
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          setState(() {
+            _isBannerAdLoaded = true;
+          });
+          // Schedule the next ad refresh after 30 seconds
+          Future.delayed(const Duration(seconds: 30), () {
+            if (mounted) {
+              _loadBannerAd();
+            }
+          });
+        },
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
+          // Retry loading the ad after a delay
+          Future.delayed(const Duration(seconds: 5), () {
+            if (mounted) {
+              _loadBannerAd();
+            }
+          });
+        },
+      ),
+    );
+    
+    _bannerAd?.load();
+  }
 
   @override
   void initState() {
@@ -85,8 +125,26 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
       }
     });
 
-    _bannerAdFuture = _adService.getBannerAdWidget();
+    _loadBannerAd(); // Load banner ad on init
     _loadAdRequiredState();
+    _loadInterstitialAd();
+  }
+
+  Future<void> _loadInterstitialAd() async {
+    try {
+      await _adService.loadInterstitialAd();
+      if (mounted) {
+        setState(() {
+          _isInterstitialAdLoaded = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isInterstitialAdLoaded = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadAdRequiredState() async {
@@ -217,6 +275,30 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
   int get _winRate =>
       _totalFlips > 0 ? ((_wins / _totalFlips) * 100).round() : 0;
 
+  Future<void> _exitAfterAd() async {
+    if (mounted) {
+      await _transferToMainWallet();
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
+  }
+
+  Future<void> _showExitConfirmation() async {
+    if (_isInterstitialAdLoaded) {
+      try {
+        await _adService.showInterstitialAd(
+          onAdDismissed: _exitAfterAd,
+        );
+      } catch (e) {
+        // If ad fails to show, proceed with exit
+        _exitAfterAd();
+      }
+    } else {
+      _exitAfterAd();
+    }
+  }
+
   Future<void> _handleBackButton() async {
     if (_isTransferring) return;
 
@@ -259,8 +341,8 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
       }
     }
 
-    // Transfer earnings to main wallet
-    await _transferToMainWallet();
+    // Show interstitial ad before exiting
+    _showExitConfirmation();
   }
 
   @override
@@ -515,6 +597,14 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
                       ),
                     ),
                     _buildAdRequiredSection(),
+                    // AdMob Banner Ad
+                    if (_isBannerAdLoaded && _bannerAd != null)
+                      Container(
+                        width: _bannerAd!.size.width.toDouble(),
+                        height: _bannerAd!.size.height.toDouble(),
+                        margin: const EdgeInsets.only(bottom: 16, top: 8),
+                        child: AdWidget(ad: _bannerAd!),
+                      ),
                     if (_showResult && _userChoice != null && _result != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 16),
@@ -569,7 +659,7 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
                             snapshot.hasData) {
                           return snapshot.data ?? const SizedBox.shrink();
                         }
-                        return const SizedBox(height: 50);
+                        return const SizedBox(height: 90);
                       },
                     ),
                   ],
@@ -780,6 +870,7 @@ class _FlipCoinGameScreenState extends State<FlipCoinGameScreen>
       } catch (e) {}
     }
     _saveAdRequiredState(_isRewardedAdRequired);
+    _bannerAd?.dispose();
     _controller.dispose();
     super.dispose();
   }

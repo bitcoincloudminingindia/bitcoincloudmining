@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 
+import '../widgets/swipeable_ad_carousel.dart';
+
 class ContractScreen extends StatefulWidget {
   const ContractScreen({super.key});
 
@@ -24,6 +26,7 @@ class _ContractScreenState extends State<ContractScreen>
   TextEditingController withdrawAmountController = TextEditingController();
   List<String> withdrawalHistory = [];
   Timer? _uiUpdateTimer;
+  Timer? _nativeAdAutoRefreshTimer;
 
   List<Map<String, dynamic>> contracts = [
     {
@@ -181,160 +184,6 @@ class _ContractScreenState extends State<ContractScreen>
   static const String _lastAdWatchTimeKey = 'contract_last_ad_watch_time';
   static const String _remainingCooldownKey = 'contract_remaining_cooldown';
 
-  // Banner ad futures for 1 position only
-  Future<Widget?>? _bannerAdFuture1;
-  Future<Widget?>? _nativeAdFuture;
-
-  // Enhanced banner ad loading with better error handling
-  Future<Widget?> _getContractBannerAdWidget() async {
-    try {
-      // Check if banner ad is already loaded
-      if (_adService.isBannerAdLoaded) {
-        return _adService.getBannerAd();
-      }
-
-      // Load banner ad with timeout
-      await _adService.loadBannerAd().timeout(
-        const Duration(seconds: 8),
-        onTimeout: () {
-          throw Exception('Banner ad loading timeout');
-        },
-      );
-
-      if (_adService.isBannerAdLoaded) {
-        return _adService.getBannerAd();
-      } else {
-        return Container(
-          height: 50,
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: const Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
-                  ),
-                ),
-                SizedBox(width: 8),
-                Text(
-                  'Loading Banner Ad...',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      // Return a minimal placeholder for banner ad
-      return Container(
-        height: 50,
-        decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: Colors.grey[200]!),
-        ),
-        child: const Center(
-          child: Text(
-            'Ad',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      );
-    }
-  }
-
-  // Enhanced native ad loading for contract screen
-  Future<Widget?> _getNativeAdWidget() async {
-    try {
-      // Check if ad is already loaded
-      if (_adService.isNativeAdLoaded) {
-        return _adService.getNativeAd();
-      }
-
-      // Load native ad with shorter timeout
-      await _adService.loadNativeAd().timeout(
-        const Duration(seconds: 7), // 7 seconds timeout
-        onTimeout: () {
-          throw Exception('Native ad loading timeout');
-        },
-      );
-
-      if (_adService.isNativeAdLoaded) {
-        return _adService.getNativeAd();
-      } else {
-        return Container(
-          height: 360,
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.ads_click, color: Colors.grey, size: 24),
-                SizedBox(height: 8),
-                Text(
-                  'Ad Unavailable',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Check your internet connection',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      return Container(
-        height: 360,
-        decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey[200]!),
-        ),
-        child: const Center(
-          child: Text(
-            'Ad',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      );
-    }
-  }
-
   @override
   void initState() {
     super.initState();
@@ -349,18 +198,22 @@ class _ContractScreenState extends State<ContractScreen>
     // ContractScreen खुलते ही दोनों ads reload करें
     _reloadBannerAd();
     _reloadNativeAd();
+    // Native ad auto-refresh timer
+    _nativeAdAutoRefreshTimer?.cancel();
+    _nativeAdAutoRefreshTimer =
+        Timer.periodic(const Duration(seconds: 60), (timer) {
+      if (mounted) {
+        _reloadNativeAd(force: true);
+      }
+    });
   }
 
   void _reloadBannerAd() {
-    setState(() {
-      _bannerAdFuture1 = _adService.getBannerAdWidget();
-    });
+    setState(() {});
   }
 
-  void _reloadNativeAd() {
-    setState(() {
-      _nativeAdFuture = _getNativeAdWidget();
-    });
+  void _reloadNativeAd({bool force = false}) {
+    setState(() {});
   }
 
   Future<void> _restoreAdCooldown() async {
@@ -423,6 +276,7 @@ class _ContractScreenState extends State<ContractScreen>
     WidgetsBinding.instance.removeObserver(this);
     _uiUpdateTimer?.cancel();
     _adCooldownTimer?.cancel();
+    _nativeAdAutoRefreshTimer?.cancel();
     for (var contract in contracts) {
       contract['timer']?.cancel();
     }
@@ -449,10 +303,7 @@ class _ContractScreenState extends State<ContractScreen>
       _restoreContractStates();
       // Banner ad reload karo
       if (mounted) {
-        setState(() {
-          _nativeAdFuture = _getNativeAdWidget();
-          _bannerAdFuture1 = _getContractBannerAdWidget();
-        });
+        setState(() {});
       }
     }
   }
@@ -807,207 +658,34 @@ class _ContractScreenState extends State<ContractScreen>
           itemBuilder: (context, index) {
             // Sabse upar banner ad
             if (index == 0) {
+              // Place SwipeableAdCarousel at the top of the contract list
               return Container(
                 margin: const EdgeInsets.symmetric(vertical: 8),
-                child: FutureBuilder<Widget?>(
-                  future: _bannerAdFuture1,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.done &&
-                        snapshot.data != null) {
-                      return snapshot.data!;
-                    } else if (snapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return Container(
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.grey[300]!),
-                        ),
-                        child: const Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.grey),
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Loading Banner Ad...',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    } else {
-                      return Container(
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.grey[200]!),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'Ad',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                  },
+                child: SwipeableAdCarousel(
+                  adService: _adService,
+                  screenId: 'contract_screen',
+                  nativeAdRefreshInterval: const Duration(seconds: 60),
+                  autoSwipeInterval: const Duration(seconds: 10),
                 ),
               );
             }
 
-            // Index adjust karo (kyunki ek banner ad upar aa gaya)
-            final adjustedIndex = index - 1;
-
-            // Native ad position: after 1st contract
-            if (adjustedIndex == 1) {
-              return Container(
-                height: 360,
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                child: FutureBuilder<Widget?>(
-                  future: _nativeAdFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.done &&
-                        snapshot.data != null) {
-                      return snapshot.data!;
-                    } else if (snapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return Container(
-                        height: 360,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[300]!),
-                        ),
-                        child: const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.grey),
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Loading Native Ad...',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    } else {
-                      return Container(
-                        height: 360,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[200]!),
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.ads_click,
-                                  color: Colors.grey, size: 24),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Ad Unavailable',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Check your internet connection',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              // Add refresh button
-                              GestureDetector(
-                                onTap: () {
-                                  // Sirf yaha se hi force reload karo
-                                  setState(() {
-                                    _nativeAdFuture = _getNativeAdWidget();
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.withAlpha(51),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Text(
-                                    'Retry',
-                                    style: TextStyle(
-                                      color: Colors.blue,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                ),
-              );
-            }
-
-            // Contract index nikalna (ads ke hisab se adjust kar ke)
-            int contractIndex = adjustedIndex;
-            if (adjustedIndex > 1) contractIndex--; // Native ad ke liye adjust
-            if (contractIndex >= contracts.length) {
+            // Adjust contract index for ads
+            final int adjustedIndex = index - 1; // Because index 0 is the ad
+            if (adjustedIndex >= contracts.length) {
               return const SizedBox.shrink();
             }
-            final contract = contracts[contractIndex];
+            final contract = contracts[adjustedIndex];
             final bool isCompleted = contract['isCompleted'] ?? false;
             final bool canWatchAd = _canWatchAd() && _isAdInitialized;
 
             return ContractCard(
               contract: contract,
-              onWatchAd: canWatchAd ? () => watchAd(contractIndex) : null,
+              onWatchAd: canWatchAd ? () => watchAd(adjustedIndex) : null,
               onStartMining: isCompleted
                   ? null
-                  : () => _startContractMining(contractIndex),
-              onStopMining: () => stopMining(contractIndex),
+                  : () => _startContractMining(adjustedIndex),
+              onStopMining: () => stopMining(adjustedIndex),
               remainingCooldown: _remainingCooldownSeconds,
               isAdServiceReady: _isAdInitialized,
             );

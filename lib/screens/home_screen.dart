@@ -8,6 +8,7 @@ import 'package:bitcoin_cloud_mining/providers/wallet_provider.dart';
 import 'package:bitcoin_cloud_mining/services/ad_service.dart';
 import 'package:bitcoin_cloud_mining/services/mining_notification_service.dart';
 import 'package:bitcoin_cloud_mining/services/sound_notification_service.dart';
+import 'package:bitcoin_cloud_mining/widgets/home_swipeable_ad.dart';
 import 'package:bitcoin_cloud_mining/widgets/network_status_widget.dart';
 import 'package:bitcoin_cloud_mining/widgets/server_connection_animation.dart';
 import 'package:bitcoin_cloud_mining/widgets/world_map_widget.dart';
@@ -94,19 +95,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _wasPowerBoostActive = false;
 
   Timer? _adUiUpdateTimer;
+  Timer? _nativeAdAutoRefreshTimer;
 
-  // Bottom section ads (Click for Magic & Reward ke niche)
-  Future<Widget?>? _bottomNativeAdFuture;
   Future<Widget?>? _middleBannerAdFuture;
 
   // Bottom section ad load functions
-  void _loadBottomNativeAd({bool force = false}) {
-    // Agar already future set hai aur force nahi hai, to dobara setState mat karo
-    if (_bottomNativeAdFuture != null && !force) return;
-    setState(() {
-      _bottomNativeAdFuture = _getBottomNativeAdWidget();
-    });
-  }
 
   // Enhanced middle banner ad loading
   Future<Widget?> _getMiddleBannerAdWidget() async {
@@ -177,113 +170,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // Enhanced bottom native ad loading
-  Future<Widget?> _getBottomNativeAdWidget() async {
-    try {
-      // Load native ad with shorter timeout
-      await _adService.loadNativeAd().timeout(
-        const Duration(seconds: 7), // Reduced from 10 to 7 seconds
-        onTimeout: () {
-          throw Exception('Bottom native ad loading timeout');
-        },
-      );
-
-      if (_adService.isNativeAdLoaded) {
-        return _adService.getNativeAd();
-      } else {
-        return Container(
-          height: 360,
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Loading Bottom Native Ad...',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      return Container(
-        height: 360,
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey[300]!),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.ads_click, color: Colors.grey, size: 24),
-              const SizedBox(height: 8),
-              const Text(
-                'Ad Unavailable',
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Check your internet connection',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Add refresh button
-              GestureDetector(
-                onTap: () {
-                  // Sirf yaha se hi force reload karo
-                  _loadBottomNativeAd(force: true);
-                },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withAlpha(51),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'Retry',
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-  }
 
   @override
   void initState() {
@@ -321,7 +207,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _reloadAds() {
     setState(() {
-      _bottomNativeAdFuture = _getBottomNativeAdWidget();
       _middleBannerAdFuture = _getMiddleBannerAdWidget();
     });
   }
@@ -384,6 +269,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _nativeAdAutoRefreshTimer?.cancel();
     // Only save mining state, don't add earnings prematurely
     if (_isMining) {
       _saveMiningState();
@@ -1218,7 +1104,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             const SizedBox(height: 16),
             buildGameSection(),
             const SizedBox(height: 16),
-            // Middle Banner Ad (Game section ke niche, mining state ke upar)
+            // Middle Banner Ad (Below Game Section)
             FutureBuilder<Widget?>(
               future: _middleBannerAdFuture,
               builder: (context, snapshot) {
@@ -1460,81 +1346,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
             const SizedBox(height: 24),
-            // Bottom Native Ad (Click for Magic & Reward ke niche)
-            FutureBuilder<Widget?>(
-              future: _bottomNativeAdFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.done &&
-                    snapshot.data != null) {
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    child: snapshot.data,
-                  );
-                } else if (snapshot.connectionState ==
-                    ConnectionState.waiting) {
-                  return Container(
-                    height: 360,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.grey),
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Loading Bottom Native Ad...',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                } else {
-                  return Container(
-                    height: 360,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.ads_click, color: Colors.grey, size: 24),
-                          SizedBox(height: 8),
-                          Text(
-                            'Bottom Ad Unavailable',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-              },
+            // Swipeable Ad (Click for Magic & Reward ke niche)
+            HomeSwipeableAd(
+              adService: _adService,
+              screenId: 'home_screen',
+              refreshInterval: const Duration(minutes: 2),
+              autoSwipeInterval: const Duration(seconds: 15),
+              margin: const EdgeInsets.only(bottom: 16),
             ),
             Row(
               children: [

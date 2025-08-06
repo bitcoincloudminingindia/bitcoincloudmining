@@ -14,6 +14,10 @@
     <!-- ✅ Required for AdMob Advertising ID (Android 13+) -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
     
+    <!-- ✅ Unity Ads Permissions -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    
     <!-- ✅ Required for overlay window -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
@@ -27,6 +31,16 @@
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-3537329799200606~9074161734" />
+            
+        <!-- ✅ Unity Ads Game ID for Android -->
+        <meta-data
+            android:name="unity.ads.game-id"
+            android:value="5916099" />
+            
+        <!-- ✅ Unity Ads Test Mode (Debug only) -->
+        <meta-data
+            android:name="unity.ads.test-mode"
+            android:value="true" />
 
         <!-- ✅ Firebase Messaging Services -->
         <service

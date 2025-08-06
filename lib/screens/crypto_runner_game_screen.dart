@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/wallet_provider.dart';
+import '../services/ad_service.dart';
 import '../services/sound_notification_service.dart';
 import '../utils/color_constants.dart';
 import '../widgets/custom_app_bar.dart';
@@ -39,6 +40,7 @@ class _CryptoRunnerGameScreenState extends State<CryptoRunnerGameScreen>
   int remainingTime = 180; // 3 minutes
   final audioPlayer = AudioPlayer();
   bool isMuted = false;
+  final AdService _adService = AdService();
   List<GameObject> gameObjects = [];
   bool isGameOver = false;
   double gameSpeed = 5.0;
@@ -55,6 +57,7 @@ class _CryptoRunnerGameScreenState extends State<CryptoRunnerGameScreen>
     super.initState();
     _loadSoundEffects();
     _initializeGame();
+    _adService.loadInterstitialAd(); // Load interstitial ad on init
   }
 
   Future<void> _loadSoundEffects() async {
@@ -265,6 +268,31 @@ class _CryptoRunnerGameScreenState extends State<CryptoRunnerGameScreen>
     _showGameOverDialog(finalReward);
   }
 
+  Future<void> _exitAfterAd() async {
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _showExitConfirmation() async {
+    // Show interstitial ad before exiting
+    try {
+      final adShown = await _adService.showInterstitialAd(
+        onAdDismissed: _exitAfterAd,
+      );
+      
+      // If ad wasn't shown (not loaded or error), exit immediately
+      if (!adShown && mounted) {
+        _exitAfterAd();
+      }
+    } catch (e) {
+      // If there's an error showing the ad, just exit
+      if (mounted) {
+        _exitAfterAd();
+      }
+    }
+  }
+
   void _showGameOverDialog(double reward) {
     showDialog(
       context: context,
@@ -272,27 +300,19 @@ class _CryptoRunnerGameScreenState extends State<CryptoRunnerGameScreen>
       builder: (context) => AlertDialog(
         backgroundColor: ColorConstants.secondaryColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Game Over!',
-          style: TextStyle(color: ColorConstants.primaryTextColor),
-          textAlign: TextAlign.center,
-        ),
+        title: const Text('Game Over!'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text('Your Score: $score'),
+            const SizedBox(height: 8),
             Text(
-              'Score: $score',
-              style: TextStyle(color: ColorConstants.primaryTextColor),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Level: $level',
-              style: TextStyle(color: ColorConstants.primaryTextColor),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Reward: ${reward.toStringAsFixed(18)} BTC',
-              style: TextStyle(color: ColorConstants.primaryTextColor),
+              'You earned: ${reward.toStringAsFixed(8)} BTC',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.green,
+              ),
             ),
           ],
         ),
@@ -305,7 +325,7 @@ class _CryptoRunnerGameScreenState extends State<CryptoRunnerGameScreen>
             child: const Text('Play Again'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: _showExitConfirmation,
             child: const Text('Exit'),
           ),
         ],
@@ -325,8 +345,43 @@ class _CryptoRunnerGameScreenState extends State<CryptoRunnerGameScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const CustomAppBar(
+    // Handle back button press with PopScope
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        
+        // If game is active, show confirmation dialog
+        if (isGameActive) {
+          final shouldExit = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: const Text('Exit Game?'),
+              content: const Text('Are you sure you want to exit the game?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Exit'),
+                ),
+              ],
+            ),
+          );
+          
+          if (shouldExit == true) {
+            _showExitConfirmation();
+          }
+        } else {
+          // If game is not active, just show the exit confirmation
+          _showExitConfirmation();
+        }
+      },
+      child: Scaffold(
+        appBar: const CustomAppBar(
         title: 'Crypto Runner',
         titleTextStyle: TextStyle(
           fontFamily: 'Poppins',
@@ -524,7 +579,7 @@ class _CryptoRunnerGameScreenState extends State<CryptoRunnerGameScreen>
           ),
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildPowerUpButton(
