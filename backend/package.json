@@ -52,12 +52,13 @@
     "firebase-admin": "^13.4.0",
     "helmet": "^7.2.0",
     "hpp": "^0.2.3",
+    "ip": "^2.0.1",
     "joi": "^17.13.3",
     "json2csv": "^6.0.0-alpha.2",
     "jwa": "^2.0.0",
     "jws": "^4.0.0",
-    "mongodb": "^5.9.2",
-    "mongoose": "^7.8.7",
+    "mongodb": "^5.7.0",
+    "mongoose": "^8.17.0",
     "morgan": "^1.10.0",
     "node-cron": "^4.1.0",
     "node-schedule": "^2.1.1",
@@ -67,6 +68,7 @@
     "semver": "^7.5.4",
     "socket.io": "^4.5.4",
     "socket.io-parser": "^4.2.4",
+    "socks": "^2.7.1",
     "uuid": "^11.1.0",
     "winston": "^3.11.0",
     "xss-clean": "^0.1.4"
@@ -90,10 +92,10 @@
       "ip": "2.0.0"
     },
     "mongodb": {
-      "socks": "2.3.3"
+      "socks": "2.8.0"
     },
     "mongoose": {
-      "mongodb": "^5.9.2"
+      "mongodb": "^5.7.0"
     }
   },
   "resolutions": {
