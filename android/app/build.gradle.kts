@@ -67,12 +67,50 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Generate mapping file for deobfuscation
+            isDebuggable = false
+            isJniDebuggable = false
+            isRenderscriptDebuggable = false
+            isPseudoLocalesEnabled = false
+            
+            // R8 configuration
+            isMinifyEnabled = true
+            isShrinkResources = true
+        }
+        debug {
+            // Keep debug builds fast by only enabling minification in release
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
+    }
+    
+    // Enable code shrinking and obfuscation for release builds
+    buildFeatures {
+        buildConfig = true
+    }
+    
+    // Enable resource shrinking
+    buildToolsVersion = "34.0.0"
+    
+    // Configure APK/AAB splitting to reduce download size
+    bundle {
+        language {
+            // Enable language split
+            enableSplit = true
+        }
+        density {
+            // Enable density split
+            enableSplit = true
+        }
+        abi {
+            // Enable ABI split
+            enableSplit = true
         }
     }
 }
@@ -90,5 +128,8 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-messaging")
     implementation("com.google.firebase:firebase-crashlytics")
+    
+    // Play Core is already included by Flutter's plugins, so we don't need to add it explicitly
+    // This prevents version conflicts with the Play Core version included by Flutter
 }
 
